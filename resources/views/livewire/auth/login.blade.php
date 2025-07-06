@@ -20,18 +20,13 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
     public bool $remember = false;
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function login(): void
     {
         $this->validate();
-
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
             RateLimiter::hit($this->throttleKey());
-
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
@@ -43,9 +38,6 @@ new #[Layout('components.layouts.auth')] class extends Component {
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
     }
 
-    /**
-     * Ensure the authentication request is not rate limited.
-     */
     protected function ensureIsNotRateLimited(): void
     {
         if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
@@ -64,64 +56,68 @@ new #[Layout('components.layouts.auth')] class extends Component {
         ]);
     }
 
-    /**
-     * Get the authentication rate limiting throttle key.
-     */
     protected function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
     }
-}; ?>
+};
+?>
 
-<div class="flex flex-col gap-6">
-    <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password below to log in')" />
 
-    <!-- Session Status -->
-    <x-auth-session-status class="text-center" :status="session('status')" />
+<div class="w-full min-h-screen bg-white flex items-center justify-center px-4">
+    <div class="bg-gray-300/70 backdrop-blur-lg p-6 rounded-xl shadow-2xl w-full max-w-md border border-gray-400">
+        
+  
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">Inicio de Sesión</h2>
+        </div>
 
-    <form wire:submit="login" class="flex flex-col gap-6">
-        <!-- Email Address -->
-        <flux:input
-            wire:model="email"
-            :label="__('Email address')"
-            type="email"
-            required
-            autofocus
-            autocomplete="email"
-            placeholder="email@example.com"
-        />
+        <x-auth-session-status class="mb-2 text-center text-sm text-green-600" :status="session('status')" />
 
-        <!-- Password -->
-        <div class="relative">
-            <flux:input
-                wire:model="password"
-                :label="__('Password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                :placeholder="__('Password')"
-                viewable
-            />
+        <form wire:submit="login" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-800 mb-1">Correo Electrónico</label>
+                <input wire:model="email" type="email" required
+                    class="w-full px-3 py-2 bg-white border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    placeholder="ejemplo@correo.com">
+            </div>
 
+  
+            <div>
+                <label class="block text-sm font-medium text-gray-800 mb-1">Contraseña</label>
+                <input wire:model="password" type="password" required
+                    class="w-full px-3 py-2 bg-white border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900">
+            </div>
+
+
+            <div class="flex items-center gap-2">
+                <input wire:model="remember" type="checkbox"
+                    class="h-4 w-4 text-green-600 border-gray-400 rounded">
+                <label class="text-sm text-gray-800">Recordarme</label>
+            </div>
+
+
+            <div>
+                <button type="submit"
+                    class="w-full py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
+                    Ingresar
+                </button>
+            </div>
+        </form>
+
+
+        <div class="mt-4 text-center text-sm text-gray-800">
+            ¿Olvidaste tu contraseña?
             @if (Route::has('password.request'))
-                <flux:link class="absolute end-0 top-0 text-sm" :href="route('password.request')" wire:navigate>
-                    {{ __('Forgot your password?') }}
-                </flux:link>
+                <a href="{{ route('password.request') }}" class="text-green-600 hover:underline">Recupérala aquí</a>
             @endif
         </div>
 
-        <!-- Remember Me -->
-        <flux:checkbox wire:model="remember" :label="__('Remember me')" />
-
-        <div class="flex items-center justify-end">
-            <flux:button variant="primary" type="submit" class="w-full">{{ __('Log in') }}</flux:button>
+        <div class="text-center text-sm text-gray-800 mt-1">
+            ¿No tienes cuenta?
+            @if (Route::has('register'))
+                <a href="{{ route('register') }}" class="text-green-600 hover:underline">¡Regístrate!</a>
+            @endif
         </div>
-    </form>
-
-    @if (Route::has('register'))
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
-            {{ __('Don\'t have an account?') }}
-            <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
-        </div>
-    @endif
+    </div>
 </div>
