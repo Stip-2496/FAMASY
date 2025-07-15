@@ -64,48 +64,55 @@ new #[Layout('components.layouts.auth')] class extends Component {
 ?>
 
 
-<div class="w-full min-h-screen bg-white flex items-center justify-center px-4">
-    <div class="bg-gray-300/70 backdrop-blur-lg p-6 rounded-xl shadow-2xl w-full max-w-md border border-gray-400">
-        
-  
+<div class="bg-gray-100 flex items-center justify-center p-4 min-h-screen">
+    <div class="w-full max-w-md bg-white shadow rounded-lg p-8 border border-gray-300">
+        <!-- Encabezado -->
         <div class="text-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Inicio de Sesión</h2>
+            <h2 class="text-2xl font-bold text-gray-800">Inicio de Sesión</h2>
+            <p class="text-sm text-gray-500">Ingresa tus credenciales para acceder</p>
         </div>
 
-        <x-auth-session-status class="mb-2 text-center text-sm text-green-600" :status="session('status')" />
+        <!-- Estado de sesión -->
+        <x-auth-session-status class="mb-4 text-center text-sm text-green-600" :status="session('status')" />
 
-        <form wire:submit="login" class="space-y-4">
+        <form wire:submit.prevent="login" class="space-y-6">
+            <!-- Correo -->
             <div>
                 <label class="block text-sm font-medium text-gray-800 mb-1">Correo Electrónico</label>
-                <input wire:model="email" type="email" required
-                    class="w-full px-3 py-2 bg-white border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
-                    placeholder="ejemplo@correo.com">
+                <input type="email"
+                       wire:model="email"
+                       placeholder="ejemplo@correo.com"
+                       required
+                       class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
             </div>
 
-  
+            <!-- Contraseña -->
             <div>
                 <label class="block text-sm font-medium text-gray-800 mb-1">Contraseña</label>
-                <input wire:model="password" type="password" required
-                    class="w-full px-3 py-2 bg-white border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900">
+                <input type="password"
+                       wire:model="password"
+                       required
+                       class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
             </div>
 
-
+            <!-- Recordarme -->
             <div class="flex items-center gap-2">
-                <input wire:model="remember" type="checkbox"
-                    class="h-4 w-4 text-green-600 border-gray-400 rounded">
+                <input type="checkbox"
+                       wire:model="remember"
+                       class="h-4 w-4 text-green-600 border-gray-400 rounded">
                 <label class="text-sm text-gray-800">Recordarme</label>
             </div>
 
-
+            <!-- Botón de login -->
             <div>
                 <button type="submit"
-                    class="w-full py-2 bg-green-600 text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
+                        class="w-full py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150 cursor-pointer">
                     Ingresar
                 </button>
             </div>
         </form>
 
-
+        <!-- Enlaces adicionales -->
         <div class="mt-4 text-center text-sm text-gray-800">
             ¿Olvidaste tu contraseña?
             @if (Route::has('password.request'))
@@ -121,3 +128,4 @@ new #[Layout('components.layouts.auth')] class extends Component {
         </div>
     </div>
 </div>
+

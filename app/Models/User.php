@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,24 +9,30 @@ use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Campos asignables masivamente.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
-        'name',
         'email',
         'password',
+        'tipDocUsu',
+        'numDocUsu',
+        'nomUsu',
+        'apeUsu',
+        'fecNacUsu',
+        'sexUsu',
+        'idRolUsu',
+        'idConUsu',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Campos ocultos al serializar.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -35,27 +40,45 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Conversión de tipos.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
 
     /**
-     * Get the user's initials
+     * Iniciales del usuario (tomadas de nomUsu y apeUsu).
      */
     public function initials(): string
     {
-        return Str::of($this->name)
-            ->explode(' ')
-            ->take(2)
-            ->map(fn ($word) => Str::substr($word, 0, 1))
-            ->implode('');
+        return Str::substr($this->nomUsu, 0, 1) . Str::substr($this->apeUsu, 0, 1);
     }
+
+    /**
+     * Relación: Usuario pertenece a un Rol.
+     */
+    public function rol()
+    {
+        return $this->belongsTo(Rol::class, 'idRolUsu', 'idRol');
+    }
+
+    /**
+     * Relación: Usuario pertenece a un Contacto.
+     */
+    public function contacto()
+    {
+        return $this->belongsTo(Contacto::class, 'idConUsu', 'idCon');
+    }
+
+    /**
+     * Relación: Usuario pertenece a un Direccion.
+     */
+    public function direccion()
+    {
+        return $this->hasOneThrough(Direccion::class, Contacto::class, 'idCon', 'idConDir', 'idConUsu', 'idCon');
+    }
+
 }
