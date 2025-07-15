@@ -90,7 +90,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
     event(new Registered($user));
     Auth::login($user);
-    $this->redirectIntended(route('dashboard'), navigate: true);
+    $this->redirectIntended(default: route('home', absolute: false), navigate: true);
 }
 }; ?>
 

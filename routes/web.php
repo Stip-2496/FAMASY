@@ -9,9 +9,9 @@ Route::get('/', function () {
 
 Route::view('/login', 'login')->name('login');
 
-Route::view('dashboard', 'dashboard')
+Route::view('/home', 'auth.home')
     ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+    ->name('home');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
