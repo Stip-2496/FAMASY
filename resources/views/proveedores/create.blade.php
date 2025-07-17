@@ -24,42 +24,42 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
-                    <input type="text" name="nomProve" id="nomProve" required
+                    <input type="text" name="nombre" id="nombre" required
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div>
                     <label for="nit" class="block text-sm font-medium text-gray-700">NIT</label>
-                    <input type="text" name="nitProve" id="nitProve" required
+                    <input type="text" name="nit" id="nit" required
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div>
                     <label for="contacto" class="block text-sm font-medium text-gray-700">Contacto</label>
-                    <input type="text" name="conProve" id="conProve"
+                    <input type="text" name="contacto" id="contacto"
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div>
                     <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono</label>
-                    <input type="text" name="telProve" id="telProve"
+                    <input type="text" name="telefono" id="telefono"
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" name="emailProve" id="emailProve"
+                    <input type="email" name="email" id="email"
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div>
                     <label for="direccion" class="block text-sm font-medium text-gray-700">Dirección</label>
-                    <input type="text" name="dirProve" id="dirProve"
+                    <input type="text" name="direccion" id="direccion"
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div>
                     <label for="tipoSuministro" class="block text-sm font-medium text-gray-700">Tipo de Suministro</label>
-                    <input type="text" name="tipSumProve" id="tipSumProve"
+                    <input type="text" name="tipoSuministro" id="tipoSuministro"
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm">
                 </div>
                 <div class="md:col-span-2">
                     <label for="observaciones" class="block text-sm font-medium text-gray-700">Observaciones</label>
-                    <textarea name="obsProve" id="obsProve" rows="4"
+                    <textarea name="observaciones" id="observaciones" rows="4"
                         class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-green-600 focus:border-green-600 sm:text-sm"></textarea>
                 </div>
             </div>
