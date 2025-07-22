@@ -8,7 +8,7 @@ use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.auth')] class extends Component {
+new #[Layout('layouts.app')] class extends Component {
     public string $tipDocUsu = '';
     public string $numDocUsu = '';
     public string $nomUsu = '';
@@ -94,7 +94,9 @@ new #[Layout('components.layouts.auth')] class extends Component {
 }
 }; ?>
 
-<div class="bg-gray-100 flex items-center justify-center p-4">
+@section('title', 'Regístrate') <!--- título de la página  -->
+
+<div class="flex items-center justify-center p-4">
     <div class="w-full max-w-6xl bg-white shadow rounded-lg p-8">
         <!-- Encabezado -->
         <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">¡Regístrate en FAMASY!</h1>
@@ -219,8 +221,11 @@ new #[Layout('components.layouts.auth')] class extends Component {
                 </div>
             </div>
 
-            <!-- Botón de registro -->
-            <div class="text-center mb-4">
+            <!-- Botón de volver y registro -->
+            <div class="text-center mb-4 space-x-4">
+                <a href="{{ route('welcome') }}" wire:navigation class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
+                    Volver
+                </a>
                 <button type="submit" class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
                     Registrarte
                 </button>

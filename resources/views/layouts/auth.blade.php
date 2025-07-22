@@ -15,14 +15,14 @@
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet"/>
 </head>
 <body>
-    @include('partials.nav')
+    @include('partials.auth-nav')
 
     <main class="bg-gray-100 grid min-h-dvh grid-rows-[auto_1fr_auto]">
         {{ $slot }}
     </main>
 
-    @include('partials.footer')
-    
+    @include('partials.auth-footer')
+
     @livewireScripts
 </body>
 </html>
