@@ -11,7 +11,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.auth')] class extends Component {
+new #[Layout('layouts.app')] class extends Component {
     #[Validate('required|string|email')]
     public string $email = '';
 
@@ -35,7 +35,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
         RateLimiter::clear($this->throttleKey());
         Session::regenerate();
 
-        $this->redirectIntended(default: route('home', absolute: false), navigate: true);
+        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
     }
 
     protected function ensureIsNotRateLimited(): void
@@ -63,8 +63,9 @@ new #[Layout('components.layouts.auth')] class extends Component {
 };
 ?>
 
+@section('title', 'Inicio de sesión') <!--- título de la página  -->
 
-<div class="bg-gray-100 flex items-center justify-center p-4 min-h-screen">
+<div class="flex items-center justify-center p-4 min-h-screen">
     <div class="w-full max-w-md bg-white shadow rounded-lg p-8 border border-gray-300">
         <!-- Encabezado -->
         <div class="text-center mb-6">
@@ -103,10 +104,12 @@ new #[Layout('components.layouts.auth')] class extends Component {
                 <label class="text-sm text-gray-800">Recordarme</label>
             </div>
 
-            <!-- Botón de login -->
-            <div>
-                <button type="submit"
-                        class="w-full py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150 cursor-pointer">
+            <!-- Botónes de volver y login -->
+            <div class="text-center mb-4 space-x-4">
+                <a href="{{ route('welcome') }}" wire:navigation class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
+                    Volver
+                </a>
+                <button type="submit" class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
                     Ingresar
                 </button>
             </div>

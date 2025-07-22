@@ -81,4 +81,12 @@ class User extends Authenticatable
         return $this->hasOneThrough(Direccion::class, Contacto::class, 'idCon', 'idConDir', 'idConUsu', 'idCon');
     }
 
+    /**
+     * Relación: Usuario tiene muchos backups de base de datos.
+     */
+    public function databaseBackups()
+    {
+    return $this->hasMany(DatabaseBackup::class, 'idUsuBac');
+    }
+
 }

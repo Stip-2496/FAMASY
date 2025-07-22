@@ -1,9 +1,11 @@
 <nav class="bg-white">
   <div class="bg-[#39A900] w-full relative">
-    <!-- Fondo blanco diagonal con logo -->
+    <!-- Fondo blanco diagonal con logo-->
     <div class="absolute inset-y-0 left-0 bg-white clip-diagonal w-[180px] sm:w-[300px]">
       <div class="h-full flex items-center pl-2 sm:pl-4">
-        <img src="/assets/images/logo-sena.jpg" alt="Logo del SENA" class="w-8 h-8 sm:w-[50px] sm:h-[50px]"/>
+        <a href="{{ route('welcome') }}">
+          <img src="/assets/images/logo-sena.jpg" alt="Logo del SENA" class="w-8 h-8 sm:w-[50px] sm:h-[50px] hover:cursor.pointer"/>
+        </a>
         <div class="w-px h-6 sm:h-10 bg-black mx-2 sm:m-3"></div>
         <h1 class="text-lg sm:text-2xl font-semibold whitespace-nowrap text-black ml-1 sm:ml-3">FAMASY</h1>
       </div>

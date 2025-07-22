@@ -1,8 +1,5 @@
-@extends('layouts.app')
-
 @section('title', 'Inicio')
-
-@section('content')
+<x-app-layout>
 <div class="w-full h-64 sm:h-[500px] bg-[linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),url('/assets/images/backgrounds/livestock-background.jpg')] bg-cover bg-center bg-no-repeat bg-opacity-70 relative">
   <div class="flex justify-center items-center h-full w-full px-4">
     <p class="text-white font-bold text-xl sm:text-3xl text-center">Gestiona tu producción con FAMASY</p>
@@ -40,4 +37,4 @@
     <p class="text-base sm:text-lg text-center px-4">Encuéntranos</p>
   </div>
 </div>
-@endsection
+</x-app-layout>

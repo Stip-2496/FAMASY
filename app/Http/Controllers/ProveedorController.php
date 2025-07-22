@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Proveedor;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
 
 class ProveedorController extends Controller
 {
@@ -14,7 +14,7 @@ class ProveedorController extends Controller
     public function index()
     {
         $proveedores = Proveedor::orderBy('nomProve', 'asc')->paginate(10);
-        return view('proveedores.index', compact('proveedores'));
+        return view('auth.proveedores.index', compact('proveedores'));
     }
 
     /**
@@ -22,7 +22,7 @@ class ProveedorController extends Controller
      */
     public function create()
     {
-        return view('proveedores.create');
+        return view('auth.proveedores.create');
     }
 
     /**
@@ -41,7 +41,7 @@ class ProveedorController extends Controller
 
         try {
             Proveedor::create($request->all());
-            return redirect()->route('proveedores.index')
+            return redirect()->route('auth.proveedores.index')
                 ->with('success', 'Proveedor registrado exitosamente');
         } catch (\Exception $e) {
             return redirect()->back()
@@ -56,7 +56,7 @@ class ProveedorController extends Controller
     public function show(string $id)
     {
         $proveedor = Proveedor::findOrFail($id);
-        return view('proveedores.show', compact('proveedor'));
+        return view('auth.proveedores.show', compact('proveedor'));
     }
 
     /**
@@ -65,7 +65,7 @@ class ProveedorController extends Controller
     public function edit(string $id)
     {
         $proveedor = Proveedor::findOrFail($id);
-        return view('proveedores.edit', compact('proveedor'));
+        return view('auth.proveedores.edit', compact('proveedor'));
     }
 
     /**
@@ -84,7 +84,7 @@ class ProveedorController extends Controller
 
         try {
             $proveedor->update($request->all());
-            return redirect()->route('proveedores.index')
+            return redirect()->route('auth.proveedores.index')
                 ->with('success', 'Información del proveedor actualizada correctamente');
         } catch (\Exception $e) {
             return redirect()->back()
@@ -101,7 +101,7 @@ class ProveedorController extends Controller
         try {
             $proveedor = Proveedor::findOrFail($id);
             $proveedor->delete();
-            return redirect()->route('proveedores.index')
+            return redirect()->route('auth.proveedores.index')
                 ->with('success', 'Proveedor eliminado del sistema');
         } catch (\Exception $e) {
             return redirect()->back()
@@ -127,6 +127,6 @@ class ProveedorController extends Controller
         }
 
         $proveedores = $query->orderBy('nomProve', 'asc')->paginate(10);
-        return view('proveedores.index', compact('proveedores'));
+        return view('auth.proveedores.index', compact('proveedores'));
     }
 }

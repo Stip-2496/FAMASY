@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'FAMASY')</title>
+    <title>@yield('title', 'Mi App')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> 
     
     <link rel="icon" href="/favicon.ico" sizes="any">
@@ -14,21 +15,14 @@
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet"/>
 </head>
 <body>
-<div class="grid min-h-dvh grid-rows-[auto_1fr_auto]">
-    {{-- Usar nav condicional según autenticación --}}
-    @auth
-        @include('partials.auth-nav')
-    @else
-        @include('partials.nav')
-    @endauth
+    @include('partials.auth-nav')
 
-    <main class="bg-gray-100">
+    <main class="bg-gray-100 grid min-h-dvh grid-rows-[auto_1fr_auto]">
         {{ $slot }}
     </main>
 
-    @include('partials.footer')
-</div>
+    @include('partials.auth-footer')
 
-@livewireScripts
+    @livewireScripts
 </body>
 </html>
