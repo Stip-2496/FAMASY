@@ -1,6 +1,6 @@
 <?php
-
 use App\Models\User;
+use App\Models\Rol;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
@@ -8,6 +8,7 @@ use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
 
 new #[Layout('layouts.auth')] class extends Component {
+    public User $user;
     public string $tipDocUsu = '';
     public string $numDocUsu = '';
     public string $nomUsu = '';
@@ -15,6 +16,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public string $fecNacUsu = '';
     public string $sexUsu = '';
     public string $email = '';
+    public int $idRolUsu = 1;
 
     public string $celCon = '';
     public string $calDir = '';
@@ -24,9 +26,9 @@ new #[Layout('layouts.auth')] class extends Component {
     public string $codPosDir = '';
     public string $paiDir = '';
 
-    public function mount(): void
+    public function mount(User $user): void
     {
-        $user = Auth::user();
+        $this->user = $user;
         $this->tipDocUsu = $user->tipDocUsu ?? '';
         $this->numDocUsu = $user->numDocUsu ?? '';
         $this->nomUsu = $user->nomUsu ?? '';
@@ -34,6 +36,7 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->fecNacUsu = $user->fecNacUsu ?? '';
         $this->sexUsu = $user->sexUsu ?? '';
         $this->email = $user->email ?? '';
+        $this->idRolUsu = $user->idRolUsu ?? 1;
 
         $this->celCon = $user->contacto->celCon ?? '';
         $this->calDir = $user->direccion->calDir ?? '';
@@ -44,94 +47,69 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->paiDir = $user->direccion->paiDir ?? '';
     }
 
-    public function updateProfileInformation(): void
+    public function updateUser(): void
     {
-        $user = Auth::user();
-
         $validated = $this->validate([
             'tipDocUsu' => ['required', 'string', 'max:10'],
-            'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($user->id)],
+            'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($this->user->id)],
             'nomUsu' => ['required', 'string', 'max:100'],
             'apeUsu' => ['required', 'string', 'max:100'],
             'fecNacUsu' => ['required', 'date'],
             'sexUsu' => ['required', 'in:Hombre,Mujer'],
-            'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user->id)],
+            'idRolUsu' => ['required', 'exists:rol,idRol'],
+            
             'celCon' => ['required', 'string', 'max:15'],
-            'calDir' => ['required'],
-            'barDir' => ['required'],
-            'ciuDir' => ['required'],
-            'depDir' => ['required'],
-            'codPosDir' => ['required'],
-            'paiDir' => ['required'],
+            'calDir' => ['required', 'string', 'max:100'],
+            'barDir' => ['required', 'string', 'max:100'],
+            'ciuDir' => ['required', 'string', 'max:100'],
+            'depDir' => ['required', 'string', 'max:100'],
+            'codPosDir' => ['required', 'string', 'max:20'],
+            'paiDir' => ['required', 'string', 'max:100'],
         ]);
 
-        $user->update($validated);
-        $user->contacto->update(['celCon' => $this->celCon]);
-        $user->direccion->update([
-            'calDir' => $this->calDir,
-            'barDir' => $this->barDir,
-            'ciuDir' => $this->ciuDir,
-            'depDir' => $this->depDir,
-            'codPosDir' => $this->codPosDir,
-            'paiDir' => $this->paiDir,
-        ]);
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+        $this->user->update($validated);
+        
+        if($this->user->contacto) {
+            $this->user->contacto->update(['celCon' => $this->celCon]);
+            
+            if($this->user->direccion) {
+                $this->user->direccion->update([
+                    'calDir' => $this->calDir,
+                    'barDir' => $this->barDir,
+                    'ciuDir' => $this->ciuDir,
+                    'depDir' => $this->depDir,
+                    'codPosDir' => $this->codPosDir,
+                    'paiDir' => $this->paiDir,
+                ]);
+            }
         }
 
-        $user->save();
-        $this->dispatch('profile-updated');
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Usuario actualizado correctamente'
+        ]);
     }
 
     public function cancelarCambios(): void
     {
-        $this->mount(); 
-        $this->dispatch('profile-cancelled');
+        $this->mount($this->user); 
+        $this->dispatch('notify', [
+            'type' => 'info',
+            'message' => 'Cambios descartados'
+        ]);
     }
+}; ?>
 
-    public function resendVerificationNotification(): void
-    {
-        $user = Auth::user();
-
-        if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('home'));
-            return;
-        }
-
-        $user->sendEmailVerificationNotification();
-        Session::flash('status', 'verification-link-sent');
-    }
-};
-?>
-
-@section('title', 'Mi perfil') <!--- título de la página  -->
+@section('title', 'Editar Usuario')
 
 <div class="flex items-center justify-center p-4">
     <div class="w-full max-w-6xl bg-white shadow rounded-lg p-8">
         <!-- Encabezado -->
-        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Mi Perfil</h1>
-        <!-- Mensaje de cambios realizados o no -->
-        <div class="text-center text-gray-500 mb-8" x-data="{ showSuccess: false, showCancel: false }" x-on:profile-updated.window="showSuccess = true; showCancel = false; setTimeout(() => showSuccess = false, 3000)" x-on:profile-cancelled.window="showCancel = true; showSuccess = false; setTimeout(() => showCancel = false, 3000)">
-            <template x-if="showSuccess">
-                <div class="rounded bg-green-100 px-4 text-green-800 border border-green-400">
-                    ¡Perfil actualizado correctamente!
-                </div>
-            </template>
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Editar Usuario</h1>
+        <p class="text-center text-gray-500 mb-8">Actualiza la información del usuario</p>
 
-            <template x-if="showCancel">
-                <div class="rounded bg-yellow-100 px-4 text-yellow-800 border border-yellow-400">
-                    Cambios descartados.
-                </div>
-            </template>
-
-            <template x-if="!showSuccess && !showCancel">
-                <p>Actualiza tu información personal</p>
-            </template>
-        </div>
-
-
-        <form wire:submit.prevent="updateProfileInformation">
+        <form wire:submit.prevent="updateUser">
             <!-- Fila: Información personal + Contacto -->
             <div class="flex flex-col md:flex-row gap-6 mb-6">
                 <!-- Información personal -->
@@ -140,8 +118,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="flex gap-4 mb-4">
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Tipo de documento</label>
-                            <select wire:model="tipDocUsu" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
-                                <option disabled selected value="">Seleccione el tipo de documento</option>
+                            <select wire:model="tipDocUsu" class="w-full border p-2 border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                                 <option value="CC">Cédula de Ciudadanía</option>
                                 <option value="TI">Tarjeta de Identidad</option>
                                 <option value="CE">Cédula de Extranjería</option>
@@ -174,18 +151,17 @@ new #[Layout('layouts.auth')] class extends Component {
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Sexo</label>
                             <select wire:model="sexUsu" class="border p-2 rounded w-full text-black bg-white border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
-                                <option disabled selected value="">Seleccione tu sexo</option>
-                                <option value="Mujer">Mujer</option>
                                 <option value="Hombre">Hombre</option>
+                                <option value="Mujer">Mujer</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- Contacto -->
+                <!-- Contacto y Rol -->
                 <div class="flex-1 border border-gray-300 rounded-lg p-4">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Contacto</h2>
-                    <div class="flex gap-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Contacto y Rol</h2>
+                    <div class="flex gap-4 mb-4">
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Célular</label>
                             <input type="text" wire:model="celCon" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
@@ -194,6 +170,14 @@ new #[Layout('layouts.auth')] class extends Component {
                             <label class="block text-sm font-medium text-gray-800 mb-1">Correo electrónico</label>
                             <input type="email" wire:model="email" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-800 mb-1">Rol</label>
+                        <select wire:model="idRolUsu" class="border p-2 rounded w-full text-black bg-white border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @foreach(Rol::all() as $rol)
+                            <option value="{{ $rol->idRol }}">{{ $rol->nomRol }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
             </div>
@@ -232,14 +216,17 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
             </div>
 
-            <!-- Botón de guardar -->
+            <!-- Botones -->
             <div class="text-center mb-4 space-x-4">
                 <button type="submit" class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
-                    Guardar
+                    Guardar Cambios
                 </button>
-                <button type="button" wire:click="cancelarCambios" class="cursor-pointer px-6 py-2 bg-red-500 text-white rounded-md font-semibold hover:bg-red-600 transition duration-150">
+                <button type="button" wire:click="cancelarCambios" class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
                     Cancelar
                 </button>
+                <a href="{{ route('settings.manage-users') }}" wire:navigate class="cursor-pointer px-6 py-2 bg-red-500 text-white rounded-md font-semibold hover:bg-red-600 transition duration-150">
+                    Volver
+                </a>
             </div>
         </form>
     </div>

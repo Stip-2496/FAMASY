@@ -267,7 +267,6 @@ public function getBackups()
     @include('partials.sidebar', [
         'active' => 'database',
         'items' => [
-            ['id' => 'home', 'label' => 'Inicio', 'route' => 'dashboard'],
             ['id' => 'password', 'label' => 'Contraseña', 'route' => 'settings.password'],
             ['id' => 'database', 'label' => 'Base de datos', 'route' => 'settings.database'],
         ]
@@ -366,7 +365,7 @@ public function getBackups()
 
     <!-- Modal Exportar (Paso 1) -->
     @if ($showExportModal)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg max-w-sm w-full">
                 <h2 class="text-xl font-semibold mb-4">Exportar base de datos</h2>
                 <p class="mb-4 text-sm text-gray-600">
@@ -391,7 +390,7 @@ public function getBackups()
 
     <!-- Modal Confirmación Exportar (Paso 2) -->
     @if ($showExportConfirmModal)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg max-w-sm w-full">
                 <h2 class="text-xl font-semibold mb-4">Confirmar exportación</h2>
                 <p class="mb-4 text-sm text-gray-600">
@@ -416,7 +415,7 @@ public function getBackups()
 
     <!-- Modal Limpiar Datos (Paso 1) -->
     @if ($showDeleteModal)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg max-w-sm w-full">
                 <h2 class="text-xl font-semibold mb-4">Limpiar base de datos</h2>
                 <p class="mb-4 text-sm text-gray-600">
@@ -449,7 +448,7 @@ public function getBackups()
 
     <!-- Modal Confirmación Limpiar Datos (Paso 2) -->
     @if ($showDeleteConfirmModal)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg max-w-sm w-full">
                 <h2 class="text-xl font-semibold mb-4">Confirmar limpieza</h2>
                 <p class="mb-4 text-sm text-gray-600">

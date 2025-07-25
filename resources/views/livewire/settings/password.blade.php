@@ -107,7 +107,6 @@ new #[Layout('layouts.auth')] class extends Component {
 @include('partials.sidebar', [
     'active' => 'password', // o cualquier id del ítem activo
     'items' => [
-        ['id' => 'home', 'label' => 'Inicio', 'route' => 'dashboard'],
         ['id' => 'password', 'label' => 'Contraseña', 'route' => 'settings.password'],
         ['id' => 'database', 'label' => 'Base de datos', 'route' => 'settings.database'],
     ]
@@ -179,7 +178,7 @@ new #[Layout('layouts.auth')] class extends Component {
     <div class="relative" x-data="{ show: false, hasValue: false }">
         <input wire:model.live="current_password"
                :type="show ? 'text' : 'password'"
-               class="border p-2 rounded w-full text-black pr-10"
+               class="border p-2 rounded w-full text-black pr-10 border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                autocomplete="current-password"
                @input="const val = $event.target.value;hasValue = val.length > 0; if (val.length === 0) show = false;">
 
@@ -212,7 +211,7 @@ new #[Layout('layouts.auth')] class extends Component {
     <div class="relative" x-data="{ show: false, hasValue: false }">
         <input wire:model.live="password"
                :type="show ? 'text' : 'password'"
-               class="border p-2 rounded w-full text-black pr-10"
+               class="border p-2 rounded w-full text-black pr-10 border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                autocomplete="new-password"
                @input="const val = $event.target.value;hasValue = val.length > 0; if (val.length === 0) show = false;">
 
@@ -245,7 +244,7 @@ new #[Layout('layouts.auth')] class extends Component {
     <div class="relative" x-data="{ show: false, hasValue: false }">
         <input wire:model.live="password_confirmation"
                :type="show ? 'text' : 'password'"
-               class="border p-2 rounded w-full text-black pr-10"
+               class="border p-2 rounded w-full text-black pr-10 border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                autocomplete="new-password"
                @input="const val = $event.target.value;hasValue = val.length > 0; if (val.length === 0) show = false;">
 

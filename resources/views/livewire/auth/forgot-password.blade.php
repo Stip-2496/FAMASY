@@ -49,7 +49,7 @@ new #[Layout('layouts.app')] class extends Component {
 
             <!-- Botón de volver y envío -->
             <div class="text-center mb-4 space-x-4">
-                <a href="{{ route('welcome') }}" wire:navigation class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
+                <a href="{{ route('welcome') }}" wire:navigate class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
                     Volver
                 </a>
                 <button type="submit"class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
@@ -61,7 +61,7 @@ new #[Layout('layouts.app')] class extends Component {
         <!-- Volver al login -->
         <div class="mt-4 text-center text-sm text-gray-800">
             <span>¿Ya lo recordaste?</span>
-            <a href="{{ route('login') }}" class="text-green-600 hover:underline">Inicia sesión</a>
+            <a href="{{ route('login') }}" wire:navigate class="text-green-600 hover:underline">Inicia sesión</a>
         </div>
     </div>
 </div>

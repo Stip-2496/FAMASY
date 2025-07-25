@@ -1,11 +1,59 @@
+<?php
+// resources/views/livewire/proveedores/create.blade.php
+
+use App\Models\Proveedor;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
+
+new #[Layout('layouts.auth')] class extends Component {
+    public Proveedor $proveedor;
+    
+    public string $nomProve = '';
+    public string $nitProve = '';
+    public ?string $conProve = null;
+    public ?string $telProve = null;
+    public ?string $emailProve = null;
+    public ?string $dirProve = null;
+    public ?string $tipSumProve = null;
+    public ?string $obsProve = null;
+
+    public function mount(): void
+    {
+        $this->proveedor = new Proveedor();
+    }
+
+    public function rules(): array
+    {
+        return $this->proveedor->getRules();
+    }
+
+    public function save(): void
+    {
+        $validated = $this->validate();
+        
+        try {
+            Proveedor::create($validated);
+            session()->flash('success', 'Proveedor registrado exitosamente');
+            $this->redirect(route('proveedores.index'), navigate: true);
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al registrar el proveedor: ' . $e->getMessage());
+        }
+    }
+
+    public function clear(): void
+    {
+        $this->reset();
+        $this->resetErrorBag();
+    }
+}; ?>
+
 @section('title', 'Crear proveedores')
 
-<x-auth-layout>
 <div class="container mx-auto px-4 py-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">Registrar Nuevo Proveedor</h1>
-        <a href="{{ route('proveedores.index') }}"
+        <a href="{{ route('proveedores.index') }}" wire:navigate
             class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
             <i class="fas fa-arrow-left mr-2"></i>Volver
         </a>
@@ -13,9 +61,7 @@
 
     <!-- Formulario -->
     <div class="bg-white rounded-lg shadow-md border-2 border-gray-400 p-6">
-        <form action="{{ route('proveedores.store') }}" method="POST" id="proveedorForm">
-            @csrf
-
+        <form wire:submit="save">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Nombre del Proveedor -->
                 <div class="md:col-span-2">
@@ -24,9 +70,8 @@
                     </label>
                     <input type="text"
                         id="nomProve"
-                        name="nomProve"
-                        value="{{ old('nomProve') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('nomProve') border-red-500 @enderror"
+                        wire:model="nomProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('nomProve') border-red-500 @enderror"
                         placeholder="Ingrese el nombre del proveedor"
                         required>
                     @error('nomProve')
@@ -41,9 +86,8 @@
                     </label>
                     <input type="text"
                         id="nitProve"
-                        name="nitProve"
-                        value="{{ old('nitProve') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('nitProve') border-red-500 @enderror"
+                        wire:model="nitProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('nitProve') border-red-500 @enderror"
                         placeholder="Ej: 900123456-7"
                         required>
                     @error('nitProve')
@@ -58,9 +102,8 @@
                     </label>
                     <input type="text"
                         id="conProve"
-                        name="conProve"
-                        value="{{ old('conProve') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('conProve') border-red-500 @enderror"
+                        wire:model="conProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('conProve') border-red-500 @enderror"
                         placeholder="Ej: 3001234567"
                         maxlength="10"
                         pattern="[0-9]{10}"
@@ -77,9 +120,8 @@
                     </label>
                     <input type="text"
                         id="telProve"
-                        name="telProve"
-                        value="{{ old('telProve') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('telProve') border-red-500 @enderror"
+                        wire:model="telProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('telProve') border-red-500 @enderror"
                         placeholder="Ej: 000-00-00">
                     @error('telProve')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -93,9 +135,8 @@
                     </label>
                     <input type="email"
                         id="emailProve"
-                        name="emailProve"
-                        value="{{ old('emailProve') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('emailProve') border-red-500 @enderror"
+                        wire:model="emailProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('emailProve') border-red-500 @enderror"
                         placeholder="correo@ejemplo.com">
                     @error('emailProve')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -109,9 +150,8 @@
                     </label>
                     <input type="text"
                         id="dirProve"
-                        name="dirProve"
-                        value="{{ old('dirProve') }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('dirProve') border-red-500 @enderror"
+                        wire:model="dirProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('dirProve') border-red-500 @enderror"
                         placeholder="Dirección completa">
                     @error('dirProve')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -124,15 +164,15 @@
                         Tipo de Suministro
                     </label>
                     <select id="tipSumProve"
-                        name="tipSumProve"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('tipSumProve') border-red-500 @enderror">
+                        wire:model="tipSumProve"
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('tipSumProve') border-red-500 @enderror">
                         <option value="">Seleccione un tipo</option>
-                        <option value="Alimentos concentrados" {{ old('tipSumProve') == 'Alimentos concentrados' ? 'selected' : '' }}>Alimentos concentrados</option>
-                        <option value="Medicamentos veterinarios" {{ old('tipSumProve') == 'Medicamentos veterinarios' ? 'selected' : '' }}>Medicamentos veterinarios</option>
-                        <option value="Herramientas agrícolas" {{ old('tipSumProve') == 'Herramientas agrícolas' ? 'selected' : '' }}>Herramientas agrícolas</option>
-                        <option value="Insumos ganaderos" {{ old('tipSumProve') == 'Insumos ganaderos' ? 'selected' : '' }}>Insumos ganaderos</option>
-                        <option value="Servicios veterinarios" {{ old('tipSumProve') == 'Servicios veterinarios' ? 'selected' : '' }}>Servicios veterinarios</option>
-                        <option value="Otros" {{ old('tipSumProve') == 'Otros' ? 'selected' : '' }}>Otros</option>
+                        <option value="Alimentos concentrados">Alimentos concentrados</option>
+                        <option value="Medicamentos veterinarios">Medicamentos veterinarios</option>
+                        <option value="Herramientas agrícolas">Herramientas agrícolas</option>
+                        <option value="Insumos ganaderos">Insumos ganaderos</option>
+                        <option value="Servicios veterinarios">Servicios veterinarios</option>
+                        <option value="Otros">Otros</option>
                     </select>
                     @error('tipSumProve')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -145,10 +185,10 @@
                         Observaciones
                     </label>
                     <textarea id="obsProve"
-                        name="obsProve"
+                        wire:model="obsProve"
                         rows="3"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 @error('obsProve') border-red-500 @enderror"
-                        placeholder="Observaciones adicionales sobre el proveedor">{{ old('obsProve') }}</textarea>
+                        class="w-full px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white @error('obsProve') border-red-500 @enderror"
+                        placeholder="Observaciones adicionales sobre el proveedor"></textarea>
                     @error('obsProve')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -157,11 +197,12 @@
 
             <!-- Botones -->
             <div class="flex justify-end space-x-4 mt-6 pt-6 border-t border-gray-200">
-                <a href="{{ route('proveedores.index') }}"
+                <a href="{{ route('proveedores.index') }}" wire:navigate
                     class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
                     Cancelar
                 </a>
-                <button type="reset"
+                <button type="button"
+                    wire:click="clear"
                     class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">
                     Limpiar
                 </button>
@@ -175,30 +216,25 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('livewire:initialized', () => {
     // Validación del NIT en tiempo real
-    const nitInput = document.getElementById('nitProve');
-    nitInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9-]/g, '');
+    Livewire.on('nitProve', (value) => {
+        document.getElementById('nitProve').value = value.replace(/[^0-9-]/g, '');
     });
 
     // Validación del teléfono en tiempo real
-    const telInput = document.getElementById('telProve');
-    telInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9\s\-\(\)]/g, '');
+    Livewire.on('telProve', (value) => {
+        document.getElementById('telProve').value = value.replace(/[^0-9\s\-\(\)]/g, '');
     });
 
     // Validación del celular - solo números, máximo 10 dígitos
-    const celularInput = document.getElementById('conProve');
-    celularInput.addEventListener('input', function() {
-        // Eliminar cualquier caracter que no sea número
-        this.value = this.value.replace(/[^0-9]/g, '');
+    Livewire.on('conProve', (value) => {
+        const input = document.getElementById('conProve');
+        input.value = value.replace(/[^0-9]/g, '');
         
-        // Limitar a 10 dígitos
-        if (this.value.length > 10) {
-            this.value = this.value.slice(0, 10);
+        if (input.value.length > 10) {
+            input.value = input.value.slice(0, 10);
         }
     });
 });
 </script>
-</x-auth-layout>

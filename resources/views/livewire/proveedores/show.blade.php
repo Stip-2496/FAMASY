@@ -1,16 +1,26 @@
+<?php
+// resources/views/livewire/proveedores/show.blade.php
+
+use App\Models\Proveedor;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
+
+new #[Layout('layouts.auth')] class extends Component {
+    public Proveedor $proveedor;
+}; ?>
+
 @section('title', 'Mostrar proveedores')
 
-<x-auth-layout>
 <div class="container mx-auto px-4 py-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">Detalles del Proveedor</h1>
         <div class="flex space-x-2">
-            <a href="{{ route('proveedores.edit', $proveedor->idProve) }}"
+            <a href="{{ route('proveedores.edit', $proveedor->idProve) }}" wire:navigate
                 class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
                 <i class="fas fa-edit mr-2"></i>Editar
             </a>
-            <a href="{{ route('proveedores.index') }}"
+            <a href="{{ route('proveedores.index') }}" wire:navigate
                 class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
@@ -111,7 +121,7 @@
                 ID: {{ $proveedor->idProve }}
             </div>
             <div class="flex space-x-2">
-                <a href="{{ route('proveedores.edit', $proveedor->idProve) }}"
+                <a href="{{ route('proveedores.edit', $proveedor->idProve) }}" wire:navigate
                     class="text-yellow-600 hover:text-yellow-800 font-medium">
                     <i class="fas fa-edit mr-1"></i>Editar información
                 </a>
@@ -130,4 +140,3 @@
         </div>
     </div>
 </div>
-</x-auth-layout>
