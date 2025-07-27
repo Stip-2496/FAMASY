@@ -58,7 +58,9 @@
 <!-- Menú desplegable - se muestra al hacer hover en el grupo padre -->
   <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 transition-all duration-200 transform group-hover:translate-y-0 translate-y-1">
     <a href="{{ route('settings.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" wire:navigate>Mi perfil</a>
+    @can('manage-users')
     <a href="{{ route('settings.manage-users') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" wire:navigate>Gestionar usuarios</a>
+    @endcan
     <a href="{{ route('dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" wire:navigate>Dashboard</a>
     <a href="{{ route('settings.password') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" wire:navigate>Configuración</a>
   <form method="POST" action="{{ route('logout') }}">

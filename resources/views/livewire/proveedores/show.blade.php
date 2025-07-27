@@ -1,12 +1,40 @@
 <?php
-// resources/views/livewire/proveedores/show.blade.php
-
 use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.auth')] class extends Component {
     public Proveedor $proveedor;
+    public $showDeleteModal = false;
+
+    public function mount(Proveedor $proveedor)
+    {
+        $this->proveedor = $proveedor;
+    }
+
+    public function confirmDelete(): void
+    {
+        $this->showDeleteModal = true;
+    }
+
+    public function deleteProveedor(): void
+    {
+        try {
+            $this->proveedor->delete();
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Proveedor eliminado correctamente'
+            ]);
+
+            $this->redirect(route('proveedores.index'), navigate: true);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Error al eliminar el proveedor: ' . $e->getMessage()
+            ]);
+        }
+    }
 }; ?>
 
 @section('title', 'Mostrar proveedores')
@@ -126,17 +154,60 @@ new #[Layout('layouts.auth')] class extends Component {
                     <i class="fas fa-edit mr-1"></i>Editar información
                 </a>
                 <span class="text-gray-300">|</span>
-                <form action="{{ route('proveedores.destroy', $proveedor->idProve) }}"
-                    method="POST"
-                    class="inline"
-                    onsubmit="return confirm('¿Está seguro de eliminar este proveedor? Esta acción no se puede deshacer.')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="text-red-600 hover:text-red-800 font-medium">
-                        <i class="fas fa-trash mr-1"></i>Eliminar proveedor
-                    </button>
-                </form>
+                <button wire:click="confirmDelete"
+                    class="text-red-600 hover:text-red-800 font-medium">
+                    <i class="fas fa-trash mr-1"></i>Eliminar proveedor
+                </button>
             </div>
         </div>
     </div>
+
+    <!-- Modal Eliminar Proveedor -->
+    @if($showDeleteModal)
+        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg max-w-sm w-full">
+                <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
+                <p class="mb-4 text-sm text-gray-600">
+                    ¿Está seguro que desea eliminar este proveedor? Esta acción no se puede deshacer.
+                </p>
+                
+                <div class="mb-4">
+                    <p><strong>Proveedor:</strong> {{ $proveedor->nomProve }}</p>
+                    <p><strong>NIT:</strong> {{ $proveedor->nitProve }}</p>
+                    <p><strong>ID:</strong> {{ $proveedor->idProve }}</p>
+                </div>
+                
+                <div class="flex justify-end gap-3">
+                    <button wire:click="$set('showDeleteModal', false)"
+                            class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
+                    <button wire:click="deleteProveedor"
+                            class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
+
+<!-- Script para notificaciones -->
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.on('notify', (event) => {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+            
+            Toast.fire({
+                icon: event.type,
+                title: event.message
+            });
+        });
+    });
+</script>

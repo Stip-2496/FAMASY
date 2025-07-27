@@ -1,5 +1,9 @@
 <?php
 use App\Models\User;
+use App\Models\Rol;
+use App\Models\Contacto;
+use App\Models\Direccion;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -16,14 +20,27 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         return [
             'users' => User::query()
-                ->with(['rol', 'contacto'])
+                ->with(['rol', 'contacto', 'direccion'])
                 ->when($this->search, function ($query) {
                     $query->where(function($q) {
                         $q->where('nomUsu', 'like', '%'.$this->search.'%')
+                          ->orWhere('apeUsu', 'like', '%'.$this->search.'%')
                           ->orWhere('numDocUsu', 'like', '%'.$this->search.'%')
+                          ->orWhere('tipDocUsu', 'like', '%'.$this->search.'%')
                           ->orWhere('email', 'like', '%'.$this->search.'%')
+                          ->orWhere('sexUsu', 'like', '%'.$this->search.'%')
                           ->orWhereHas('rol', function($q) {
                               $q->where('nomRol', 'like', '%'.$this->search.'%');
+                          })
+                          ->orWhereHas('contacto', function($q) {
+                              $q->where('celCon', 'like', '%'.$this->search.'%');
+                          })
+                          ->orWhereHas('direccion', function($q) {
+                              $q->where('calDir', 'like', '%'.$this->search.'%')
+                                ->orWhere('barDir', 'like', '%'.$this->search.'%')
+                                ->orWhere('ciuDir', 'like', '%'.$this->search.'%')
+                                ->orWhere('depDir', 'like', '%'.$this->search.'%')
+                                ->orWhere('paiDir', 'like', '%'.$this->search.'%');
                           });
                     });
                 })
@@ -52,17 +69,23 @@ new #[Layout('layouts.auth')] class extends Component {
     public function deleteUser(): void
     {
         try {
-            $user = User::findOrFail($this->userToDelete);
+            DB::beginTransaction();
             
-            // Eliminar también los registros relacionados
-            if($user->contacto) {
-                if($user->contacto->direccion) {
-                    $user->contacto->direccion->delete();
+            $user = User::findOrFail($this->userToDelete);
+            $contactoId = $user->idConUsu;
+            
+            // 1. Eliminar usuario primero
+            $user->delete();
+            
+            // 2. Eliminar contacto después (esto eliminará la dirección por la relación)
+            if ($contactoId) {
+                $contacto = Contacto::find($contactoId);
+                if ($contacto) {
+                    $contacto->delete();
                 }
-                $user->contacto->delete();
             }
             
-            $user->delete();
+            DB::commit();
             
             $this->showDeleteModal = false;
             $this->dispatch('notify', [
@@ -70,9 +93,10 @@ new #[Layout('layouts.auth')] class extends Component {
                 'message' => 'Usuario eliminado correctamente'
             ]);
         } catch (\Exception $e) {
+            DB::rollback();
             $this->dispatch('notify', [
                 'type' => 'error',
-                'message' => 'Error al eliminar el usuario: ' . $e->getMessage()
+                'message' => 'Error al eliminar usuario: ' . $e->getMessage()
             ]);
         } finally {
             $this->userToDelete = null;
@@ -96,7 +120,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Buscar usuarios</label>
                 <input type="text"
                 wire:model.live.debounce.500ms="search"
-                placeholder="Buscar por nombre, documento, email o rol..."
+                placeholder="Buscar por nombre, apellido, documento, email, teléfono, rol o dirección..."
                 class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
             </div>
             <div class="flex gap-2">
@@ -201,10 +225,16 @@ new #[Layout('layouts.auth')] class extends Component {
                 ¿Está seguro que desea eliminar este usuario? Esta acción no se puede deshacer.
             </p>
             
+            @php
+                $userToDeleteData = $users->where('id', $userToDelete)->first();
+            @endphp
+            
+            @if($userToDeleteData)
             <div class="mb-4">
-                <p><strong>Usuario:</strong> {{ User::find($userToDelete)->nomUsu ?? '' }} {{ User::find($userToDelete)->apeUsu ?? '' }}</p>
-                <p><strong>Email:</strong> {{ User::find($userToDelete)->email ?? '' }}</p>
+                <p><strong>Usuario:</strong> {{ $userToDeleteData->nomUsu }} {{ $userToDeleteData->apeUsu }}</p>
+                <p><strong>Email:</strong> {{ $userToDeleteData->email }}</p>
             </div>
+            @endif
             
             <div class="flex justify-end gap-3">
                 <button wire:click="$set('showDeleteModal', false)"
@@ -215,4 +245,28 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
     @endif
+
+    <!-- Script para notificaciones -->
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            Livewire.on('notify', (event) => {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+                
+                Toast.fire({
+                    icon: event.type,
+                    title: event.message
+                });
+            });
+        });
+    </script>
 </div>

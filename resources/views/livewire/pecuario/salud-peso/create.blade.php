@@ -3,7 +3,6 @@ use App\Models\Animal;
 use App\Models\HistorialMedico;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
-use Illuminate\Support\Facades\Route;
 
 new #[Layout('layouts.auth')] class extends Component {
     public $animales;

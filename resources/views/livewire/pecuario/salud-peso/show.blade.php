@@ -8,10 +8,10 @@ new #[Layout('layouts.auth')] class extends Component {
     public HistorialMedico $historial;
     public Animal $animal;
 
-    public function mount($id)
+    public function mount(HistorialMedico $historial)
     {
-        $this->historial = HistorialMedico::findOrFail($id);
-        $this->animal = Animal::findOrFail($this->historial->idAniHis);
+    $this->historial = $historial;
+    $this->animal = Animal::findOrFail($historial->idAniHis);
     }
 }; ?>
 

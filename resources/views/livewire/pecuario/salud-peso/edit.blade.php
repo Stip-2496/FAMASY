@@ -3,9 +3,8 @@ use App\Models\HistorialMedico;
 use App\Models\Animal;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
-use Illuminate\Support\Facades\Route;
 
-new #[Layout('layouts.app')] class extends Component {
+new #[Layout('layouts.auth')] class extends Component {
     public HistorialMedico $historial;
     public Animal $animal;
     
@@ -14,16 +13,15 @@ new #[Layout('layouts.app')] class extends Component {
     public $responHisMed;
     public $obsHisMed;
 
-    public function mount($id)
+    public function mount(HistorialMedico $historial)
     {
-        $this->historial = HistorialMedico::findOrFail($id);
-        $this->animal = Animal::findOrFail($this->historial->idAniHis);
-        
-        // Inicializar propiedades
-        $this->fecHisMed = $this->historial->fecHisMed;
-        $this->desHisMed = $this->historial->desHisMed;
-        $this->responHisMed = $this->historial->responHisMed;
-        $this->obsHisMed = $this->historial->obsHisMed;
+        $this->historial = $historial;
+        $this->animal = Animal::findOrFail($historial->idAniHis);
+
+        $this->fecHisMed = $historial->fecHisMed;
+        $this->desHisMed = $historial->desHisMed;
+        $this->responHisMed = $historial->responHisMed;
+        $this->obsHisMed = $historial->obsHisMed;
     }
 
     public function rules()

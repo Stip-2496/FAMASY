@@ -4,7 +4,6 @@ use App\Models\Animal;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
-use Illuminate\Support\Facades\Route;
 
 new #[Layout('layouts.auth')] class extends Component {
     use WithPagination;

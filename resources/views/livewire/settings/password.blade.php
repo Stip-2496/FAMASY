@@ -104,6 +104,7 @@ new #[Layout('layouts.auth')] class extends Component {
 
 <div class="flex items-center justify-center p-4 min-h-screen">
 
+@can('manage-users')
 @include('partials.sidebar', [
     'active' => 'password', // o cualquier id del ítem activo
     'items' => [
@@ -111,7 +112,7 @@ new #[Layout('layouts.auth')] class extends Component {
         ['id' => 'database', 'label' => 'Base de datos', 'route' => 'settings.database'],
     ]
 ])
-
+@endcan
     <div class="w-full max-w-md bg-white shadow rounded-lg p-8 border border-gray-300">
         <!-- Encabezado -->
         <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Actualizar Contraseña</h1>

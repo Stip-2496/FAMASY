@@ -207,12 +207,5 @@ new #[Layout('layouts.app')] class extends Component {
                 <a href="{{ route('password.request') }}" wire:navigate class="text-green-600 hover:underline">Recupérala aquí</a>
             @endif
         </div>
- <!-- -->
-        <div class="text-center text-sm text-gray-800 mt-1">
-            ¿No tienes cuenta?
-            @if (Route::has('register'))
-                <a href="{{ route('register') }}" wire:navigate class="text-green-600 hover:underline">¡Regístrate!</a>
-            @endif
-        </div>
     </div>
 </div>

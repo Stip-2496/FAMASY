@@ -56,6 +56,8 @@ new #[Layout('layouts.auth')] class extends Component {
                 'type' => 'error',
                 'message' => 'Error al eliminar el registro: ' . $e->getMessage()
             ]);
+        } finally {
+            $this->produccionToDelete = null;
         }
     }
 }; ?>
@@ -140,7 +142,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                     Editar
                                 </a>
                                 <button wire:click="confirmDelete({{ $prod->idProAni }})"
-                                   class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold"
+                                   class="cursor-pointer bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold"
                                    title="Eliminar">
                                     Eliminar
                                 </button>
@@ -163,23 +165,59 @@ new #[Layout('layouts.auth')] class extends Component {
             {{ $producciones->links() }}
         </div>
     </div>
-</div>
 
-<!-- Delete Modal -->
-@if($showDeleteModal)
-    <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
-            <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
-            <p class="mb-4 text-sm text-gray-600">
-                ¿Está seguro que desea eliminar este registro de producción? Esta acción no se puede deshacer.
-            </p>
-            
-            <div class="flex justify-end gap-3">
-                <button wire:click="$set('showDeleteModal', false)"
-                        class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
-                <button wire:click="deleteProduccion"
-                        class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
+    <!-- Modal Eliminar Producción -->
+    @if($showDeleteModal)
+        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg max-w-sm w-full">
+                <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
+                <p class="mb-4 text-sm text-gray-600">
+                    ¿Está seguro que desea eliminar este registro de producción? Esta acción no se puede deshacer.
+                </p>
+                
+                <div class="mb-4">
+                    @php
+                        $produccion = ProduccionAnimal::find($produccionToDelete);
+                    @endphp
+                    @if($produccion)
+                        <p><strong>ID:</strong> {{ $produccion->idProAni }}</p>
+                        <p><strong>Animal:</strong> {{ $produccion->animal->nomAni ?? 'Animal #'.$produccion->idAniPro }}</p>
+                        <p><strong>Tipo:</strong> {{ ucfirst($produccion->tipProAni) }}</p>
+                        <p><strong>Cantidad:</strong> {{ $produccion->canProAni }} {{ $produccion->uniProAni ?? ($produccion->tipProAni == 'leche' ? 'L' : 'kg') }}</p>
+                    @endif
+                </div>
+                
+                <div class="flex justify-end gap-3">
+                    <button wire:click="$set('showDeleteModal', false)"
+                            class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
+                    <button wire:click="deleteProduccion"
+                            class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
+                </div>
             </div>
         </div>
-    </div>
-@endif
+    @endif
+
+    <!-- Script para notificaciones -->
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            Livewire.on('notify', (event) => {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+                
+                Toast.fire({
+                    icon: event.type,
+                    title: event.message
+                });
+            });
+        });
+    </script>
+</div>

@@ -1,20 +1,59 @@
 <?php
 use App\Models\ProduccionAnimal;
+use App\Models\Animal;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.app')] class extends Component {
+new #[Layout('layouts.auth')] class extends Component {
     public ProduccionAnimal $produccion;
-    public $historial;
+    public $animales;
+    public $tipProAni;
+    public $canProAni;
+    public $uniProAni;
+    public $fecProAni;
+    public $obsProAni;
 
     public function mount(ProduccionAnimal $produccion)
     {
         $this->produccion = $produccion;
-        $this->historial = ProduccionAnimal::where('idAniPro', $produccion->idAniPro)
-            ->where('idProAni', '!=', $produccion->idProAni)
-            ->orderBy('fecProAni', 'desc')
-            ->limit(5)
-            ->get();
+        $this->animales = Animal::where('estAni', 'vivo')->get(['idAni', 'nomAni', 'espAni']);
+        $this->tipProAni = $produccion->tipProAni;
+        $this->canProAni = $produccion->canProAni;
+        $this->uniProAni = $produccion->uniProAni;
+        $this->fecProAni = $produccion->fecProAni->format('Y-m-d');
+        $this->obsProAni = $produccion->obsProAni;
+    }
+
+    public function rules()
+    {
+        return [
+            'tipProAni' => 'required|in:leche,huevos,carne,lana',
+            'canProAni' => 'required|numeric|min:0.01|max:9999.99',
+            'uniProAni' => 'nullable|string|max:20',
+            'fecProAni' => 'required|date|before_or_equal:today',
+            'obsProAni' => 'nullable|string|max:500'
+        ];
+    }
+
+    public function update()
+    {
+        $validated = $this->validate();
+        
+        try {
+            $this->produccion->update($validated);
+            
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Registro actualizado correctamente'
+            ]);
+            
+            $this->redirect(route('pecuario.produccion.show', $this->produccion->idProAni), navigate: true);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Error al actualizar el registro: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function delete()
@@ -37,125 +76,99 @@ new #[Layout('layouts.app')] class extends Component {
     }
 }; ?>
 
-<div class="container-fluid">
-    <div class="card shadow mb-4">
-        <div class="card-header bg-success text-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-clipboard-list"></i> Detalles de Producción #{{ $produccion->idProAni }}
-                </h5>
-                <div class="btn-group">
-                    <a href="{{ route('pecuario.produccion.edit', $produccion->idProAni) }}" wire:navigate
-                       class="btn btn-sm btn-warning">
-                        <i class="fas fa-edit"></i> Editar
-                    </a>
-                    <button wire:click="delete" class="btn btn-sm btn-danger ms-2" 
-                            onclick="return confirm('¿Eliminar este registro?')">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </div>
-            </div>
+<div class="max-w-4xl mx-auto px-4 py-6">
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="bg-green-600 text-white px-6 py-4">
+            <h2 class="text-lg font-semibold">
+                <i class="fas fa-edit"></i> Editar Registro de Producción #{{ $produccion->idProAni }}
+            </h2>
         </div>
 
-        <div class="card-body">
-            <!-- Datos principales -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <tr>
-                                <th width="40%">Animal</th>
-                                <td>
-                                    @if($produccion->animal)
-                                        {{ $produccion->animal->nomAni }} 
-                                        <small class="text-muted">({{ $produccion->animal->espAni }})</small>
-                                    @else
-                                        N/A
-                                    @endif
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Tipo de Producción</th>
-                                <td>
-                                    <span class="badge bg-success">
-                                        {{ ucfirst($produccion->tipProAni) }}
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Fecha</th>
-                                <td>{{ $produccion->fecProAni->format('d/m/Y') }}</td>
-                            </tr>
-                        </table>
-                    </div>
+        <div class="px-6 py-4">
+            <form wire:submit="update">
+                <!-- Tipo de Producción -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Producción *</label>
+                    <select wire:model="tipProAni" class="w-full border border-gray-300 rounded px-3 py-2" required>
+                        @foreach(['leche' => 'Leche', 'huevos' => 'Huevos', 'carne' => 'Carne', 'lana' => 'Lana'] as $valor => $texto)
+                        <option value="{{ $valor }}" @selected($valor == $produccion->tipProAni)>
+                            {{ $texto }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('tipProAni')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-                <div class="col-md-6">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <tr>
-                                <th width="40%">Cantidad</th>
-                                <td>
-                                    {{ $produccion->canProAni }} 
-                                    {{ $produccion->uniProAni ?? (
-                                        $produccion->tipProAni == 'leche' ? 'litros' : 'kg'
-                                    ) }}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Registrado por</th>
-                                <td>{{ $produccion->user->name ?? 'Sistema' }}</td>
-                            </tr>
-                            <tr>
-                                <th>Última actualización</th>
-                                <td>{{ $produccion->updated_at->diffForHumans() }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Observaciones -->
-            @if($produccion->obsProAni)
-            <div class="mb-4">
-                <h5 class="border-bottom pb-2">
-                    <i class="fas fa-comment-dots"></i> Observaciones
-                </h5>
-                <div class="card bg-success bg-opacity-10">
-                    <div class="card-body">
-                        {{ $produccion->obsProAni }}
+                <!-- Cantidad -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad *</label>
+                    <div class="flex">
+                        <input type="number" step="0.01" wire:model="canProAni"
+                               class="w-full border border-gray-300 rounded-l px-3 py-2"
+                               min="0.01" max="9999.99" required>
+                        <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 rounded-r bg-gray-100 text-gray-700">
+                            @if($tipProAni == 'leche') litros
+                            @elseif($tipProAni == 'huevos') docenas
+                            @else kg
+                            @endif
+                        </span>
                     </div>
+                    @error('canProAni')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-            </div>
-            @endif
 
-            <!-- Historial relacionado -->
-            <div class="mt-4">
-                <h5 class="border-bottom pb-2">
-                    <i class="fas fa-history"></i> Historial Reciente
-                </h5>
-                <div class="list-group">
-                    @forelse($historial as $registro)
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between">
-                            <strong>{{ $registro->fecProAni->format('d/m/Y') }}</strong>
-                            <span class="badge bg-success">
-                                {{ $registro->canProAni }} 
-                                {{ $registro->uniProAni ?? (
-                                    $registro->tipProAni == 'leche' ? 'L' : 'kg'
-                                ) }}
-                            </span>
-                        </div>
-                        <small class="text-muted">
-                            Actualizado: {{ $registro->updated_at->diffForHumans() }}
-                        </small>
-                    </div>
-                    @empty
-                    <div class="list-group-item text-center text-muted">
-                        No hay registros históricos
-                    </div>
-                    @endforelse
+                <!-- Unidad de Medida -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unidad de Medida</label>
+                    <input type="text" wire:model="uniProAni" class="w-full border border-gray-300 rounded px-3 py-2"
+                           placeholder="Ej: litros, docenas...">
+                    @error('uniProAni')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-            </div>
+
+                <!-- Fecha -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+                    <input type="date" wire:model="fecProAni" class="w-full border border-gray-300 rounded px-3 py-2"
+                           max="{{ date('Y-m-d') }}" required>
+                    @error('fecProAni')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Observaciones -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                    <textarea wire:model="obsProAni" rows="3"
+                              class="w-full border border-gray-300 rounded px-3 py-2"></textarea>
+                    @error('obsProAni')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-between mt-6">
+                    <a href="{{ route('pecuario.produccion.show', $produccion->idProAni) }}" wire:navigate
+                       class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded shadow">
+                        <i class="fas fa-times mr-1"></i> Cancelar
+                    </a>
+                    <div class="flex gap-2">
+                        <button type="submit"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                        <button wire:click="delete" type="button"
+                                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow"
+                                onclick="return confirm('¿Eliminar este registro?')">
+                            <i class="fas fa-trash mr-1"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>

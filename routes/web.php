@@ -2,10 +2,6 @@
 
 use Illuminate\Support\Facades\Route; // Route: Facade para definir rutas de Laravel
 use App\Models\User;
-use App\Http\Controllers\AnimalController;
-use App\Http\Controllers\ProduccionController;
-use App\Http\Controllers\HistorialMedicoController;
-use App\Http\Controllers\ProveedorController; // Ruta del controlador del módulo proveedor
 use Livewire\Volt\Volt; // Volt: Componente de Livewire para rutas simplificadas
 use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar archivos (Storage::exists(), Storage::download(), etc.)
 
@@ -31,27 +27,6 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     Volt::route('Gestionar-usuarios/{user}/editar', 'settings.manage-users.edit')->name('settings.manage-users.edit');
     Volt::route('Gestionar-usuarios/{user}', 'settings.manage-users.show')->name('settings.manage-users.show');
 
-    // Ruta para eliminar usuario (usando el método DELETE)
-    Route::delete('Gestionar-usuarios/{user}', function(User $user) {
-        try {
-            // Eliminar también los registros relacionados
-            if($user->contacto) {
-                if($user->contacto->direccion) {
-                    $user->contacto->direccion->delete();
-                }
-                $user->contacto->delete();
-            }
-        
-            $user->delete();
-        
-            return redirect()->route('settings.manage-users')
-                ->with('success', 'Usuario eliminado correctamente');
-        } catch (\Exception $e) {
-            return redirect()->route('settings.manage-users')
-                ->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
-        }
-    })->name('settings.manage-users.destroy');
-
     // Ruta de descarga de la copia de base de datos 
     Route::get('/download-backup/{filename}', function ($filename) {
         if (!Storage::exists("backups/{$filename}")) {
@@ -67,9 +42,6 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     Volt::route('proveedores/{proveedor}/editar', 'proveedores.edit')->name('proveedores.edit');
     Volt::route('proveedores/{proveedor}', 'proveedores.show')->name('proveedores.show');
     
-    // Ruta para eliminar (se mantiene como ruta normal ya que requiere método DELETE)
-    Route::delete('proveedores/{proveedor}', [ProveedorController::class, 'destroy'])->name('proveedores.destroy');
-
     // Rutas del módulo contabilidad usando Livewire/Volt
     Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
         Volt::route('/', 'contabilidad.index')->name('index'); // Dashboard principal
@@ -84,13 +56,13 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     
     // Módulo Pecuario (Animales, Producción, Salud y Peso)
     Route::prefix('pecuario')->name('pecuario.')->group(function () {
-        // Dashboard del módulo pecuario usando Volt
-        Volt::route('/', 'pecuario.dashboard')->name('dashboard');
+
+        Volt::route('/', 'pecuario.dashboard')->name('dashboard'); // Dashboard del módulo pecuario usando Volt
 
         // Submódulos con Volt
         Volt::route('animales', 'pecuario.animales.index')->name('animales.index');
         Volt::route('animales/crear', 'pecuario.animales.create')->name('animales.create');
-        Volt::route('animales/{animal}', 'pecuario.animales.show')->name('animales.show');
+        Volt::route('animales/{animal:idAni}', 'pecuario.animales.show')->name('animales.show');
         Volt::route('animales/{animal}/editar', 'pecuario.animales.edit')->name('animales.edit');
     
         Volt::route('produccion', 'pecuario.produccion.index')->name('produccion.index');
@@ -102,11 +74,6 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
         Volt::route('salud-peso/crear', 'pecuario.salud-peso.create')->name('salud-peso.create');
         Volt::route('salud-peso/{historial}', 'pecuario.salud-peso.show')->name('salud-peso.show');
         Volt::route('salud-peso/{historial}/editar', 'pecuario.salud-peso.edit')->name('salud-peso.edit');
-
-        // Para las acciones de destruir (DELETE) debes mantenerlas como rutas normales
-        Route::delete('animales/{animal}', [AnimalController::class, 'destroy'])->name('animales.destroy');
-        Route::delete('produccion/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
-        Route::delete('salud-peso/{historial}', [HistorialMedicoController::class, 'destroy'])->name('salud-peso.destroy');
     });
  
 });
