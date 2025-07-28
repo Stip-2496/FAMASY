@@ -1,7 +1,4 @@
 <?php
-use App\Models\Animal;
-use App\Models\HistorialMedico;
-use App\Models\ProduccionAnimal;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 

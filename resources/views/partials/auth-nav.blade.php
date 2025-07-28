@@ -8,10 +8,13 @@
         <h1 class="text-lg sm:text-2xl font-semibold whitespace-nowrap text-black ml-1 sm:ml-3">FAMASY</h1>
       </div>
     </div>
+    
     <!-- Contenedor principal con padding izquierdo para no superponerse con la diagonal -->
     <div class="w-full p-2 sm:p-4 h-16 sm:h-[72px] flex items-center justify-between relative z-10 pl-[180px] sm:pl-[300px]">
+
       <!-- Contenedor para los 5 botones -->
       <div class="flex-grow flex justify-center space-x-2 sm:space-x-4">
+
   <!-- Botón 1: Contabilidad -->
   <a href="{{ route('contabilidad.index') }}" wire:navigate class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
     Contabilidad
@@ -19,10 +22,10 @@
   </a>
 
   <!-- Botón 2: Inventario -->
-  <button class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
+  <a href="{{ route('inventario.dashboard') }}" class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
     Inventario
     <span class="absolute left-1/2 bottom-0 h-0.5 w-0 -translate-x-1/2 bg-white transition-all duration-500 group-hover:w-full"></span>
-  </button>
+  </a>
 
   
   <!-- Botón 3: Pecuario -->

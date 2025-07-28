@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route; // Route: Facade para definir rutas de Laravel
-use App\Models\User;
 use Livewire\Volt\Volt; // Volt: Componente de Livewire para rutas simplificadas
 use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar archivos (Storage::exists(), Storage::download(), etc.)
 
@@ -42,7 +41,7 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     Volt::route('proveedores/{proveedor}/editar', 'proveedores.edit')->name('proveedores.edit');
     Volt::route('proveedores/{proveedor}', 'proveedores.show')->name('proveedores.show');
     
-    // Rutas del módulo contabilidad usando Livewire/Volt
+    // Rutas del módulo contabilidad 
     Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
         Volt::route('/', 'contabilidad.index')->name('index'); // Dashboard principal
         Volt::route('movimientos', 'contabilidad.movimientos.index')->name('movimientos.index'); // Movimientos
@@ -59,7 +58,7 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
 
         Volt::route('/', 'pecuario.dashboard')->name('dashboard'); // Dashboard del módulo pecuario usando Volt
 
-        // Submódulos con Volt
+        // Submódulos 
         Volt::route('animales', 'pecuario.animales.index')->name('animales.index');
         Volt::route('animales/crear', 'pecuario.animales.create')->name('animales.create');
         Volt::route('animales/{animal:idAni}', 'pecuario.animales.show')->name('animales.show');
@@ -75,7 +74,45 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
         Volt::route('salud-peso/{historial}', 'pecuario.salud-peso.show')->name('salud-peso.show');
         Volt::route('salud-peso/{historial}/editar', 'pecuario.salud-peso.edit')->name('salud-peso.edit');
     });
- 
+
+    // Módulo de Inventario
+    Volt::route('inventario', 'inventario.dashboard')->name('inventario.dashboard');
+
+    Route::prefix('inventario')->name('inventario.')->group(function () {
+        // Herramientas
+        Volt::route('herramientas', 'inventario.herramientas.index')->name('herramientas.index');
+        Volt::route('herramientas/crear', 'inventario.herramientas.create')->name('herramientas.create');
+        Volt::route('herramientas/{herramienta}', 'inventario.herramientas.show')->name('herramientas.show');
+        Volt::route('herramientas/{herramienta}/editar', 'inventario.herramientas.edit')->name('herramientas.edit');
+    
+        // Insumos
+        Volt::route('insumos', 'inventario.insumos.index')->name('insumos.index');
+        Volt::route('insumos/crear', 'inventario.insumos.create')->name('insumos.create');
+        Volt::route('insumos/{insumo}', 'inventario.insumos.show')->name('insumos.show');
+        Volt::route('insumos/{insumo}/editar', 'inventario.insumos.edit')->name('insumos.edit');
+    
+        // Movimientos
+        Volt::route('movimientos/stock', 'inventario.movimientos.stock')->name('movimientos.stock');
+        Volt::route('movimientos', 'inventario.movimientos.index')->name('movimientos.index');
+        Volt::route('movimientos/crear', 'inventario.movimientos.create')->name('movimientos.create');
+        Volt::route('movimientos/{movimiento}', 'inventario.movimientos.show')->name('movimientos.show');
+        Volt::route('movimientos/{movimiento}/editar', 'inventario.movimientos.edit')->name('movimientos.edit');
+    
+        // Préstamos
+        Volt::route('prestamos', 'inventario.prestamos.index')->name('prestamos.index');
+        Volt::route('prestamos/crear', 'inventario.prestamos.create')->name('prestamos.create');
+        Volt::route('prestamos/{prestamo}', 'inventario.prestamos.show')->name('prestamos.show');
+        Volt::route('prestamos/{prestamo}/editar', 'inventario.prestamos.edit')->name('prestamos.edit');
+        Volt::route('prestamos/{prestamo}/devolver', 'inventario.prestamos.devolver')->name('prestamos.devolver');
+    
+        // Mantenimientos
+        Volt::route('mantenimientos', 'inventario.mantenimientos.index')->name('mantenimientos.index');
+        Volt::route('mantenimientos/crear', 'inventario.mantenimientos.create')->name('mantenimientos.create');
+        Volt::route('mantenimientos/{mantenimiento}', 'inventario.mantenimientos.show')->name('mantenimientos.show');
+        Volt::route('mantenimientos/{mantenimiento}/editar', 'inventario.mantenimientos.edit')->name('mantenimientos.edit');
+        Volt::route('mantenimientos/{mantenimiento}/completar', 'inventario.mantenimientos.completar')->name('mantenimientos.completar');
+    });
+
 });
 
 require __DIR__.'/auth.php'; //  Importación de Rutas de Autenticación que vienen con Laravel Breeze/Jetstream (ej. Registro, Login, Verificación de email y Recuperación de contraseña)
