@@ -1,4 +1,6 @@
 <?php
+// resources/views/livewire/proveedores/index.blade.php
+
 use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;

@@ -2,8 +2,6 @@
 // resources/views/livewire/inventario/movimientos/edit.blade.php
 
 use App\Models\Inventario;
-use App\Models\Insumo;
-use App\Models\Herramienta;
 use App\Models\Proveedor;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
@@ -11,7 +9,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.auth')] class extends Component {
     public Inventario $inventario;
-    
+
     // Propiedades del formulario
     public string $tipMovInv;
     public string $fecMovInv;
@@ -24,7 +22,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public ?int $idProve = null;
     public ?string $obsInv = null;
 
-    // Datos para selects
+    // Selects
     public array $tiposMovimiento = [
         'apertura' => 'Apertura',
         'entrada' => 'Entrada',
@@ -38,7 +36,7 @@ new #[Layout('layouts.auth')] class extends Component {
         'mantenimiento' => 'Mantenimiento',
         'venta' => 'Venta'
     ];
-    
+
     /** @var Collection<Proveedor> */
     public Collection $proveedores;
 
@@ -46,19 +44,53 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         $this->inventario = $movimiento;
         $this->proveedores = Proveedor::all();
-        
+
         $this->fill([
-            'tipMovInv' => $this->inventario->tipMovInv,
-            'fecMovInv' => $this->inventario->fecMovInv->format('Y-m-d\TH:i'),
-            'cantMovInv' => $this->inventario->cantMovInv,
-            'uniMovInv' => $this->inventario->uniMovInv,
-            'costoUnitInv' => $this->inventario->costoUnitInv,
-            'costoTotInv' => $this->inventario->costoTotInv,
-            'loteInv' => $this->inventario->loteInv,
-            'fecVenceInv' => $this->inventario->fecVenceInv?->format('Y-m-d'),
-            'idProve' => $this->inventario->idProve,
-            'obsInv' => $this->inventario->obsInv,
+            'tipMovInv' => $movimiento->tipMovInv,
+            'fecMovInv' => $movimiento->fecMovInv->format('Y-m-d\TH:i'),
+            'cantMovInv' => $movimiento->cantMovInv,
+            'uniMovInv' => $movimiento->uniMovInv,
+            'costoUnitInv' => $movimiento->costoUnitInv,
+            'costoTotInv' => $movimiento->costoTotInv,
+            'loteInv' => $movimiento->loteInv,
+            'fecVenceInv' => $movimiento->fecVenceInv?->format('Y-m-d'),
+            'idProve' => $movimiento->idProve,
+            'obsInv' => $movimiento->obsInv,
         ]);
+    }
+
+    public function update(): void
+    {
+        $this->validate([
+            'tipMovInv' => 'required|in:' . implode(',', array_keys($this->tiposMovimiento)),
+            'cantMovInv' => 'required|numeric|min:0.01',
+            'uniMovInv' => 'required|string|max:50',
+            'costoUnitInv' => 'nullable|numeric|min:0',
+            'fecMovInv' => 'required|date',
+            'loteInv' => 'nullable|string|max:100',
+            'fecVenceInv' => 'nullable|date|after:today',
+            'idProve' => 'nullable|exists:proveedores,idProve',
+            'obsInv' => 'nullable|string',
+        ]);
+
+        // Calcular costo total si hay costo unitario
+        $this->costoTotInv = $this->costoUnitInv ? $this->cantMovInv * $this->costoUnitInv : null;
+
+        $this->inventario->update([
+            'tipMovInv' => $this->tipMovInv,
+            'fecMovInv' => $this->fecMovInv,
+            'cantMovInv' => $this->cantMovInv,
+            'uniMovInv' => $this->uniMovInv,
+            'costoUnitInv' => $this->costoUnitInv,
+            'costoTotInv' => $this->costoTotInv,
+            'loteInv' => $this->loteInv,
+            'fecVenceInv' => $this->fecVenceInv,
+            'idProve' => $this->idProve,
+            'obsInv' => $this->obsInv,
+        ]);
+
+        session()->flash('success', 'Movimiento de inventario actualizado exitosamente.');
+        redirect()->route('inventario.movimientos.index');
     }
 }; ?>
 
@@ -79,7 +111,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <p class="mt-1 text-sm text-gray-600">Modifica los datos del movimiento de inventario</p>
                 </div>
                 <div class="mt-4 sm:mt-0 flex space-x-3">
-                    <a href="{{ route('inventario.movimientos.show', $inventario->idInv) }}" 
+                    <a href="{{ route('inventario.movimientos.index') }}" 
                        wire:navigate
                        class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,32 +1,28 @@
 <?php
 // resources/views/livewire/inventario/prestamos/create.blade.php
 
-use App\Models\PrestamoHerramienta;
 use App\Models\Herramienta;
+use App\Models\PrestamoHerramienta;
 use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.auth')] class extends Component {
+new #[Layout('layouts.app')] class extends Component {
     public PrestamoHerramienta $prestamo;
-    public $herramientas;
-    public $usuarios;
     
-    public $idHerPre = '';
-    public $idUsuPre = '';
-    public $fecPre = '';
-    public $fecDev = '';
-    public $estPre = 'prestado';
-    public $obsPre = '';
-
+    public int $idHerPre = 0;
+    public int $idUsuPre = 0;
+    public string $fecPre = '';
+    public ?string $fecDev = null;
+    public string $estPre = 'prestado';
+    public ?string $obsPre = null;
+    
     public function mount(): void
     {
         $this->prestamo = new PrestamoHerramienta();
-        $this->herramientas = Herramienta::where('canHer', '>', 0)->get();
-        $this->usuarios = User::all();
         $this->fecPre = now()->format('Y-m-d');
     }
-
+    
     public function rules(): array
     {
         return [
@@ -38,26 +34,26 @@ new #[Layout('layouts.auth')] class extends Component {
             'obsPre' => 'nullable|string'
         ];
     }
-
+    
     public function save(): void
     {
         $validated = $this->validate();
         
         try {
             PrestamoHerramienta::create($validated);
-            session()->flash('success', 'Préstamo registrado exitosamente');
+            session()->flash('success', 'Préstamo de herramienta registrado exitosamente.');
             $this->redirect(route('inventario.prestamos.index'), navigate: true);
         } catch (\Exception $e) {
             session()->flash('error', 'Error al registrar el préstamo: ' . $e->getMessage());
         }
     }
-
-    public function clear(): void
+    
+    public function with(): array
     {
-        $this->reset();
-        $this->resetErrorBag();
-        $this->fecPre = now()->format('Y-m-d');
-        $this->estPre = 'prestado';
+        return [
+            'herramientas' => Herramienta::all(),
+            'usuarios' => User::all()
+        ];
     }
 }; ?>
 
@@ -101,7 +97,24 @@ new #[Layout('layouts.auth')] class extends Component {
 
             <!-- Body del Card -->
             <div class="p-6">
-                <form wire:submit="save" id="prestamoForm">
+                <!-- Alertas de Error -->
+                @if ($errors->any())
+                    <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="font-medium text-red-800">¡Errores encontrados!</span>
+                        </div>
+                        <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form wire:submit="save">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Herramienta -->
                         <div class="space-y-2">
@@ -117,6 +130,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <option value="">Seleccione una herramienta...</option>
                                 @foreach($herramientas as $herramienta)
                                     <option value="{{ $herramienta->idHer }}" 
+                                            @if(old('idHerPre', $idHerPre) == $herramienta->idHer) selected @endif
                                             data-disponible="{{ $herramienta->canHer }}"
                                             data-codigo="{{ $herramienta->codHer }}">
                                         {{ $herramienta->codHer }} - {{ $herramienta->nomHer }}
@@ -147,8 +161,9 @@ new #[Layout('layouts.auth')] class extends Component {
                                     class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('idUsuPre') border-red-500 @enderror">
                                 <option value="">Seleccione un usuario...</option>
                                 @foreach($usuarios as $usuario)
-                                    <option value="{{ $usuario->id }}">
-                                        {{ $usuario->name }} - {{ $usuario->email }}
+                                    <option value="{{ $usuario->id }}" 
+                                            @if(old('idUsuPre', $idUsuPre) == $usuario->id) selected @endif>
+                                        {{ $usuario->nomUsu }} {{ $usuario->apeUsu }}
                                     </option>
                                 @endforeach
                             </select>
@@ -180,7 +195,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 </svg>
                                 Fecha de Devolución Esperada
                             </label>
-                            <input type="date" id="fecDev" wire:model="fecDev" min="{{ $fecPre }}"
+                            <input type="date" id="fecDev" wire:model="fecDev"
                                    class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('fecDev') border-red-500 @enderror">
                             @error('fecDev')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
@@ -203,9 +218,15 @@ new #[Layout('layouts.auth')] class extends Component {
                             </label>
                             <select id="estPre" wire:model="estPre" required
                                     class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('estPre') border-red-500 @enderror">
-                                <option value="prestado">🤝 Prestado</option>
-                                <option value="devuelto">✅ Devuelto</option>
-                                <option value="vencido">⚠️ Vencido</option>
+                                <option value="prestado" @if(old('estPre', $estPre) == 'prestado') selected @endif>
+                                    Prestado
+                                </option>
+                                <option value="devuelto" @if(old('estPre', $estPre) == 'devuelto') selected @endif>
+                                    Devuelto
+                                </option>
+                                <option value="vencido" @if(old('estPre', $estPre) == 'vencido') selected @endif>
+                                    Vencido
+                                </option>
                             </select>
                             @error('estPre')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
@@ -239,9 +260,9 @@ new #[Layout('layouts.auth')] class extends Component {
                             Cancelar
                         </a>
                         <button type="submit" id="btnSubmit"
-                                class="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                class="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h11a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
                             Registrar Préstamo
                         </button>
@@ -252,6 +273,7 @@ new #[Layout('layouts.auth')] class extends Component {
     </div>
 </div>
 
+@script
 <script>
 document.addEventListener('livewire:initialized', () => {
     // Validación de fechas
@@ -262,6 +284,7 @@ document.addEventListener('livewire:initialized', () => {
         fecDev.min = this.value;
         if (fecDev.value && fecDev.value < this.value) {
             fecDev.value = '';
+            @this.set('fecDev', null);
         }
     });
     
@@ -274,22 +297,13 @@ document.addEventListener('livewire:initialized', () => {
         if (disponibles && parseInt(disponibles) <= 0) {
             alert('⚠️ Esta herramienta no tiene stock disponible');
             this.value = '';
-            @this.set('idHerPre', '');
+            @this.set('idHerPre', 0);
         }
     });
     
     // Confirmación antes de enviar
-    document.getElementById('prestamoForm').addEventListener('submit', function(e) {
-        const herramienta = document.getElementById('idHerPre');
-        const usuario = document.getElementById('idUsuPre');
-        
-        if (!herramienta.value || !usuario.value) {
-            e.preventDefault();
-            alert('⚠️ Por favor complete todos los campos obligatorios');
-            return;
-        }
-        
-        const btnSubmit = document.getElementById('btnSubmit');
+    document.getElementById('btnSubmit').addEventListener('click', function(e) {
+        const btnSubmit = this;
         btnSubmit.innerHTML = `
             <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -301,3 +315,4 @@ document.addEventListener('livewire:initialized', () => {
     });
 });
 </script>
+@endscript

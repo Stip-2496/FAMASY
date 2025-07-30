@@ -13,6 +13,9 @@ new #[Layout('layouts.auth')] class extends Component {
     public ?string $estado = null;
     public ?string $stock = null;
     public int $perPage = 10;
+    public $showDeleteModal = false;
+    public $herramientaToDelete = null;
+    public $deleteError = null;
 
     public function with(): array
     {
@@ -59,32 +62,38 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->resetPage();
     }
 
-    public function delete($id): void
+    public function confirmDelete($id): void
     {
-        $herramienta = Herramienta::findOrFail($id);
-        
+        $this->herramientaToDelete = $id;
+        $this->deleteError = null;
+        $this->showDeleteModal = true;
+    }
+
+public function delete(): void
+{
+    try {
+        $herramienta = Herramienta::findOrFail($this->herramientaToDelete);
+    
         if (!$herramienta->puedeEliminar()) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => 'No se puede eliminar la herramienta porque ' . $herramienta->razonNoEliminar()
-            ]);
+            $this->deleteError = 'No se puede eliminar porque ' . $herramienta->razonNoEliminar();
             return;
         }
 
-        try {
-            $herramienta->delete();
-            $this->dispatch('notify', [
-                'type' => 'success',
-                'message' => 'Herramienta eliminada exitosamente.'
-            ]);
-        } catch (\Exception $e) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => 'Error al eliminar la herramienta: ' . $e->getMessage()
-            ]);
-        }
+        $herramienta->delete();
+    
+        $this->showDeleteModal = false;
+        $this->resetPage(); // Agrega esto para refrescar la paginación
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Herramienta eliminada exitosamente.'
+        ]);
+    } catch (\Exception $e) {
+        $this->deleteError = 'Error al eliminar: ' . $e->getMessage();
     }
+}
 }; ?>
+
+@section('title', 'Gestión de herramientas')
 
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -154,7 +163,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <div class="flex items-end space-x-2">
                             <button type="button" 
                                     wire:click="clearFilters"
-                                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                                    class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
                                 Limpiar
                             </button>
                         </div>
@@ -258,12 +267,12 @@ new #[Layout('layouts.auth')] class extends Component {
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </a>
-                                        <button wire:click="delete({{ $herramienta->idHer }})" onclick="confirm('¿Está seguro de eliminar esta herramienta?') || event.stopImmediatePropagation()"
-                                           class="text-red-600 hover:text-red-900 p-1" title="Eliminar">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
+                                        <button wire:click="confirmDelete({{ $herramienta->idHer }})"
+   class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+    </svg>
+</button>           
                                     </div>
                                 </td>
                             </tr>
@@ -313,4 +322,48 @@ new #[Layout('layouts.auth')] class extends Component {
             @endif
         </div>
     </div>
+
+    <!-- Modal de Confirmación -->
+@if($showDeleteModal)
+<div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-900">Confirmar eliminación</h3>
+            <button wire:click="$set('showDeleteModal', false)" class="text-gray-500 hover:text-gray-700">
+                <svg class="cursor-pointer w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <p class="text-gray-600 mb-4">¿Estás seguro de que deseas eliminar esta herramienta?</p>
+        
+        @if($deleteError)
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700">{{ $deleteError }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
+        
+        <div class="flex justify-end space-x-3">
+            <button wire:click="$set('showDeleteModal', false)" 
+                    class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                Cancelar
+            </button>
+            <button wire:click="delete" 
+                    class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 </div>

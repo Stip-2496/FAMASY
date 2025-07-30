@@ -86,9 +86,9 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }; ?>
 
+@section('title', 'Dashboard Inventario')
+
 <div>
-    @section('title', 'Dashboard Inventario')
-    
     <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
         <div class="container mx-auto px-4 py-8">
             

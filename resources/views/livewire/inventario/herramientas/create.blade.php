@@ -1,5 +1,6 @@
 <?php
 use App\Models\Proveedor;
+use App\Models\Herramienta;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -63,6 +64,8 @@ new #[Layout('layouts.auth')] class extends Component {
         ];
     }
 }; ?>
+
+@section('title', 'Registrar herramienta')
 
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -256,7 +259,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                     Cancelar
                                 </a>
                                 <button type="submit" 
-                                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
+                                        class="cursor-pointer px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
                                     <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
                                     </svg>
@@ -359,7 +362,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             </div>
                             <button type="button" 
                                     wire:click="$set('idProveHer', {{ $proveedor->idProve }})"
-                                    class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    class="cursor-pointer text-blue-600 hover:text-blue-800 text-sm font-medium">
                                 Seleccionar
                             </button>
                         </div>

@@ -9,40 +9,55 @@ new #[Layout('layouts.auth')] class extends Component {
     public $fecDev;
     public $obsPre;
 
-    public function mount(PrestamoHerramienta $prestamo)
+    public function mount(PrestamoHerramienta $prestamo): void
     {
         $this->prestamo = $prestamo;
         $this->fecDev = now()->format('Y-m-d');
     }
 
-    public function confirmReturn()
+    public function confirmReturn(): void
     {
         $this->validate([
             'fecDev' => 'required|date|after_or_equal:' . $this->prestamo->fecPre->format('Y-m-d'),
             'obsPre' => 'nullable|string'
         ]);
 
-        try {
-            $this->prestamo->update([
-                'fecDev' => $this->fecDev,
-                'estPre' => 'devuelto',
-                'obsPre' => $this->obsPre
-            ]);
+        $this->showReturnModal = true;
+    }
 
+    public function returnTool(): void
+    {
+        $this->prestamo->update([
+            'fecDev' => $this->fecDev,
+            'estPre' => 'devuelto',
+            'obsPre' => $this->obsPre
+        ]);
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Herramienta devuelta exitosamente'
+        ]);
+
+        $this->redirect(route('inventario.prestamos.index'), navigate: true);
+    }
+
+    public function deletePrestamo(): void
+    {
+        try {
+            $this->prestamo->delete();
+            
             $this->dispatch('notify', [
                 'type' => 'success',
-                'message' => 'Herramienta devuelta exitosamente'
+                'message' => 'Préstamo eliminado exitosamente'
             ]);
 
-            $this->redirect(route('inventario.prestamos.show', $this->prestamo), navigate: true);
+            $this->redirect(route('inventario.prestamos.index'), navigate: true);
         } catch (\Exception $e) {
             $this->dispatch('notify', [
                 'type' => 'error',
-                'message' => 'Error al registrar devolución: ' . $e->getMessage()
+                'message' => 'Error al eliminar el préstamo: ' . $e->getMessage()
             ]);
         }
-
-        $this->showReturnModal = false;
     }
 }; ?>
 
@@ -425,7 +440,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         @endif
 
                         @if($prestamo->estPre === 'prestado')
-                        <button wire:click="$set('showReturnModal', true)" 
+                        <button wire:click="confirmReturn" 
                                 class="w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -435,19 +450,14 @@ new #[Layout('layouts.auth')] class extends Component {
                         @endif
 
                         @if($prestamo->estPre === 'prestado')
-                        <form action="{{ route('inventario.prestamos.destroy', $prestamo) }}" method="POST" 
-                              onsubmit="return confirm('¿Está seguro de eliminar este préstamo? Esta acción no se puede deshacer.')" 
-                              class="w-full">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" 
-                                    class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                Eliminar Préstamo
-                            </button>
-                        </form>
+                        <button wire:click="deletePrestamo" 
+                                wire:confirm="¿Está seguro de eliminar este préstamo? Esta acción no se puede deshacer."
+                                class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Eliminar Préstamo
+                        </button>
                         @endif
 
                         <a href="{{ route('inventario.prestamos.create') }}" wire:navigate
@@ -466,8 +476,8 @@ new #[Layout('layouts.auth')] class extends Component {
 
 <!-- Modal para devolver préstamo -->
 @if($showReturnModal)
-<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center" style="z-index: 1000;">
-    <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
                 <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -475,7 +485,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </svg>
             </div>
             <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Devolver Herramienta</h3>
-            <form wire:submit.prevent="confirmReturn" class="mt-4">
+            <div class="mt-4">
                 <div class="mb-4">
                     <label for="fecDev" class="block text-sm font-medium text-gray-700 mb-2 text-left">
                         Fecha de Devolución <span class="text-red-500">*</span>
@@ -483,7 +493,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <input type="date" wire:model="fecDev" id="fecDev" required
                            min="{{ $prestamo->fecPre->format('Y-m-d') }}"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                    @error('fecDev') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    @error('fecDev') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="mb-4">
@@ -496,16 +506,16 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
 
                 <div class="flex space-x-3">
-                    <button type="button" wire:click="$set('showReturnModal', false)" 
+                    <button wire:click="$set('showReturnModal', false)" 
                             class="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
                         Cancelar
                     </button>
-                    <button type="submit" 
+                    <button wire:click="returnTool" 
                             class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
                         Devolver
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>

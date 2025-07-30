@@ -1,85 +1,249 @@
 <?php
 use App\Models\Inventario;
+use App\Models\Insumo;
+use App\Models\Herramienta;
+use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Auth;
 
 new #[Layout('layouts.auth')] class extends Component {
     use WithPagination;
 
+    // Propiedades para listado y filtros
     public string $search = '';
-    public ?string $tipo_movimiento = null;
-    public ?string $tipo_item = null;
-    public ?string $fecha_inicio = null;
-    public ?string $fecha_fin = null;
-    public int $perPage = 10;
+    public string $tipo_movimiento = '';
+    public string $tipo_item = '';
+    public string $fecha_inicio = '';
+    public string $fecha_fin = '';
+    public int $perPage = 15;
+    
+    // Propiedades para creación/edición
+    public $showFormModal = false;
+    public $editingId = null;
+    public $form = [
+        'tipo_item' => 'insumo',
+        'idIns' => null,
+        'idHer' => null,
+        'tipMovInv' => '',
+        'cantMovInv' => '',
+        'uniMovInv' => '',
+        'costoUnitInv' => null,
+        'fecMovInv' => '',
+        'loteInv' => null,
+        'fecVenceInv' => null,
+        'idProve' => null,
+        'obsInv' => ''
+    ];
+    
+    // Propiedades para eliminación
     public $showDeleteModal = false;
     public $movimientoToDelete = null;
+    
+    // Estadísticas
+    public $estadisticas = [];
+    
+    // Opciones para selects
+    public $tiposMovimiento = [
+        'apertura' => 'Apertura',
+        'entrada' => 'Entrada',
+        'salida' => 'Salida',
+        'consumo' => 'Consumo',
+        'prestamo_salida' => 'Préstamo Salida',
+        'prestamo_retorno' => 'Préstamo Retorno',
+        'perdida' => 'Pérdida',
+        'ajuste_pos' => 'Ajuste Positivo',
+        'ajuste_neg' => 'Ajuste Negativo',
+        'mantenimiento' => 'Mantenimiento',
+        'venta' => 'Venta'
+    ];
+    
+    public $insumos = [];
+    public $herramientas = [];
+    public $proveedores = [];
 
     public function mount(): void
     {
-        $this->fecha_inicio = now()->subMonth()->format('Y-m-d');
-        $this->fecha_fin = now()->format('Y-m-d');
+        $this->insumos = Insumo::all();
+        $this->herramientas = Herramienta::all();
+        $this->proveedores = Proveedor::all();
+        $this->calcularEstadisticas();
     }
 
     public function with(): array
     {
+        return [
+            'movimientos' => $this->getMovimientos(),
+            'estadisticas' => $this->estadisticas
+        ];
+    }
+
+    public function getMovimientos()
+    {
         $query = Inventario::with(['insumo', 'herramienta', 'proveedor', 'usuario'])
             ->orderBy('fecMovInv', 'desc');
 
-        // Aplicar filtros
+        // Filtro por búsqueda general
         if ($this->search) {
             $query->where(function($q) {
-                $q->whereHas('insumo', function($q) {
-                    $q->where('nomIns', 'like', '%'.$this->search.'%');
+                $q->whereHas('insumo', function($subq) {
+                    $subq->where('nomIns', 'like', '%'.$this->search.'%');
                 })
-                ->orWhereHas('herramienta', function($q) {
-                    $q->where('nomHer', 'like', '%'.$this->search.'%');
+                ->orWhereHas('herramienta', function($subq) {
+                    $subq->where('nomHer', 'like', '%'.$this->search.'%');
                 })
-                ->orWhere('loteInv', 'like', '%'.$this->search.'%')
+                ->orWhereHas('usuario', function($subq) {
+                    $subq->where('name', 'like', '%'.$this->search.'%');
+                })
                 ->orWhere('obsInv', 'like', '%'.$this->search.'%');
             });
         }
 
+        // Filtro por tipo de movimiento
         if ($this->tipo_movimiento) {
             $query->where('tipMovInv', $this->tipo_movimiento);
         }
 
+        // Filtro por tipo de item
         if ($this->tipo_item === 'herramientas') {
             $query->whereNotNull('idHer');
         } elseif ($this->tipo_item === 'insumos') {
             $query->whereNotNull('idIns');
         }
 
-        if ($this->fecha_inicio && $this->fecha_fin) {
-            $query->whereBetween('fecMovInv', [
-                $this->fecha_inicio, 
-                $this->fecha_fin
-            ]);
+        // Filtro por fechas
+        if ($this->fecha_inicio) {
+            $query->whereDate('fecMovInv', '>=', $this->fecha_inicio);
+        }
+        if ($this->fecha_fin) {
+            $query->whereDate('fecMovInv', '<=', $this->fecha_fin);
         }
 
-        $movimientos = $query->paginate($this->perPage);
+        return $query->paginate($this->perPage);
+    }
 
-        // Calcular estadísticas
-        $estadisticas = [
+    public function calcularEstadisticas(): void
+    {
+        $this->estadisticas = [
             'total_movimientos' => Inventario::count(),
             'total_entradas' => Inventario::where('tipMovInv', 'entrada')->count(),
             'total_salidas' => Inventario::where('tipMovInv', 'salida')->count(),
             'total_consumos' => Inventario::where('tipMovInv', 'consumo')->count(),
             'movimientos_hoy' => Inventario::whereDate('fecMovInv', today())->count(),
-            'valor_total_movimientos' => Inventario::sum('costoTotInv'),
-        ];
-
-        return [
-            'movimientos' => $movimientos,
-            'estadisticas' => $estadisticas,
+            'valor_total_movimientos' => Inventario::sum('costoTotInv') ?? 0
         ];
     }
 
     public function clearFilters(): void
     {
-        $this->reset(['search', 'tipo_movimiento', 'tipo_item', 'fecha_inicio', 'fecha_fin']);
+        $this->search = '';
+        $this->tipo_movimiento = '';
+        $this->tipo_item = '';
+        $this->fecha_inicio = '';
+        $this->fecha_fin = '';
         $this->resetPage();
+        $this->calcularEstadisticas();
+    }
+
+    // Métodos para resetear paginación al filtrar
+    public function updatedSearch(): void { $this->resetPage(); }
+    public function updatedTipoMovimiento(): void { $this->resetPage(); }
+    public function updatedTipoItem(): void { $this->resetPage(); }
+    public function updatedFechaInicio(): void { $this->resetPage(); }
+    public function updatedFechaFin(): void { $this->resetPage(); }
+
+    // Métodos para CRUD
+    public function create(): void
+    {
+        $this->resetForm();
+        $this->showFormModal = true;
+    }
+
+    public function edit($id): void
+    {
+        $this->editingId = $id;
+        $movimiento = Inventario::findOrFail($id);
+        
+        $this->form = [
+            'tipo_item' => $movimiento->idIns ? 'insumo' : 'herramienta',
+            'idIns' => $movimiento->idIns,
+            'idHer' => $movimiento->idHer,
+            'tipMovInv' => $movimiento->tipMovInv,
+            'cantMovInv' => $movimiento->cantMovInv,
+            'uniMovInv' => $movimiento->uniMovInv,
+            'costoUnitInv' => $movimiento->costoUnitInv,
+            'fecMovInv' => $movimiento->fecMovInv->format('Y-m-d'),
+            'loteInv' => $movimiento->loteInv,
+            'fecVenceInv' => $movimiento->fecVenceInv?->format('Y-m-d'),
+            'idProve' => $movimiento->idProve,
+            'obsInv' => $movimiento->obsInv
+        ];
+        
+        $this->showFormModal = true;
+    }
+
+    public function save(): void
+    {
+        $rules = [
+            'form.tipo_item' => 'required|in:insumo,herramienta',
+            'form.tipMovInv' => 'required|in:apertura,entrada,salida,consumo,prestamo_salida,prestamo_retorno,perdida,ajuste_pos,ajuste_neg,mantenimiento,venta',
+            'form.cantMovInv' => 'required|numeric|min:0.01',
+            'form.uniMovInv' => 'required|string|max:50',
+            'form.costoUnitInv' => 'nullable|numeric|min:0',
+            'form.fecMovInv' => 'required|date',
+            'form.loteInv' => 'nullable|string|max:100',
+            'form.fecVenceInv' => 'nullable|date|after:today',
+            'form.idProve' => 'nullable|exists:proveedores,idProve',
+            'form.obsInv' => 'nullable|string'
+        ];
+
+        if ($this->form['tipo_item'] === 'insumo') {
+            $rules['form.idIns'] = 'required|exists:insumos,idIns';
+        } else {
+            $rules['form.idHer'] = 'required|exists:herramientas,idHer';
+        }
+
+        $this->validate($rules);
+        
+        $data = $this->form;
+        $data['idUsuReg'] = Auth::id();
+        
+        // Calcular costo total si se proporciona costo unitario
+        if ($data['costoUnitInv']) {
+            $data['costoTotInv'] = $data['cantMovInv'] * $data['costoUnitInv'];
+        }
+
+        // Limpiar IDs no utilizados
+        if ($data['tipo_item'] === 'insumo') {
+            $data['idHer'] = null;
+        } else {
+            $data['idIns'] = null;
+        }
+        
+        unset($data['tipo_item']); // No es un campo de la tabla
+
+        if ($this->editingId) {
+            $movimiento = Inventario::findOrFail($this->editingId);
+            $movimiento->update($data);
+            $message = 'Movimiento actualizado correctamente';
+        } else {
+            Inventario::create($data);
+            $message = 'Movimiento creado correctamente';
+        }
+
+        $this->showFormModal = false;
+        $this->calcularEstadisticas();
+        
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => $message
+        ]);
+    }
+
+    public function show($id): void
+    {
+        $this->redirect(route('inventario.movimientos.show', $id));
     }
 
     public function confirmDelete($id): void
@@ -95,6 +259,8 @@ new #[Layout('layouts.auth')] class extends Component {
             $movimiento->delete();
             
             $this->showDeleteModal = false;
+            $this->calcularEstadisticas();
+            
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Movimiento eliminado correctamente'
@@ -108,7 +274,59 @@ new #[Layout('layouts.auth')] class extends Component {
             $this->movimientoToDelete = null;
         }
     }
+
+    public function resetForm(): void
+    {
+        $this->form = [
+            'tipo_item' => 'insumo',
+            'idIns' => null,
+            'idHer' => null,
+            'tipMovInv' => '',
+            'cantMovInv' => '',
+            'uniMovInv' => '',
+            'costoUnitInv' => null,
+            'fecMovInv' => now()->format('Y-m-d'),
+            'loteInv' => null,
+            'fecVenceInv' => null,
+            'idProve' => null,
+            'obsInv' => ''
+        ];
+        $this->editingId = null;
+    }
+
+    public function duplicarMovimiento($id): void
+    {
+        try {
+            $movimiento = Inventario::findOrFail($id);
+            
+            $this->form = [
+                'tipo_item' => $movimiento->idIns ? 'insumo' : 'herramienta',
+                'idIns' => $movimiento->idIns,
+                'idHer' => $movimiento->idHer,
+                'tipMovInv' => $movimiento->tipMovInv,
+                'cantMovInv' => $movimiento->cantMovInv,
+                'uniMovInv' => $movimiento->uniMovInv,
+                'costoUnitInv' => $movimiento->costoUnitInv,
+                'fecMovInv' => now()->format('Y-m-d'),
+                'loteInv' => $movimiento->loteInv,
+                'fecVenceInv' => $movimiento->fecVenceInv?->format('Y-m-d'),
+                'idProve' => $movimiento->idProve,
+                'obsInv' => $movimiento->obsInv
+            ];
+            
+            $this->showFormModal = true;
+            $this->editingId = null;
+            
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Error al duplicar movimiento: ' . $e->getMessage()
+            ]);
+        }
+    }
 }; ?>
+
+@section('title', 'Gestión de movimientos')
 
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -125,7 +343,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
                 <div class="mt-4 sm:mt-0 flex space-x-3">
                     <button onclick="exportarMovimientos()" 
-                            class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
+                            class="cursor-pointer inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -187,7 +405,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     </div>
                     <div class="flex items-end space-x-2">
                         <button wire:click="clearFilters" 
-                                class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                                class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
                             Limpiar
                         </button>
                     </div>
@@ -367,12 +585,13 @@ new #[Layout('layouts.auth')] class extends Component {
                                         </a>
                                         
                                         <!-- Eliminar -->
-                                        <button wire:click="confirmDelete({{ $movimiento->id }})" 
-                                                class="text-red-600 hover:text-red-900 p-1" title="Eliminar">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
+
+<button wire:click="confirmDelete({{ $movimiento->id }})" 
+        class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+    </svg>
+</button>
                                         
                                         <!-- Dropdown (opciones adicionales) -->
                                         <div class="relative inline-block text-left">

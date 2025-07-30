@@ -60,7 +60,7 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }; ?>
 
-@section('title', 'Editar proveedores')
+@section('title', 'Editar proveedor')
 
 <div class="container mx-auto px-4 py-6">
     <!-- Header -->

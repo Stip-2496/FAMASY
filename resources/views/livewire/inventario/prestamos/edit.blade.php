@@ -11,8 +11,8 @@ new #[Layout('layouts.auth')] class extends Component {
     public PrestamoHerramienta $prestamo;
     
     // Form properties
-    public string $idHerPre;
-    public string $idUsuPre;
+    public int $idHerPre;
+    public int $idUsuPre;
     public string $fecPre;
     public ?string $fecDev = null;
     public string $estPre;
@@ -21,7 +21,7 @@ new #[Layout('layouts.auth')] class extends Component {
     // Data for selects
     public $herramientas;
     public $usuarios;
-    
+
     public function rules(): array
     {
         return [
@@ -33,37 +33,58 @@ new #[Layout('layouts.auth')] class extends Component {
             'obsPre' => 'nullable|string'
         ];
     }
-    
+
     public function mount(PrestamoHerramienta $prestamo): void
     {
         $this->prestamo = $prestamo;
-        $this->fill($prestamo->only([
-            'idHerPre', 'idUsuPre', 'fecPre', 'fecDev', 'estPre', 'obsPre'
-        ]));
         
-        // Load data for selects
+        // Load relationships
+        $this->prestamo->load(['herramienta', 'usuario']);
+        
+        // Initialize form properties
+        $this->fill(
+            $prestamo->only([
+                'idHerPre', 'idUsuPre', 'fecPre', 'fecDev', 'estPre', 'obsPre'
+            ])
+        );
+
+        // Initialize form properties - MANUALMENTE para las fechas
+        $this->idHerPre = $prestamo->idHerPre;
+        $this->idUsuPre = $prestamo->idUsuPre;
+        $this->estPre = $prestamo->estPre;
+        $this->obsPre = $prestamo->obsPre;
+    
+        // Formatear fechas explícitamente
+        $this->fecPre = $prestamo->fecPre->format('Y-m-d'); // fecPre es NOT NULL
+        $this->fecDev = $prestamo->fecDev ? $prestamo->fecDev->format('Y-m-d') : null;
+        
+        // Get data for selects
         $this->herramientas = Herramienta::all();
         $this->usuarios = User::all();
     }
-    
+
     public function update(): void
     {
         $validated = $this->validate();
         
         try {
             $this->prestamo->update($validated);
-            session()->flash('success', 'Préstamo actualizado exitosamente');
+            
+            session()->flash('success', 'Préstamo de herramienta actualizado exitosamente.');
             $this->redirect(route('inventario.prestamos.index'), navigate: true);
         } catch (\Exception $e) {
             session()->flash('error', 'Error al actualizar el préstamo: ' . $e->getMessage());
         }
     }
-    
-    public function updatedEstPre($value): void
+
+    public function resetForm(): void
     {
-        if ($value === 'devuelto' && empty($this->fecDev)) {
-            $this->fecDev = now()->toDateString();
-        }
+        $this->fill(
+            $this->prestamo->only([
+                'idHerPre', 'idUsuPre', 'fecPre', 'fecDev', 'estPre', 'obsPre'
+            ])
+        );
+        $this->resetErrorBag();
     }
 }; ?>
 
@@ -85,7 +106,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <p class="mt-2 text-gray-600">Modifique la información del préstamo de herramienta</p>
                 </div>
                 <a href="{{ route('inventario.prestamos.index') }}" wire:navigate
-                   class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
@@ -109,7 +130,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
                 <div>
                     <span class="font-medium text-blue-800">Usuario:</span>
-                    <p class="text-blue-700">{{ $prestamo->usuario->name }}</p>
+                    <p class="text-blue-700">{{ $prestamo->usuario->nomUsu }} {{ $prestamo->usuario->apeUsu }}</p>
                 </div>
                 <div>
                     <span class="font-medium text-blue-800">Estado Actual:</span>
@@ -135,7 +156,7 @@ new #[Layout('layouts.auth')] class extends Component {
             </div>
 
             <div class="p-6">
-                @if($errors->any())
+                @if ($errors->any())
                     <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-r-lg">
                         <div class="flex items-center mb-2">
                             <svg class="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +165,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             <p class="text-sm font-medium text-red-800">Se encontraron errores:</p>
                         </div>
                         <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
-                            @foreach($errors->all() as $error)
+                            @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
@@ -167,7 +188,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <option value="">Seleccione una herramienta...</option>
                                 @foreach($herramientas as $herramienta)
                                     <option value="{{ $herramienta->idHer }}" 
-                                            @selected($idHerPre == $herramienta->idHer)
+                                            @if($herramienta->idHer == old('idHerPre', $idHerPre)) selected @endif
                                             data-disponible="{{ $herramienta->canHer }}"
                                             data-codigo="{{ $herramienta->codHer }}">
                                         {{ $herramienta->codHer }} - {{ $herramienta->nomHer }}
@@ -199,8 +220,8 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <option value="">Seleccione un usuario...</option>
                                 @foreach($usuarios as $usuario)
                                     <option value="{{ $usuario->id }}" 
-                                            @selected($idUsuPre == $usuario->id)>
-                                        {{ $usuario->name }} - {{ $usuario->email }}
+                                            @if($usuario->id == old('idUsuPre', $idUsuPre)) selected @endif>
+                                        {{ $usuario->nomUsu }} {{ $usuario->apeUsu }}
                                     </option>
                                 @endforeach
                             </select>
@@ -247,7 +268,7 @@ new #[Layout('layouts.auth')] class extends Component {
 
                         <!-- Estado -->
                         <div class="space-y-2 lg:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700">
+                            <label for="estPre" class="block text-sm font-medium text-gray-700">
                                 <svg class="w-4 h-4 text-blue-500 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path>
                                 </svg>
@@ -324,6 +345,13 @@ new #[Layout('layouts.auth')] class extends Component {
                             </svg>
                             Cancelar
                         </a>
+                        <button type="button" wire:click="resetForm"
+                                class="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Restaurar
+                        </button>
                         <button type="submit"
                                 class="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,7 +366,6 @@ new #[Layout('layouts.auth')] class extends Component {
     </div>
 </div>
 
-@script
 <script>
 document.addEventListener('livewire:initialized', () => {
     // Validación de fechas
@@ -371,6 +398,15 @@ document.addEventListener('livewire:initialized', () => {
             alert('⚠️ Esta herramienta no tiene stock disponible');
         }
     });
+    
+    // Auto-completar fecha de devolución si el estado es "devuelto"
+    const estadoInputs = document.querySelectorAll('input[name="estPre"]');
+    estadoInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === 'devuelto' && !fecDev.value) {
+                fecDev.value = new Date().toISOString().split('T')[0];
+            }
+        });
+    });
 });
 </script>
-@endscript

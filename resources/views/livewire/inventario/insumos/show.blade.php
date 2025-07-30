@@ -12,39 +12,9 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         $this->insumo = $insumo;
     }
-
-    public function confirmDelete(): void
-    {
-        $this->showDeleteModal = true;
-    }
-
-    public function deleteInsumo(): void
-    {
-        try {
-            if (!$this->insumo->puedeEliminar()) {
-                $this->dispatch('notify', [
-                    'type' => 'error',
-                    'message' => 'No se puede eliminar el insumo porque ' . $this->insumo->razonNoEliminar()
-                ]);
-                return;
-            }
-
-            $this->insumo->delete();
-            
-            $this->dispatch('notify', [
-                'type' => 'success',
-                'message' => 'Insumo eliminado correctamente'
-            ]);
-
-            $this->redirect(route('inventario.insumos.index'), navigate: true);
-        } catch (\Exception $e) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => 'Error al eliminar el insumo: ' . $e->getMessage()
-            ]);
-        }
-    }
 }; ?>
+
+@section('title', 'Detalles de insumo')
 
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -77,19 +47,12 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
                 <div class="mt-4 sm:mt-0 flex space-x-3">
                     <a href="{{ route('inventario.insumos.edit', $insumo->idIns) }}" wire:navigate
-                       class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
+                       class="cursor-pointer inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
                         Editar
                     </a>
-                    <button wire:click="confirmDelete"
-                       class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                        Eliminar
-                    </button>
                     <a href="{{ route('inventario.insumos.index') }}" wire:navigate
                        class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,31 +435,6 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
 </div>
-
-<!-- Modal Eliminar Insumo -->
-@if($showDeleteModal)
-    <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
-            <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
-            <p class="mb-4 text-sm text-gray-600">
-                ¿Está seguro que desea eliminar este insumo? Esta acción no se puede deshacer.
-            </p>
-            
-            <div class="mb-4">
-                <p><strong>Insumo:</strong> {{ $insumo->nomIns }}</p>
-                <p><strong>Tipo:</strong> {{ $insumo->tipIns }}</p>
-                <p><strong>ID:</strong> {{ $insumo->idIns }}</p>
-            </div>
-            
-            <div class="flex justify-end gap-3">
-                <button wire:click="$set('showDeleteModal', false)"
-                        class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
-                <button wire:click="deleteInsumo"
-                        class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
-            </div>
-        </div>
-    </div>
-@endif
 
 <!-- Script para notificaciones -->
 <script>

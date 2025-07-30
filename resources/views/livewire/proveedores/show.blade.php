@@ -1,4 +1,6 @@
 <?php
+// resources/views/livewire/proveedores/show.blade.php
+
 use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -6,6 +8,7 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.auth')] class extends Component {
     public Proveedor $proveedor;
     public $showDeleteModal = false;
+    
 
     public function mount(Proveedor $proveedor)
     {
@@ -37,7 +40,7 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }; ?>
 
-@section('title', 'Mostrar proveedores')
+@section('title', 'Detalles de proveedor')
 
 <div class="container mx-auto px-4 py-6">
     <!-- Header -->

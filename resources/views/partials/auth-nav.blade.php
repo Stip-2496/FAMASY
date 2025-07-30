@@ -22,29 +22,22 @@
   </a>
 
   <!-- Botón 2: Inventario -->
-  <a href="{{ route('inventario.dashboard') }}" class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
+  <a href="{{ route('inventario.dashboard') }}" wire:navigate class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
     Inventario
     <span class="absolute left-1/2 bottom-0 h-0.5 w-0 -translate-x-1/2 bg-white transition-all duration-500 group-hover:w-full"></span>
   </a>
 
-  
   <!-- Botón 3: Pecuario -->
-  <a href="{{ route('pecuario.dashboard') }}" class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
+  <a href="{{ route('pecuario.dashboard') }}" wire:navigate class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
     Pecuario
     <span class="absolute left-1/2 bottom-0 h-0.5 w-0 -translate-x-1/2 bg-white transition-all duration-500 group-hover:w-full"></span>
   </a>
 
-  <!-- Botón 4: Proveedor -->
+  <!-- Botón 5: Administrador -->
   <a href="{{ route('proveedores.index') }}" wire:navigate class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
     Proveedor
     <span class="absolute left-1/2 bottom-0 h-0.5 w-0 -translate-x-1/2 bg-white transition-all duration-500 group-hover:w-full"></span>
   </a>
-
-  <!-- Botón 5: Administrador -->
-  <button class="group relative cursor-pointer text-white transition-all duration-300 focus:outline-none focus:ring-[#3b5998]/50 font-medium rounded-lg text-xs sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 text-center inline-flex items-center dark:focus:ring-[#3b5998]/55 overflow-hidden">
-    Administrador
-    <span class="absolute left-1/2 bottom-0 h-0.5 w-0 -translate-x-1/2 bg-white transition-all duration-500 group-hover:w-full"></span>
-  </button>
 </div>
 
 <!-- Avatar con menú desplegable -->

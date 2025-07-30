@@ -1,7 +1,5 @@
 <?php
 use App\Models\PrestamoHerramienta;
-use App\Models\Herramienta;
-use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -16,6 +14,9 @@ new #[Layout('layouts.auth')] class extends Component {
     public int $perPage = 10;
     public $showDeleteModal = false;
     public $prestamoToDelete = null;
+    public $prestamoParaDevolver = null;
+    public $fechaDevolucion;
+    public $observaciones;
 
     public function with(): array
     {
@@ -89,10 +90,60 @@ new #[Layout('layouts.auth')] class extends Component {
         }
     }
 
-    public function devolverPrestamo($prestamoId): void
-    {
-        $this->dispatch('open-modal', name: 'devolver-prestamo', data: ['prestamoId' => $prestamoId]);
+public function devolver($prestamoId, $fechaDevolucion, $observaciones = null): void
+{
+    try {
+        $prestamo = PrestamoHerramienta::findOrFail($prestamoId);
+        
+        // Validar que el préstamo no esté ya devuelto
+        if ($prestamo->estPre === 'devuelto') {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Este préstamo ya ha sido devuelto'
+            ]);
+            return;
+        }
+        
+        // Actualizar el préstamo
+        $prestamo->update([
+            'fecDev' => $fechaDevolucion,
+            'estPre' => 'devuelto',
+            'obsPre' => $observaciones
+        ]);
+        
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Préstamo devuelto correctamente'
+        ]);
+        
+    } catch (\Exception $e) {
+        $this->dispatch('notify', [
+            'type' => 'error',
+            'message' => 'Error al devolver el préstamo: ' . $e->getMessage()
+        ]);
     }
+}
+    
+    public function devolverPrestamo($prestamoId): void
+{
+    $this->prestamoParaDevolver = $prestamoId;
+    $this->fechaDevolucion = now()->format('Y-m-d');
+    $this->observaciones = null;
+    
+    $this->dispatch('open-modal', name: 'devolver-prestamo');
+}
+
+public function confirmarDevolucion(): void
+{
+    $this->validate([
+        'fechaDevolucion' => 'required|date',
+    ]);
+    
+    $this->devolver($this->prestamoParaDevolver, $this->fechaDevolucion, $this->observaciones);
+    
+    $this->dispatch('close-modal', name: 'devolver-prestamo');
+    $this->reset(['prestamoParaDevolver', 'fechaDevolucion', 'observaciones']);
+}
 }; ?>
 
 <div class="min-h-screen bg-gray-50 py-6">
@@ -403,8 +454,34 @@ new #[Layout('layouts.auth')] class extends Component {
             @endif
         </div>
     </div>
-</div>
-
+    <!-- Modal Devolver Préstamo -->
+<x-modal name="devolver-prestamo" maxWidth="sm">
+    <div class="bg-white p-6 rounded-lg">
+        <h2 class="text-xl font-semibold mb-4">Devolver Préstamo</h2>
+        
+        <div class="mb-4">
+            <label for="fechaDevolucion" class="block text-sm font-medium text-gray-700 mb-2">Fecha de Devolución</label>
+            <input type="date" wire:model="fechaDevolucion" id="fechaDevolucion" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   value="{{ now()->format('Y-m-d') }}">
+        </div>
+        
+        <div class="mb-4">
+            <label for="observaciones" class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
+            <textarea wire:model="observaciones" id="observaciones" rows="3"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+        </div>
+        
+        <div class="flex justify-end gap-3">
+            <button wire:click="$dispatch('close-modal', { name: 'devolver-prestamo' })"
+                    class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
+            <button wire:click="confirmarDevolucion"
+                    class="cursor-pointer px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+                Confirmar Devolución
+            </button>
+        </div>
+    </div>
+</x-modal>
 <!-- Modal Eliminar Préstamo -->
 @if($showDeleteModal)
     <x-modal wire:model="showDeleteModal" maxWidth="sm">
@@ -423,25 +500,7 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </x-modal>
 @endif
+</div>
 
-<!-- Modal Devolver Préstamo -->
-@script
-<script>
-    Livewire.on('open-modal', (event) => {
-        const { name, data } = event;
-        
-        if (name === 'devolver-prestamo') {
-            const fechaDevolucion = prompt('Ingrese la fecha de devolución (YYYY-MM-DD):');
-            if (fechaDevolucion) {
-                const observaciones = prompt('Observaciones adicionales (opcional):');
-                
-                Livewire.dispatch('devolver', {
-                    prestamoId: data.prestamoId,
-                    fechaDevolucion,
-                    observaciones
-                });
-            }
-        }
-    });
-</script>
-@endscript
+
+

@@ -2,7 +2,6 @@
 // resources/views/livewire/inventario/insumos/index.blade.php
 
 use App\Models\Insumo;
-use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -15,22 +14,30 @@ new #[Layout('layouts.auth')] class extends Component {
     public ?string $estado = null;
     public ?string $stock = null;
     public ?string $vencimiento = null;
+
+    public bool $verPapelera = false;
     public bool $showDeleteModal = false;
     public $insumoToDelete = null;
+    public bool $mostrarVencimientos = false;
+
+    public array $vencimientoStats = [
+        'vencidos' => 0,
+        'proximos_vencer' => 0,
+    ];
 
     public function with(): array
     {
-        $query = Insumo::query()
-            ->with('proveedor')
-            ->activos();
+        $query = Insumo::query()->with('proveedor');
 
-        // Aplicar filtros
+        $this->verPapelera
+            ? $query->onlyTrashed()
+            : $query->activos();
+
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('nomIns', 'like', "%{$this->search}%")
                   ->orWhere('marIns', 'like', "%{$this->search}%")
-                  ->orWhere('tipIns', 'like', "%{$this->search}%")
-                  ->orWhere('ubiIns', 'like', "%{$this->search}%");
+                  ->orWhere('tipIns', 'like', "%{$this->search}%");
             });
         }
 
@@ -42,39 +49,37 @@ new #[Layout('layouts.auth')] class extends Component {
             $query->byEstado($this->estado);
         }
 
+        if ($this->stock) {
+            $query->byStock($this->stock);
+        }
+
         if ($this->vencimiento) {
             $query->byVencimiento($this->vencimiento);
         }
 
         $insumos = $query->paginate(10);
-        
-        // Calcular estadísticas
-        $estadisticas = [
+
+        $estadisticas = !$this->verPapelera ? [
             'total' => Insumo::activos()->count(),
             'disponibles' => Insumo::activos()->where('estIns', 'disponible')->count(),
-            'stock_critico' => 0, // Se calculará después cuando tengamos movimientos
+            'stock_critico' => 0,
             'por_vencer' => Insumo::activos()->whereBetween('fecVenIns', [now(), now()->addDays(30)])->count(),
             'vencidos' => Insumo::activos()->where('fecVenIns', '<', now())->count(),
-            'valor_total' => 0 // Se calculará después cuando tengamos movimientos
-        ];
+            'valor_total' => 0,
+        ] : [];
 
-        // Obtener insumos próximos a vencer
-        $proximosVencer = Insumo::activos()
-            ->whereBetween('fecVenIns', [now(), now()->addDays(30)])
-            ->orderBy('fecVenIns')
-            ->get();
+        $proximosVencer = !$this->verPapelera
+            ? Insumo::activos()
+                ->whereBetween('fecVenIns', [now(), now()->addDays(30)])
+                ->orderBy('fecVenIns')
+                ->get()
+            : collect();
 
         return [
             'insumos' => $insumos,
             'estadisticas' => $estadisticas,
             'proximosVencer' => $proximosVencer
         ];
-    }
-
-    public function clearFilters(): void
-    {
-        $this->reset(['search', 'tipo', 'estado', 'stock', 'vencimiento']);
-        $this->resetPage();
     }
 
     public function updated($property): void
@@ -84,9 +89,21 @@ new #[Layout('layouts.auth')] class extends Component {
         }
     }
 
+    public function clearFilters(): void
+    {
+        $this->reset(['search', 'tipo', 'estado', 'stock', 'vencimiento']);
+        $this->resetPage();
+    }
+
     public function verificarVencimientos(): void
     {
-        $this->dispatch('open-modal', name: 'vencimientos');
+        $this->mostrarVencimientos = ! $this->mostrarVencimientos;
+    }
+
+    public function togglePapelera(): void
+    {
+        $this->verPapelera = ! $this->verPapelera;
+        $this->resetPage();
     }
 
     public function confirmDelete($id): void
@@ -99,9 +116,17 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         try {
             $insumo = Insumo::findOrFail($this->insumoToDelete);
+
+            if (!$insumo->puedeEliminar()) {
+                $this->dispatch('notify', [
+                    'type' => 'error',
+                    'message' => 'No se puede eliminar: ' . $insumo->razonNoEliminar()
+                ]);
+                return;
+            }
+
             $insumo->delete();
-            
-            $this->showDeleteModal = false;
+
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Insumo eliminado correctamente'
@@ -109,13 +134,48 @@ new #[Layout('layouts.auth')] class extends Component {
         } catch (\Exception $e) {
             $this->dispatch('notify', [
                 'type' => 'error',
-                'message' => 'Error al eliminar el insumo: ' . $e->getMessage()
+                'message' => 'Error al eliminar: ' . $e->getMessage()
             ]);
         } finally {
+            $this->showDeleteModal = false;
             $this->insumoToDelete = null;
         }
     }
-}; ?>
+
+    public function restaurar($id): void
+    {
+        $insumo = Insumo::onlyTrashed()->findOrFail($id);
+        $insumo->restore();
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Insumo restaurado exitosamente.'
+        ]);
+    }
+
+    public function eliminarPermanente($id): void
+    {
+        $insumo = Insumo::onlyTrashed()->findOrFail($id);
+
+        if ($insumo->movimientos()->count() > 0) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'No se puede eliminar permanentemente porque tiene movimientos.'
+            ]);
+            return;
+        }
+
+        $insumo->forceDelete();
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Insumo eliminado permanentemente.'
+        ]);
+    }
+};
+?>
+
+@section('title', 'Gestión de insumos')
 
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -132,7 +192,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
                 <div class="mt-4 sm:mt-0 flex space-x-3">
                     <button wire:click="verificarVencimientos" 
-                            class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
+                            class="cursor-pointer inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
@@ -168,11 +228,47 @@ new #[Layout('layouts.auth')] class extends Component {
                     </svg>
                     <strong>¡Atención!</strong> Tienes {{ $proximosVencer->count() }} insumos próximos a vencer en los próximos 30 días.
                 </div>
-                <button wire:click="verificarVencimientos" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm font-medium">
+                <button wire:click="verificarVencimientos" class="cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm font-medium">
                     Ver detalles
                 </button>
             </div>
         @endif
+
+        @if($mostrarVencimientos)
+    <div class="mb-6 bg-white border border-yellow-200 rounded-lg shadow overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-yellow-100 text-yellow-800">
+                <tr>
+                    <th class="px-4 py-2 text-left font-medium">Insumo</th>
+                    <th class="px-4 py-2 text-left font-medium">Tipo</th>
+                    <th class="px-4 py-2 text-left font-medium">Vencimiento</th>
+                    <th class="px-4 py-2 text-left font-medium">Días restantes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($proximosVencer as $insumo)
+                    @php
+                        $diasRestantes = now()->diffInDays($insumo->fecVenIns, false);
+                        $nivel = $diasRestantes < 0 ? 'Vencido' : ($diasRestantes <= 7 ? 'Urgente' : 'Crítico');
+                        $clase = $diasRestantes < 0 ? 'text-gray-600' : ($diasRestantes <= 7 ? 'text-red-600' : 'text-yellow-600');
+                    @endphp
+                    <tr class="hover:bg-yellow-50 border-b">
+                        <td class="px-4 py-2">{{ $insumo->nomIns }}</td>
+                        <td class="px-4 py-2 capitalize">{{ $insumo->tipIns }}</td>
+                        <td class="px-4 py-2">{{ \Carbon\Carbon::parse($insumo->fecVenIns)->format('d/m/Y') }}</td>
+                        <td class="px-4 py-2 {{ $clase }}">
+                            {{ $diasRestantes < 0 ? 'Vencido hace '.abs($diasRestantes).' días' : $diasRestantes . ' días' }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4" class="text-center px-4 py-3 text-gray-500">No hay insumos registrados como próximos a vencer.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+@endif
 
         <!-- Filtros -->
         <div class="bg-white shadow rounded-lg mb-6">
@@ -225,7 +321,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     </div>
                     <div class="flex items-end space-x-2">
                         <button wire:click="clearFilters" 
-                                class="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                                class="cursor-pointer flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
                             Limpiar
                         </button>
                     </div>
@@ -448,7 +544,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                             </svg>
                                         </a>
                                         <button wire:click="confirmDelete({{ $insumo->idIns }})"
-                                                class="text-red-600 hover:text-red-900 p-1" title="Eliminar">
+                                                class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
@@ -592,6 +688,7 @@ new #[Layout('layouts.auth')] class extends Component {
     </div>
 @endif
 </div>
+
 
 
 

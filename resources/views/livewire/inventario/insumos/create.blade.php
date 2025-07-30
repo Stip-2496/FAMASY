@@ -25,13 +25,11 @@ new #[Layout('layouts.auth')] class extends Component {
     public $showStockWarning = false;
     public $vencimientoAlert = null;
 
-    // Inicialización
     public function mount(): void
     {
         $this->proveedores = Proveedor::all();
     }
 
-    // Reglas de validación
     public function rules(): array
     {
         return [
@@ -48,10 +46,13 @@ new #[Layout('layouts.auth')] class extends Component {
         ];
     }
 
-    // Validación en tiempo real
     public function updated($property, $value): void
     {
         $this->validateOnly($property);
+
+        if ($property === 'nomIns' && $value) {
+            $this->nomIns = ucfirst($value);
+        }
 
         if (in_array($property, ['stockMinIns', 'stockMaxIns']) && $this->stockMinIns && $this->stockMaxIns) {
             $this->showStockWarning = $this->stockMinIns > $this->stockMaxIns;
@@ -62,7 +63,6 @@ new #[Layout('layouts.auth')] class extends Component {
         }
     }
 
-    // Verificar fecha de vencimiento
     protected function checkVencimiento($fecha): void
     {
         $hoy = now();
@@ -93,19 +93,26 @@ new #[Layout('layouts.auth')] class extends Component {
         }
     }
 
-    // Guardar el insumo
     public function save(): void
     {
         $validated = $this->validate();
 
+        if ($this->stockMinIns && $this->stockMaxIns && $this->stockMinIns > $this->stockMaxIns) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'El stock mínimo no puede ser mayor que el stock máximo.'
+            ]);
+            return;
+        }
+
         try {
             Insumo::create($validated);
-            
+
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Insumo creado exitosamente'
             ]);
-            
+
             $this->redirect(route('inventario.insumos.index'), navigate: true);
         } catch (\Exception $e) {
             $this->dispatch('notify', [
@@ -113,6 +120,11 @@ new #[Layout('layouts.auth')] class extends Component {
                 'message' => 'Error al crear el insumo: ' . $e->getMessage()
             ]);
         }
+    }
+
+    public function seleccionarProveedor(int $id): void
+    {
+        $this->idProveIns = $id;
     }
 
     // Consejos por tipo de insumo
@@ -196,7 +208,7 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }; ?>
 
-@section('title', 'Nuevo Insumo')
+@section('title', 'Registrar Insumo')
 
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -482,7 +494,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                     Cancelar
                                 </a>
                                 <button type="submit" 
-                                        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
+                                        class="cursor-pointer px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
                                     <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
                                     </svg>
@@ -580,7 +592,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             </div>
                             <button type="button" 
                                     wire:click="$set('idProveIns', {{ $proveedor->idProve }})"
-                                    class="text-green-600 hover:text-green-800 text-sm font-medium">
+                                    class="cursor-pointer text-green-600 hover:text-green-800 text-sm font-medium">
                                 Seleccionar
                             </button>
                         </div>
@@ -621,32 +633,3 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
 </div>
-
-@push('scripts')
-<script>
-document.addEventListener('livewire:initialized', () => {
-    // Auto-capitalizar primera letra del nombre
-    document.getElementById('nomIns').addEventListener('blur', function() {
-        @this.set('nomIns', this.value.charAt(0).toUpperCase() + this.value.slice(1));
-    });
-
-    // Confirmación antes de guardar
-    Livewire.on('confirmSave', (event) => {
-        Swal.fire({
-            title: '¿Está seguro?',
-            text: "¿Desea guardar este nuevo insumo?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, guardar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Livewire.dispatch('save');
-            }
-        });
-    });
-});
-</script>
-@endpush

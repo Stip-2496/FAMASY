@@ -18,12 +18,14 @@ class PrestamoHerramienta extends Model
         'fecPre',
         'fecDev',
         'estPre',
-        'obsPre'
+        'obsPre',
+        'created_at',
+        'updated_at'
     ];
 
     protected $casts = [
-        'fecPre' => 'date',
-        'fecDev' => 'date'
+        'fecPre' => 'date:Y-m-d',
+        'fecDev' => 'date:Y-m-d'
     ];
 
     // Relaciones
