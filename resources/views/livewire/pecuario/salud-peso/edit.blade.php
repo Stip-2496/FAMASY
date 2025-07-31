@@ -1,27 +1,37 @@
 <?php
 use App\Models\HistorialMedico;
 use App\Models\Animal;
+use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.auth')] class extends Component {
     public HistorialMedico $historial;
     public Animal $animal;
+    public $proveedores;
+    public $proveedorSeleccionado;
     
     public $fecHisMed;
     public $desHisMed;
     public $responHisMed;
     public $obsHisMed;
+    public $idProveedor;
 
     public function mount(HistorialMedico $historial)
     {
         $this->historial = $historial;
         $this->animal = Animal::findOrFail($historial->idAniHis);
-
+        $this->proveedores = Proveedor::orderBy('nomProve')->get();
+        
         $this->fecHisMed = $historial->fecHisMed;
         $this->desHisMed = $historial->desHisMed;
         $this->responHisMed = $historial->responHisMed;
         $this->obsHisMed = $historial->obsHisMed;
+        $this->idProveedor = $historial->idProveedor;
+        
+        if ($this->idProveedor) {
+            $this->proveedorSeleccionado = Proveedor::find($this->idProveedor);
+        }
     }
 
     public function rules()
@@ -30,8 +40,14 @@ new #[Layout('layouts.auth')] class extends Component {
             'fecHisMed' => 'required|date',
             'desHisMed' => 'required|string|max:500',
             'responHisMed' => 'required|string|max:100',
-            'obsHisMed' => 'nullable|string|max:500'
+            'obsHisMed' => 'nullable|string|max:500',
+            'idProveedor' => 'nullable|exists:proveedores,idProve'
         ];
+    }
+
+    public function updatedIdProveedor($value)
+    {
+        $this->proveedorSeleccionado = $value ? Proveedor::find($value) : null;
     }
 
     public function update()
@@ -67,6 +83,35 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
         
         <div class="p-6">
+            <!-- Información del Animal -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">ID del Animal</label>
+                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
+                           value="ID {{ $animal->idAni }}" readonly>
+                </div>
+                
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">Nombre del Animal</label>
+                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
+                           value="{{ $animal->nomAni ?? 'Sin nombre' }}" readonly>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">Especie</label>
+                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
+                           value="{{ $animal->espAni }}" readonly>
+                </div>
+                
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">Raza</label>
+                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
+                           value="{{ $animal->razAni ?? 'No especificada' }}" readonly>
+                </div>
+            </div>
+
             @if($historial->tipHisMed == 'control')
             <div class="bg-green-100 text-green-800 p-3 rounded mb-6 flex items-center gap-2">
                 <i class="fas fa-info-circle"></i> 
@@ -75,11 +120,29 @@ new #[Layout('layouts.auth')] class extends Component {
             @endif
 
             <form wire:submit="update" class="space-y-6">
+                <!-- Selector de Proveedor -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block mb-1 font-medium text-gray-700">Animal</label>
-                        <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
-                               value="{{ $animal->nomAni }} ({{ $animal->espAni }})" readonly>
+                        <label class="block mb-1 font-medium text-gray-700">Proveedor</label>
+                        <select 
+                            wire:model="idProveedor" 
+                            class="w-full border border-gray-300 rounded px-3 py-2"
+                        >
+                            <option value="">Seleccionar proveedor</option>
+                            @foreach($proveedores as $proveedor)
+                                <option value="{{ $proveedor->idProve }}">
+                                    {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        
+                        @if($proveedorSeleccionado)
+                            <div class="mt-2 p-2 bg-gray-50 rounded text-sm">
+                                <div class="font-medium">Información del proveedor:</div>
+                                <div><strong>NIT:</strong> {{ $proveedorSeleccionado->nitProve ?? 'No especificado' }}</div>
+                                <div><strong>Contacto:</strong> {{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</div>
+                            </div>
+                        @endif
                     </div>
                     
                     <div>
@@ -89,6 +152,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     </div>
                 </div>
 
+                <!-- Campos específicos según tipo de registro -->
                 @if($historial->tipHisMed == 'vacuna')
                 <div class="border border-gray-300 rounded p-4 bg-gray-50">
                     <h6 class="font-semibold mb-2 text-gray-800">Datos de Vacunación</h6>
@@ -122,6 +186,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
                 @endif
 
+                <!-- Campos comunes -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block mb-1 font-medium text-gray-700">Fecha <span class="text-red-500">*</span></label>
@@ -154,4 +219,4 @@ new #[Layout('layouts.auth')] class extends Component {
             </form>
         </div>
     </div>
-</div>
+</div> 

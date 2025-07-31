@@ -1,4 +1,5 @@
 <?php
+
 use App\Models\HistorialMedico;
 use App\Models\Animal;
 use Livewire\Attributes\Layout;
@@ -11,7 +12,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public string $search = '';
     public string $tipo = '';
     public string $fecha = '';
-    public int $perPage = 10;
+    public int $perPage = 10; // Valor predeterminado
     public $showDeleteModal = false;
     public $historialToDelete = null;
 
@@ -20,13 +21,13 @@ new #[Layout('layouts.auth')] class extends Component {
         return [
             'historiales' => HistorialMedico::with('animal')
                 ->when($this->search, function ($query) {
-                    $query->where(function($q) {
-                        $q->where('desHisMed', 'like', '%'.$this->search.'%')
-                          ->orWhere('responHisMed', 'like', '%'.$this->search.'%')
-                          ->orWhereHas('animal', function($animalQuery) {
-                              $animalQuery->where('nomAni', 'like', '%'.$this->search.'%')
-                                         ->orWhere('espAni', 'like', '%'.$this->search.'%');
-                          });
+                    $query->where(function ($q) {
+                        $q->where('desHisMed', 'like', '%' . $this->search . '%')
+                            ->orWhere('responHisMed', 'like', '%' . $this->search . '%')
+                            ->orWhereHas('animal', function ($animalQuery) {
+                                $animalQuery->where('nomAni', 'like', '%' . $this->search . '%')
+                                    ->orWhere('espAni', 'like', '%' . $this->search . '%');
+                            });
                     });
                 })
                 ->when($this->tipo, fn($q) => $q->where('tipHisMed', $this->tipo))
@@ -36,11 +37,34 @@ new #[Layout('layouts.auth')] class extends Component {
         ];
     }
 
+    // Reinicia la paginación cuando cambian los filtros
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTipo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFecha(): void
+    {
+        $this->resetPage();
+    }
+
+    // Reinicia la paginación cuando cambia perPage
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
         $this->search = '';
         $this->tipo = '';
         $this->fecha = '';
+        $this->perPage = 10; // Vuelve al valor predeterminado al limpiar filtros
         $this->resetPage();
     }
 
@@ -55,12 +79,14 @@ new #[Layout('layouts.auth')] class extends Component {
         try {
             $historial = HistorialMedico::findOrFail($this->historialToDelete);
             $historial->delete();
-            
+
             $this->showDeleteModal = false;
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Registro médico eliminado correctamente'
             ]);
+            // Asegúrate de que la paginación se actualice si la última página queda vacía
+            $this->resetPage();
         } catch (\Exception $e) {
             $this->dispatch('notify', [
                 'type' => 'error',
@@ -75,25 +101,31 @@ new #[Layout('layouts.auth')] class extends Component {
 @section('title', 'Historial Médico')
 
 <div class="container mx-auto px-4 py-6">
-    <!-- Header -->
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">
         <div class="bg-green-700 text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
-            <h5 class="text-lg font-semibold flex items-center gap-2">
-                <i class="fas fa-clipboard-list"></i> Historial Médico
-            </h5>
+            <div class="flex items-center gap-4">
+                <a href="{{ route('pecuario.dashboard') }}" wire:navigate
+                   class="bg-white/20 hover:bg-white/30 p-2 rounded-full transition flex items-center gap-2" {{-- Se añadió 'flex items-center gap-2' --}}
+                   title="Volver al dashboard">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Volver</span> {{-- Texto "Volver" añadido aquí --}}
+                </a>
+                <h5 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="fas fa-clipboard-list"></i> Historial Médico
+                </h5>
+            </div>
             <a href="{{ route('pecuario.salud-peso.create') }}" wire:navigate
                class="bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1 rounded text-sm flex items-center gap-1">
                 <i class="fas fa-plus"></i> Nuevo Registro
             </a>
         </div>
 
-        <!-- Filtros -->
         <div class="p-4 border-b">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
-                    <input type="text" wire:model.live.debounce.500ms="search" 
-                           placeholder="Buscar..." 
+                    <input type="text" wire:model.live.debounce.500ms="search"
+                           placeholder="Buscar..."
                            class="w-full border border-gray-300 rounded px-3 py-2">
                 </div>
                 <div>
@@ -109,16 +141,28 @@ new #[Layout('layouts.auth')] class extends Component {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
                     <input type="date" wire:model.live="fecha" class="w-full border border-gray-300 rounded px-3 py-2">
                 </div>
-                <div class="flex items-end">
-                    <button wire:click="clearFilters" 
-                            class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded">
+
+                {{-- Control para elementos por página --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Por página</label>
+                    <select wire:model.live="perPage" class="w-full border border-gray-300 rounded px-3 py-2">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                {{-- Fin del control --}}
+
+                <div class="flex items-end gap-2">
+                    <button wire:click="clearFilters"
+                            class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded">
                         Limpiar Filtros
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Tabla -->
         <div class="p-6">
             @if($historiales->count() > 0)
             <div class="overflow-x-auto">
@@ -187,16 +231,21 @@ new #[Layout('layouts.auth')] class extends Component {
                 <i class="fas fa-clipboard-list text-gray-400 text-4xl mb-4"></i>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">No hay registros médicos</h3>
                 <p class="text-gray-500 mb-4">No se encontraron registros con los filtros aplicados.</p>
-                <a href="{{ route('pecuario.salud-peso.create') }}" wire:navigate
-                   class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
-                    <i class="fas fa-plus mr-2"></i>Agregar Registro
-                </a>
+                <div class="flex justify-center gap-4">
+                    <a href="{{ route('pecuario.dashboard') }}" wire:navigate
+                       class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                        <i class="fas fa-arrow-left mr-2"></i>Volver al Dashboard
+                    </a>
+                    <a href="{{ route('pecuario.salud-peso.create') }}" wire:navigate
+                       class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                        <i class="fas fa-plus mr-2"></i>Agregar Registro
+                    </a>
+                </div>
             </div>
             @endif
         </div>
     </div>
 
-    <!-- Modal Eliminar -->
     @if($showDeleteModal)
     <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-lg max-w-sm w-full">
@@ -204,7 +253,7 @@ new #[Layout('layouts.auth')] class extends Component {
             <p class="mb-4 text-sm text-gray-600">
                 ¿Está seguro que desea eliminar este registro médico? Esta acción no se puede deshacer.
             </p>
-            
+
             <div class="mb-4">
                 @php $historial = HistorialMedico::find($historialToDelete); @endphp
                 @if($historial)
@@ -213,7 +262,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 <p><strong>Fecha:</strong> {{ \Carbon\Carbon::parse($historial->fecHisMed)->format('d/m/Y') }}</p>
                 @endif
             </div>
-            
+
             <div class="flex justify-end gap-3">
                 <button wire:click="$set('showDeleteModal', false)"
                         class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
@@ -223,4 +272,4 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
     @endif
-</div>
+</div> 

@@ -64,9 +64,16 @@ new #[Layout('layouts.auth')] class extends Component {
 
 <div class="px-6 py-4">
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-semibold text-green-800">
-            Registros de Producción
-        </h2>
+        <div class="flex items-center gap-4">
+            <a href="{{ route('pecuario.dashboard') }}"
+               class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded shadow">
+                Volver
+            </a>
+            <h2 class="text-2xl font-semibold text-green-800">
+                Registros de Producción
+            </h2>
+        </div>
+
         <a href="{{ route('pecuario.produccion.create') }}" wire:navigate
            class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow">
             Nuevo Registro
@@ -94,7 +101,7 @@ new #[Layout('layouts.auth')] class extends Component {
             </div>
         </div>
 
-        <!-- Tabla de registros -->
+        <!-- Tabla -->
         <div class="overflow-x-auto">
             <table class="min-w-full bg-white border border-green-200 rounded">
                 <thead class="bg-green-700 text-white">
@@ -166,7 +173,7 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
 
-    <!-- Modal Eliminar Producción -->
+    <!-- Modal de eliminación -->
     @if($showDeleteModal)
         <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg max-w-sm w-full">
@@ -177,7 +184,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 
                 <div class="mb-4">
                     @php
-                        $produccion = ProduccionAnimal::find($produccionToDelete);
+                        $produccion = \App\Models\ProduccionAnimal::find($produccionToDelete);
                     @endphp
                     @if($produccion)
                         <p><strong>ID:</strong> {{ $produccion->idProAni }}</p>
@@ -197,7 +204,7 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     @endif
 
-    <!-- Script para notificaciones -->
+    <!-- Notificaciones -->
     <script>
         document.addEventListener('livewire:initialized', () => {
             Livewire.on('notify', (event) => {
