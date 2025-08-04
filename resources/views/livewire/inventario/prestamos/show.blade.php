@@ -12,7 +12,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public function mount(PrestamoHerramienta $prestamo): void
     {
         $this->prestamo = $prestamo;
-        $this->fecDev = now()->format('Y-m-d');
+        $this->fecDev = now()->format('Y-m-d\TH:i'); // Formato datetime-local
     }
 
     public function confirmReturn(): void
@@ -121,6 +121,26 @@ new #[Layout('layouts.auth')] class extends Component {
                     </div>
                     <div class="p-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Solicitante -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Solicitante</label>
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm font-medium text-gray-900">
+                                            {{ $prestamo->solicitante->nomUsu ?? '' }} {{ $prestamo->solicitante->apeUsu ?? '' }}
+                                        </p>
+                                        <p class="text-xs text-gray-500">
+                                            {{ $prestamo->solicitante->numDocUsu ?? 'Sin documento' }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Estado -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
@@ -148,20 +168,6 @@ new #[Layout('layouts.auth')] class extends Component {
                                 </div>
                             </div>
 
-                            <!-- Días desde el préstamo -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tiempo transcurrido</label>
-                                <div class="flex items-center text-gray-900">
-                                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <div>
-                                        <p class="font-medium">{{ $prestamo->fecPre->diffInDays(now()) }} días</p>
-                                        <p class="text-sm text-gray-500">{{ $prestamo->fecPre->diffForHumans() }}</p>
-                                    </div>
-                                </div>
-                            </div>
-
                             <!-- Fecha de Préstamo -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Préstamo</label>
@@ -170,8 +176,8 @@ new #[Layout('layouts.auth')] class extends Component {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                     </svg>
                                     <div>
-                                        <p class="font-medium">{{ $prestamo->fecPre->format('d/m/Y') }}</p>
-                                        <p class="text-sm text-gray-500">{{ $prestamo->fecPre->format('l, j F Y') }}</p>
+                                        <p class="font-medium">{{ $prestamo->fecPre->format('d/m/Y H:i') }}</p>
+                                        <p class="text-sm text-gray-500">{{ $prestamo->fecPre->diffForHumans() }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -195,7 +201,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                         @endif
                                     </svg>
                                     <div>
-                                        <p class="font-medium">{{ $prestamo->fecDev->format('d/m/Y') }}</p>
+                                        <p class="font-medium">{{ $prestamo->fecDev->format('d/m/Y H:i') }}</p>
                                         <p class="text-sm text-gray-500">{{ $prestamo->fecDev->diffForHumans() }}</p>
                                     </div>
                                 </div>
@@ -207,6 +213,33 @@ new #[Layout('layouts.auth')] class extends Component {
                                     <span class="text-sm">No programada</span>
                                 </div>
                                 @endif
+                            </div>
+
+                            <!-- Tiempo transcurrido -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tiempo transcurrido</label>
+                                <div class="flex items-center text-gray-900">
+                                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div>
+                                        @php
+                                            $dias = $prestamo->fecPre->diffInDays(now());
+                                            $horas = $prestamo->fecPre->diffInHours(now()) % 24;
+                                            $minutos = $prestamo->fecPre->diffInMinutes(now()) % 60;
+                                        @endphp
+                                        <p class="font-medium">
+                                            @if($dias > 0)
+                                                {{ $dias }} día{{ $dias > 1 ? 's' : '' }}, 
+                                            @endif
+                                            @if($horas > 0)
+                                                {{ $horas }} hora{{ $horas > 1 ? 's' : '' }}, 
+                                            @endif
+                                            {{ $minutos }} minuto{{ $minutos != 1 ? 's' : '' }}
+                                        </p>
+                                        <p class="text-sm text-gray-500">{{ $prestamo->fecPre->diffForHumans() }}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -380,7 +413,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                             </svg>
-                            Usuario Solicitante
+                            Encargado
                         </h3>
                     </div>
                     <div class="p-6">
@@ -488,10 +521,10 @@ new #[Layout('layouts.auth')] class extends Component {
             <div class="mt-4">
                 <div class="mb-4">
                     <label for="fecDev" class="block text-sm font-medium text-gray-700 mb-2 text-left">
-                        Fecha de Devolución <span class="text-red-500">*</span>
+                        Fecha y Hora de Devolución <span class="text-red-500">*</span>
                     </label>
-                    <input type="date" wire:model="fecDev" id="fecDev" required
-                           min="{{ $prestamo->fecPre->format('Y-m-d') }}"
+                    <input type="datetime-local" wire:model="fecDev" id="fecDev" required
+                           min="{{ $prestamo->fecPre->format('Y-m-d\TH:i') }}"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
                     @error('fecDev') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>

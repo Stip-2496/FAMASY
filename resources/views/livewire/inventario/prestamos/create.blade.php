@@ -7,11 +7,12 @@ use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.app')] class extends Component {
+new #[Layout('layouts.auth')] class extends Component {
     public PrestamoHerramienta $prestamo;
     
     public int $idHerPre = 0;
     public int $idUsuPre = 0;
+    public int $idUsuSol = 0;
     public string $fecPre = '';
     public ?string $fecDev = null;
     public string $estPre = 'prestado';
@@ -20,7 +21,8 @@ new #[Layout('layouts.app')] class extends Component {
     public function mount(): void
     {
         $this->prestamo = new PrestamoHerramienta();
-        $this->fecPre = now()->format('Y-m-d');
+        $this->fecPre = now()->format('Y-m-d H:i:s');
+        $this->idUsuPre = auth()->id();
     }
     
     public function rules(): array
@@ -28,8 +30,9 @@ new #[Layout('layouts.app')] class extends Component {
         return [
             'idHerPre' => 'required|exists:herramientas,idHer',
             'idUsuPre' => 'required|exists:users,id',
+            'idUsuSol' => 'required|exists:users,id',
             'fecPre' => 'required|date',
-            'fecDev' => 'nullable|date|after_or_equal:fecPre',
+            'fecDev' => 'required|date|after_or_equal:fecPre',
             'estPre' => 'required|in:prestado,devuelto,vencido',
             'obsPre' => 'nullable|string'
         ];
@@ -52,12 +55,13 @@ new #[Layout('layouts.app')] class extends Component {
     {
         return [
             'herramientas' => Herramienta::all(),
-            'usuarios' => User::all()
+            'usuarioActual' => auth()->user(),
+            'aprendices' => User::where('idRolUsu', 3)->get(), // Solo aprendices pueden solicitar herramientas
         ];
     }
 }; ?>
 
-@section('title', 'Registrar Nuevo Préstamo')
+@section('title', 'Registrar préstamo')
 
 <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -116,7 +120,7 @@ new #[Layout('layouts.app')] class extends Component {
 
                 <form wire:submit="save">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Herramienta -->
+                        <!-- Primera fila: Herramienta y Estado -->
                         <div class="space-y-2">
                             <label for="idHerPre" class="block text-sm font-semibold text-gray-700">
                                 <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,53 +153,74 @@ new #[Layout('layouts.app')] class extends Component {
                             </p>
                         </div>
 
-                        <!-- Usuario -->
+                        <input type="hidden" wire:model="estPre">
                         <div class="space-y-2">
-                            <label for="idUsuPre" class="block text-sm font-semibold text-gray-700">
+                            <label class="block text-sm font-semibold text-gray-700">
+                                <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+                                </svg>
+                                Estado
+                            </label>
+                            <div class="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg">
+                                Prestado
+                            </div>
+                        </div>
+
+                        <!-- Segunda fila: Encargado y Solicitante -->
+                        <input type="hidden" wire:model="idUsuPre">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-semibold text-gray-700">
                                 <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
-                                Usuario *
+                                Encargado
                             </label>
-                            <select id="idUsuPre" wire:model="idUsuPre" required
-                                    class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('idUsuPre') border-red-500 @enderror">
-                                <option value="">Seleccione un usuario...</option>
-                                @foreach($usuarios as $usuario)
-                                    <option value="{{ $usuario->id }}" 
-                                            @if(old('idUsuPre', $idUsuPre) == $usuario->id) selected @endif>
-                                        {{ $usuario->nomUsu }} {{ $usuario->apeUsu }}
+                            <div class="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg">
+                                {{ $usuarioActual->nomUsu }} {{ $usuarioActual->apeUsu }}
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label for="idUsuSol" class="block text-sm font-semibold text-gray-700">
+                                <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                </svg>
+                                Solicitante (Aprendiz) *
+                            </label>
+                            <select id="idUsuSol" wire:model="idUsuSol" required
+                                    class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('idUsuSol') border-red-500 @enderror">
+                                <option value="">Seleccione un aprendiz...</option>
+                                @foreach($aprendices as $aprendiz)
+                                    <option value="{{ $aprendiz->id }}">
+                                        {{ $aprendiz->nomUsu }} {{ $aprendiz->apeUsu }} ({{ $aprendiz->numDocUsu }})
                                     </option>
                                 @endforeach
                             </select>
-                            @error('idUsuPre')
+                            @error('idUsuSol')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <!-- Fecha de Préstamo -->
+                        <!-- Tercera fila: Fechas -->
                         <div class="space-y-2">
                             <label for="fecPre" class="block text-sm font-semibold text-gray-700">
                                 <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
-                                Fecha de Préstamo *
+                                Fecha y Hora de Préstamo
                             </label>
-                            <input type="date" id="fecPre" wire:model="fecPre" required
-                                   class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('fecPre') border-red-500 @enderror">
-                            @error('fecPre')
-                                <p class="text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <input type="datetime-local" id="fecPre" wire:model="fecPre" readonly
+                                   class="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
                         </div>
 
-                        <!-- Fecha de Devolución Esperada -->
                         <div class="space-y-2">
                             <label for="fecDev" class="block text-sm font-semibold text-gray-700">
                                 <svg class="w-4 h-4 inline mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                Fecha de Devolución Esperada
+                                Fecha y Hora de Devolución Esperada *
                             </label>
-                            <input type="date" id="fecDev" wire:model="fecDev"
+                            <input type="datetime-local" id="fecDev" wire:model="fecDev" required
                                    class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('fecDev') border-red-500 @enderror">
                             @error('fecDev')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
@@ -204,63 +229,40 @@ new #[Layout('layouts.app')] class extends Component {
                                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                 </svg>
-                                Opcional - Fecha estimada de devolución
+                                Fecha y hora estimada de devolución (obligatoria)
                             </p>
                         </div>
+                    </div>
 
-                        <!-- Estado -->
+                    <!-- Observaciones (ocupa toda la fila) -->
+                    <div class="mt-6 col-span-full">
                         <div class="space-y-2">
-                            <label for="estPre" class="block text-sm font-semibold text-gray-700">
+                            <label for="obsPre" class="block text-sm font-semibold text-gray-700">
                                 <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
-                                Estado *
+                                Observaciones
                             </label>
-                            <select id="estPre" wire:model="estPre" required
-                                    class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 @error('estPre') border-red-500 @enderror">
-                                <option value="prestado" @if(old('estPre', $estPre) == 'prestado') selected @endif>
-                                    Prestado
-                                </option>
-                                <option value="devuelto" @if(old('estPre', $estPre) == 'devuelto') selected @endif>
-                                    Devuelto
-                                </option>
-                                <option value="vencido" @if(old('estPre', $estPre) == 'vencido') selected @endif>
-                                    Vencido
-                                </option>
-                            </select>
-                            @error('estPre')
+                            <textarea id="obsPre" wire:model="obsPre" rows="4"
+                                      placeholder="Escriba cualquier observación adicional sobre el préstamo..."
+                                      class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none @error('obsPre') border-red-500 @enderror"></textarea>
+                            @error('obsPre')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
 
-                    <!-- Observaciones -->
-                    <div class="mt-6 space-y-2">
-                        <label for="obsPre" class="block text-sm font-semibold text-gray-700">
-                            <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                            Observaciones
-                        </label>
-                        <textarea id="obsPre" wire:model="obsPre" rows="4"
-                                  placeholder="Escriba cualquier observación adicional sobre el préstamo..."
-                                  class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none @error('obsPre') border-red-500 @enderror"></textarea>
-                        @error('obsPre')
-                            <p class="text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- Botones -->
-                    <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-end">
+                    <!-- Botones centrados debajo de Observaciones -->
+                    <div class="mt-6 flex justify-center gap-4">
                         <a href="{{ route('inventario.prestamos.index') }}" wire:navigate
-                           class="inline-flex items-center justify-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105">
+                           class="inline-flex items-center px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                             </svg>
-                            Cancelar
+                            Volver
                         </a>
                         <button type="submit" id="btnSubmit"
-                                class="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                class="cursor-pointer inline-flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
                             </svg>
@@ -276,15 +278,36 @@ new #[Layout('layouts.app')] class extends Component {
 @script
 <script>
 document.addEventListener('livewire:initialized', () => {
-    // Validación de fechas
+    // Configuración inicial de fecha y hora
+    const now = new Date();
+    const timezoneOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now - timezoneOffset)).toISOString().slice(0, 16);
+    
+    // Establecer fecha y hora actual si está vacío
     const fecPre = document.getElementById('fecPre');
+    if (!fecPre.value) {
+        fecPre.value = localISOTime;
+        @this.set('fecPre', localISOTime.replace('T', ' '));
+    }
+
+    // Validación de fechas
     const fecDev = document.getElementById('fecDev');
+    
+    // Establecer la fecha mínima de devolución como la fecha actual
+    fecDev.min = fecPre.value;
     
     fecPre.addEventListener('change', function() {
         fecDev.min = this.value;
         if (fecDev.value && fecDev.value < this.value) {
             fecDev.value = '';
             @this.set('fecDev', null);
+        }
+    });
+
+    // Asegurar que fecDev tenga al menos la fecha mínima
+    fecDev.addEventListener('focus', function() {
+        if (!this.value) {
+            this.min = fecPre.value;
         }
     });
     
@@ -303,6 +326,13 @@ document.addEventListener('livewire:initialized', () => {
     
     // Confirmación antes de enviar
     document.getElementById('btnSubmit').addEventListener('click', function(e) {
+        // Validar que fecDev no sea menor que fecPre
+        if (fecDev.value && fecDev.value < fecPre.value) {
+            alert('La fecha de devolución no puede ser anterior a la fecha de préstamo');
+            e.preventDefault();
+            return;
+        }
+
         const btnSubmit = this;
         btnSubmit.innerHTML = `
             <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -313,6 +343,23 @@ document.addEventListener('livewire:initialized', () => {
         `;
         btnSubmit.disabled = true;
     });
+
+    // Convertir valores existentes al formato datetime-local
+    function convertToDatetimeLocalFormat(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+            .toISOString()
+            .slice(0, 16);
+    }
+
+    // Si hay valores precargados, convertirlos al formato correcto
+    if (@this.get('fecPre')) {
+        fecPre.value = convertToDatetimeLocalFormat(@this.get('fecPre'));
+    }
+    if (@this.get('fecDev')) {
+        fecDev.value = convertToDatetimeLocalFormat(@this.get('fecDev'));
+    }
 });
 </script>
 @endscript

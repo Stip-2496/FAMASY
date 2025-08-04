@@ -363,7 +363,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 @endif
 
                                 @if($mantenimiento->estMan === 'pendiente')
-                                <form action="{{ route('inventario.mantenimientos.destroy', $mantenimiento) }}" method="POST" 
+                                <form  method="POST" 
                                       onsubmit="return confirm('¿Está seguro de eliminar este mantenimiento?')" class="inline">
                                     @csrf
                                     @method('DELETE')
