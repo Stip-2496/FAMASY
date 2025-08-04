@@ -28,7 +28,7 @@ class Mantenimiento extends Model
         'idHerMan' => 'integer'
     ];
 
-    // Solo buscar herramienta si idHerMan existe y > 0
+    // ✅ RELACIÓN CORREGIDA: Solo buscar herramienta si idHerMan existe y > 0
     public function herramienta()
     {
         return $this->belongsTo(Herramienta::class, 'idHerMan', 'idHer');
@@ -73,7 +73,7 @@ class Mantenimiento extends Model
     // ===== MÉTODOS AUXILIARES =====
 
     /**
-     * Obtiene el nombre completo de la herramienta
+     * ✅ MÉTODO CORREGIDO: Obtiene el nombre completo de la herramienta
      * Prioriza nomHerMan (nombre libre) sobre la relación con herramienta
      */
     public function getNombreHerramientaCompleto()
@@ -93,7 +93,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Método para obtener el tipo de herramienta (si está relacionada)
+     * ✅ NUEVO: Método para obtener el tipo de herramienta (si está relacionada)
      */
     public function getTipoHerramienta()
     {
@@ -105,7 +105,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Método para verificar si usa herramienta del catálogo
+     * ✅ NUEVO: Método para verificar si usa herramienta del catálogo
      */
     public function usaHerramientaCatalogo()
     {
@@ -113,7 +113,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Método para verificar si usa nombre libre
+     * ✅ NUEVO: Método para verificar si usa nombre libre
      */
     public function usaNombreLibre()
     {
@@ -121,7 +121,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Obtiene el estado con formato amigable
+     * ✅ NUEVO: Obtiene el estado con formato amigable
      */
     public function getEstadoFormateado()
     {
@@ -135,7 +135,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Obtiene el tipo con formato amigable
+     * ✅ NUEVO: Obtiene el tipo con formato amigable
      */
     public function getTipoFormateado()
     {
@@ -149,7 +149,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Verifica si el mantenimiento está vencido
+     * ✅ NUEVO: Verifica si el mantenimiento está vencido
      */
     public function estaVencido()
     {
@@ -161,7 +161,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Obtiene días hasta/desde la fecha programada
+     * ✅ NUEVO: Obtiene días hasta/desde la fecha programada
      */
     public function getDiasHastaFecha()
     {
@@ -172,7 +172,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Scope para mantenimientos próximos (próximos 7 días)
+     * ✅ NUEVO: Scope para mantenimientos próximos (próximos 7 días)
      */
     public function scopeProximos($query, $dias = 7)
     {
@@ -182,7 +182,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Scope para mantenimientos vencidos
+     * ✅ NUEVO: Scope para mantenimientos vencidos
      */
     public function scopeVencidos($query)
     {
@@ -193,7 +193,7 @@ class Mantenimiento extends Model
     // ===== MUTATORS Y ACCESSORS =====
 
     /**
-     * Accessor para formatear la fecha
+     * ✅ NUEVO: Accessor para formatear la fecha
      */
     public function getFechaFormateadaAttribute()
     {
@@ -201,7 +201,7 @@ class Mantenimiento extends Model
     }
 
     /**
-     * Mutator para limpiar el nombre de herramienta
+     * ✅ NUEVO: Mutator para limpiar el nombre de herramienta
      */
     public function setNomHerManAttribute($value)
     {

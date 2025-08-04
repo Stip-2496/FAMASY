@@ -111,6 +111,7 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
         Volt::route('mantenimientos/{mantenimiento}', 'inventario.mantenimientos.show')->name('mantenimientos.show');
         Volt::route('mantenimientos/{mantenimiento}/editar', 'inventario.mantenimientos.edit')->name('mantenimientos.edit');
         Volt::route('mantenimientos/{mantenimiento}/completar', 'inventario.mantenimientos.completar')->name('mantenimientos.completar');
+        Route::delete('mantenimientos/{mantenimiento}', function(Mantenimiento $mantenimiento) {abort(404);})->name('mantenimientos.destroy');
     });
 
 });
