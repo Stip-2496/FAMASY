@@ -15,6 +15,7 @@ class PrestamoHerramienta extends Model
     protected $fillable = [
         'idHerPre',
         'idUsuPre',
+        'idUsuSol',
         'fecPre',
         'fecDev',
         'estPre',
@@ -24,9 +25,17 @@ class PrestamoHerramienta extends Model
     ];
 
     protected $casts = [
-        'fecPre' => 'date:Y-m-d',
-        'fecDev' => 'date:Y-m-d'
+        'fecPre' => 'datetime',
+        'fecDev' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
+
+    // Método editar
+    public function puedeEditar(): bool
+    {
+        return $this->fecPre->isToday() && $this->estPre !== 'devuelto';
+    }
 
     // Relaciones
     public function herramienta()
@@ -39,6 +48,11 @@ class PrestamoHerramienta extends Model
         return $this->belongsTo(User::class, 'idUsuPre', 'id');
     }
 
+    // Función del solicitante
+    public function solicitante()
+    {
+        return $this->belongsTo(User::class, 'idUsuSol', 'id');
+    }
     public function movimientos()
     {
         return $this->hasMany(Inventario::class, 'idPreHer', 'idPreHer');

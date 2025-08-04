@@ -27,6 +27,28 @@
 
     @include('partials.auth-footer')
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Solo en rutas autenticadas
+    window.addEventListener('beforeunload', function() {
+        fetch('{{ route("logout.silent") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            },
+            keepalive: true
+        }).catch(e => console.log("Logout silencioso falló (ignorar en desarrollo)"));
+    });
+
+    // Verificación inicial al cargar
+    @auth
+    if (!navigator.cookieEnabled) {
+        window.location.href = '{{ route("login") }}?error=cookies_disabled';
+    }
+    @endauth
+});
+</script>
     @livewireScripts
     
 </body>

@@ -89,4 +89,9 @@ class User extends Authenticatable
     return $this->hasMany(DatabaseBackup::class, 'idUsuBac');
     }
 
+    // Filtrar aprendices en prestamosherramientas
+    public function scopeAprendices($query)
+    {
+        return $query->where('idRolUsu', 3);
+    }
 }

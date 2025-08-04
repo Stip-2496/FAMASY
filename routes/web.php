@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     Route::view('/login', 'login')->name('login'); // Muestra la vista de inicio de sesión |No he podido cambiarle el nombre a la URL|
 
     Route::middleware(['auth'])->group(function () { // Rutas solo accedidas por usuarios autenticados 'auth'
+    // Ruta de logout silencioso
+    Route::post('/logout-silent', function() {
+        auth()->logout();
+        session()->invalidate(); // Destruye la sesión completamente
+        return response()->noContent();
+    })->name('logout.silent');
     Route::redirect('settings', 'settings/profile'); 
     Route::view('Inicio', 'auth.home')->middleware(['verified'])->name('dashboard');
     Volt::route('Perfil', 'settings.profile')->name('settings.profile');
@@ -155,6 +161,7 @@ Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
         Volt::route('mantenimientos/{mantenimiento}', 'inventario.mantenimientos.show')->name('mantenimientos.show');
         Volt::route('mantenimientos/{mantenimiento}/editar', 'inventario.mantenimientos.edit')->name('mantenimientos.edit');
         Volt::route('mantenimientos/{mantenimiento}/completar', 'inventario.mantenimientos.completar')->name('mantenimientos.completar');
+        Route::delete('mantenimientos/{mantenimiento}', function(Mantenimiento $mantenimiento) {abort(404);})->name('mantenimientos.destroy');
     });
 
 });
