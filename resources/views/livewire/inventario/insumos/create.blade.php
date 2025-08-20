@@ -1,119 +1,125 @@
 <?php
+// resources/views/livewire/inventario/insumos/create.php
+
 use App\Models\Insumo;
 use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
-use Livewire\WithFileUploads;
 
 new #[Layout('layouts.auth')] class extends Component {
-    use WithFileUploads;
-
     // Propiedades del formulario
     public string $nomIns = '';
     public string $tipIns = '';
-    public ?string $marIns = null;
-    public string $uniIns = '';
-    public ?string $fecVenIns = null;
+    public string $marIns = '';
     public ?float $stockMinIns = null;
     public ?float $stockMaxIns = null;
     public ?int $idProveIns = null;
+    public string $uniIns = '';
+    public ?string $fecVenIns = null;
     public string $estIns = 'disponible';
-    public ?string $obsIns = null;
-    
-    // Datos adicionales
-    public $proveedores;
-    public $showStockWarning = false;
-    public $vencimientoAlert = null;
+    public string $obsIns = '';
 
-    public function mount(): void
+    // Propiedades para proveedores
+    public string $searchProveedor = '';
+    public bool $showCreateProveedor = false;
+    public string $nuevoProveedorNombre = '';
+    public string $nuevoProveedorNit = '';
+    public string $nuevoProveedorTelefono = '';
+    public string $nuevoProveedorEmail = '';
+
+    // Tipos predefinidos
+    public array $tiposDisponibles = [
+        'medicamento veterinario',
+        'concentrado',
+        'vacuna',
+        'vitamina',
+        'suplemento',
+        'desinfectante',
+        'insecticida',
+        'fertilizante',
+        'semilla',
+        'otro'
+    ];
+
+    // Unidades comunes
+    public array $unidadesDisponibles = [
+        'kg', 'g', 'lb', 'ton',
+        'l', 'ml', 'gal',
+        'unidades', 'dosis', 'sobres',
+        'cajas', 'bolsas', 'bultos',
+        'm', 'm2', 'm3'
+    ];
+
+    public function with(): array
     {
-        $this->proveedores = Proveedor::all();
+        $query = Proveedor::query();
+        
+        if ($this->searchProveedor) {
+            $query->where('nomProve', 'like', "%{$this->searchProveedor}%")
+                  ->orWhere('nitProve', 'like', "%{$this->searchProveedor}%");
+        }
+        
+        $proveedores = $query->orderBy('nomProve')->get();
+        
+        return [
+            'proveedores' => $proveedores
+        ];
     }
 
     public function rules(): array
     {
         return [
-            'nomIns' => 'required|string|max:150',
-            'tipIns' => 'required|string|max:50',
+            'nomIns' => 'required|string|max:100',
+            'tipIns' => 'required|string|max:100',
             'marIns' => 'nullable|string|max:100',
-            'uniIns' => 'required|string|max:50',
-            'fecVenIns' => 'nullable|date',
             'stockMinIns' => 'nullable|numeric|min:0',
-            'stockMaxIns' => 'nullable|numeric|min:0',
+            'stockMaxIns' => 'nullable|numeric|min:0|gte:stockMinIns',
             'idProveIns' => 'nullable|exists:proveedores,idProve',
+            'uniIns' => 'required|string|max:50',
+            'fecVenIns' => 'nullable|date|after:today',
             'estIns' => 'required|in:disponible,agotado,vencido',
-            'obsIns' => 'nullable|string'
+            'obsIns' => 'nullable|string|max:500'
         ];
     }
 
-    public function updated($property, $value): void
+    public function messages(): array
     {
-        $this->validateOnly($property);
-
-        if ($property === 'nomIns' && $value) {
-            $this->nomIns = ucfirst($value);
-        }
-
-        if (in_array($property, ['stockMinIns', 'stockMaxIns']) && $this->stockMinIns && $this->stockMaxIns) {
-            $this->showStockWarning = $this->stockMinIns > $this->stockMaxIns;
-        }
-
-        if ($property === 'fecVenIns' && $value) {
-            $this->checkVencimiento($value);
-        }
+        return [
+            'nomIns.required' => 'El nombre del insumo es obligatorio.',
+            'tipIns.required' => 'El tipo de insumo es obligatorio.',
+            'uniIns.required' => 'La unidad de medida es obligatoria.',
+            'stockMaxIns.gte' => 'El stock máximo debe ser mayor o igual al stock mínimo.',
+            'fecVenIns.after' => 'La fecha de vencimiento debe ser posterior a hoy.',
+            'idProveIns.exists' => 'El proveedor seleccionado no es válido.',
+            'estIns.in' => 'El estado seleccionado no es válido.'
+        ];
     }
 
-    protected function checkVencimiento($fecha): void
+    public function crearInsumo(): void
     {
-        $hoy = now();
-        $fechaVencimiento = \Carbon\Carbon::parse($fecha);
-        $diasRestantes = $hoy->diffInDays($fechaVencimiento, false);
-
-        if ($diasRestantes <= 0) {
-            $this->vencimientoAlert = [
-                'type' => 'error',
-                'message' => 'Este insumo ya está vencido',
-                'days' => abs($diasRestantes)
-            ];
-            $this->estIns = 'vencido';
-        } elseif ($diasRestantes <= 30) {
-            $this->vencimientoAlert = [
-                'type' => 'warning',
-                'message' => "Este insumo vencerá en $diasRestantes días",
-                'days' => $diasRestantes
-            ];
-        } elseif ($diasRestantes <= 90) {
-            $this->vencimientoAlert = [
-                'type' => 'info',
-                'message' => "Este insumo vencerá en aproximadamente " . round($diasRestantes/30) . " meses",
-                'days' => $diasRestantes
-            ];
-        } else {
-            $this->vencimientoAlert = null;
-        }
-    }
-
-    public function save(): void
-    {
-        $validated = $this->validate();
-
-        if ($this->stockMinIns && $this->stockMaxIns && $this->stockMinIns > $this->stockMaxIns) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => 'El stock mínimo no puede ser mayor que el stock máximo.'
-            ]);
-            return;
-        }
+        $this->validate();
 
         try {
-            Insumo::create($validated);
+            $insumo = Insumo::create([
+                'nomIns' => $this->nomIns,
+                'tipIns' => $this->tipIns,
+                'marIns' => $this->marIns ?: null,
+                'stockMinIns' => $this->stockMinIns,
+                'stockMaxIns' => $this->stockMaxIns,
+                'idProveIns' => $this->idProveIns,
+                'uniIns' => $this->uniIns,
+                'fecVenIns' => $this->fecVenIns ? \Carbon\Carbon::parse($this->fecVenIns) : null,
+                'estIns' => $this->estIns,
+                'obsIns' => $this->obsIns ?: null,
+            ]);
 
             $this->dispatch('notify', [
                 'type' => 'success',
-                'message' => 'Insumo creado exitosamente'
+                'message' => 'Insumo creado exitosamente.'
             ]);
 
             $this->redirect(route('inventario.insumos.index'), navigate: true);
+
         } catch (\Exception $e) {
             $this->dispatch('notify', [
                 'type' => 'error',
@@ -122,514 +128,476 @@ new #[Layout('layouts.auth')] class extends Component {
         }
     }
 
-    public function seleccionarProveedor(int $id): void
+    public function toggleCreateProveedor(): void
     {
-        $this->idProveIns = $id;
+        $this->showCreateProveedor = !$this->showCreateProveedor;
+        if (!$this->showCreateProveedor) {
+            $this->reset(['nuevoProveedorNombre', 'nuevoProveedorNit', 'nuevoProveedorTelefono', 'nuevoProveedorEmail']);
+        }
     }
 
-    // Consejos por tipo de insumo
-    public function getConsejosProperty(): array
+    public function crearProveedor(): void
     {
-        $consejos = [
-            'medicamento veterinario' => [
-                'titulo' => 'Medicamentos Veterinarios',
-                'icon' => 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
-                'color' => 'text-blue-600',
-                'consejos' => [
-                    'Registra siempre la concentración (ej: 10mg/ml)',
-                    'Verifica fechas de vencimiento estrictamente',
-                    'Mantén registro de lotes para trazabilidad',
-                    'Almacena según especificaciones del fabricante'
-                ],
-                'unidades' => ['ml', 'dosis', 'frascos', 'unidades']
-            ],
-            'concentrado' => [
-                'titulo' => 'Concentrados',
-                'icon' => 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
-                'color' => 'text-green-600',
-                'consejos' => [
-                    'Especifica edad del ganado (terneros, adultos)',
-                    'Registra composición nutricional',
-                    'Controla humedad en almacenamiento',
-                    'Rota inventario por fecha de vencimiento'
-                ],
-                'unidades' => ['kg', 'bultos', 'toneladas']
-            ],
-            'vacuna' => [
-                'titulo' => 'Vacunas',
-                'icon' => 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m16-6a5 5 0 100-10 5 5 0 000 10zm-8-3a3 3 0 100-6 3 3 0 000 6z',
-                'color' => 'text-red-600',
-                'consejos' => [
-                    'Mantén cadena de frío estrictamente',
-                    'Registra número de dosis por frasco',
-                    'Controla fecha de vencimiento muy de cerca',
-                    'Documenta tiempo de retiro si aplica'
-                ],
-                'unidades' => ['dosis', 'frascos', 'unidades']
-            ],
-            'vitamina' => [
-                'titulo' => 'Vitaminas',
-                'icon' => 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
-                'color' => 'text-yellow-600',
-                'consejos' => [
-                    'Especifica si es hidrosoluble o liposoluble',
-                    'Registra dosis recomendada por animal',
-                    'Verifica compatibilidad con otros productos',
-                    'Almacena en lugar fresco y seco'
-                ],
-                'unidades' => ['ml', 'g', 'sobres', 'tabletas']
-            ],
-            'suplemento' => [
-                'titulo' => 'Suplementos',
-                'icon' => 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
-                'color' => 'text-purple-600',
-                'consejos' => [
-                    'Detalla composición mineral',
-                    'Especifica consumo diario recomendado',
-                    'Registra si es para época específica',
-                    'Controla mezcla con otros suplementos'
-                ],
-                'unidades' => ['kg', 'g', 'sobres', 'bultos']
-            ]
-        ];
+        $this->validate([
+            'nuevoProveedorNombre' => 'required|string|max:100',
+            'nuevoProveedorNit' => 'required|string|max:20|unique:proveedores,nitProve',
+            'nuevoProveedorTelefono' => 'nullable|string|max:20',
+            'nuevoProveedorEmail' => 'nullable|email|max:100'
+        ]);
 
-        return $consejos[$this->tipIns] ?? [
-            'titulo' => 'Consejos Generales',
-            'icon' => 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-            'color' => 'text-gray-600',
-            'consejos' => [
-                'Verifica siempre las fechas de vencimiento',
-                'Los lotes ayudan a trazabilidad',
-                'Define stock mínimo para alertas automáticas',
-                'El stock inicial se registra después de crear el insumo'
-            ],
-            'unidades' => ['kg', 'g', 'ml', 'unidades']
-        ];
+        try {
+            $proveedor = Proveedor::create([
+                'nomProve' => $this->nuevoProveedorNombre,
+                'nitProve' => $this->nuevoProveedorNit,
+                'telProve' => $this->nuevoProveedorTelefono ?: null,
+                'emailProve' => $this->nuevoProveedorEmail ?: null,
+            ]);
+
+            $this->idProveIns = $proveedor->idProve;
+            $this->showCreateProveedor = false;
+            $this->reset(['nuevoProveedorNombre', 'nuevoProveedorNit', 'nuevoProveedorTelefono', 'nuevoProveedorEmail']);
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Proveedor creado y seleccionado exitosamente.'
+            ]);
+
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Error al crear el proveedor: ' . $e->getMessage()
+            ]);
+        }
     }
-}; ?>
 
-@section('title', 'Registrar Insumo')
+    public function selectProveedor($proveedorId): void
+    {
+        $this->idProveIns = $proveedorId;
+        $this->searchProveedor = '';
+    }
+
+    public function clearProveedor(): void
+    {
+        $this->idProveIns = null;
+    }
+
+    public function cancelar(): void
+    {
+        $this->redirect(route('inventario.insumos.index'), navigate: true);
+    }
+};
+?>
+
+@section('title', 'Crear Insumo')
 
 <div class="min-h-screen bg-gray-50 py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900 flex items-center">
                         <svg class="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        Nuevo Insumo
+                        Crear Nuevo Insumo
                     </h1>
-                    <p class="mt-1 text-sm text-gray-600">Registra un nuevo insumo en el inventario</p>
+                    <p class="mt-2 text-gray-600">Agrega un nuevo insumo a tu inventario</p>
                 </div>
-                <div class="mt-4 sm:mt-0">
-                    <a href="{{ route('inventario.insumos.index') }}" wire:navigate
-                       class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                        </svg>
-                        Volver
-                    </a>
-                </div>
+                <a href="{{ route('inventario.insumos.index') }}" wire:navigate
+                   class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Volver
+                </a>
             </div>
         </div>
 
         <!-- Formulario -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Formulario Principal -->
-            <div class="lg:col-span-2">
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-green-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-                            </svg>
-                            Información del Insumo
-                        </h3>
+        <div class="bg-white shadow rounded-lg">
+            <form wire:submit="crearInsumo">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Información del Insumo</h3>
+                    <p class="mt-1 text-sm text-gray-600">Completa la información básica del insumo.</p>
+                </div>
+
+                <div class="px-6 py-6 space-y-6">
+                    <!-- Fila 1: Nombre y Tipo -->
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <!-- Nombre del Insumo -->
+                        <div>
+                            <label for="nomIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Nombre del Insumo *
+                            </label>
+                            <input type="text" 
+                                   wire:model="nomIns"
+                                   id="nomIns"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('nomIns') border-red-500 @enderror"
+                                   placeholder="Ej: Vacuna contra Aftosa">
+                            @error('nomIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Tipo -->
+                        <div>
+                            <label for="tipIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Tipo de Insumo *
+                            </label>
+                            <select wire:model="tipIns" 
+                                    id="tipIns"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('tipIns') border-red-500 @enderror">
+                                <option value="">Selecciona un tipo</option>
+                                @foreach($tiposDisponibles as $tipo)
+                                    <option value="{{ $tipo }}">{{ ucfirst($tipo) }}</option>
+                                @endforeach
+                            </select>
+                            @error('tipIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
-                    <div class="p-6">
-                        <form wire:submit="save">
-                            <!-- Nombre y Tipo -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="nomIns" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Nombre del Insumo <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="text" 
-                                           id="nomIns" 
-                                           wire:model="nomIns" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('nomIns') border-red-500 @enderror"
-                                           placeholder="Ej: Vacuna contra Aftosa"
-                                           required>
-                                    @error('nomIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                                <div>
-                                    <label for="tipIns" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Tipo de Insumo <span class="text-red-500">*</span>
-                                    </label>
-                                    <select id="tipIns" 
-                                            wire:model="tipIns" 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('tipIns') border-red-500 @enderror"
-                                            required>
-                                        <option value="">Seleccionar tipo</option>
-                                        <option value="medicamento veterinario">Medicamento Veterinario</option>
-                                        <option value="concentrado">Concentrado</option>
-                                        <option value="vacuna">Vacuna</option>
-                                        <option value="vitamina">Vitamina</option>
-                                        <option value="suplemento">Suplemento</option>
-                                        <option value="desparasitante">Desparasitante</option>
-                                        <option value="antibiotico">Antibiótico</option>
-                                        <option value="sal mineralizada">Sal Mineralizada</option>
-                                    </select>
-                                    @error('tipIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            </div>
 
-                            <!-- Marca y Unidad de Medida -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="marIns" class="block text-sm font-medium text-gray-700 mb-2">Marca</label>
-                                    <input type="text" 
-                                           id="marIns" 
-                                           wire:model="marIns" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('marIns') border-red-500 @enderror"
-                                           placeholder="Ej: Zoetis, Bayer">
-                                    @error('marIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                                <div>
-                                    <label for="uniIns" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Unidad de Medida <span class="text-red-500">*</span>
-                                    </label>
-                                    <select id="uniIns" 
-                                            wire:model="uniIns" 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('uniIns') border-red-500 @enderror"
-                                            required>
-                                        <option value="">Seleccionar unidad</option>
-                                        <option value="kg">Kilogramos (kg)</option>
-                                        <option value="g">Gramos (g)</option>
-                                        <option value="litros">Litros (L)</option>
-                                        <option value="ml">Mililitros (ml)</option>
-                                        <option value="dosis">Dosis</option>
-                                        <option value="unidades">Unidades</option>
-                                        <option value="frascos">Frascos</option>
-                                        <option value="sobres">Sobres</option>
-                                        <option value="tabletas">Tabletas</option>
-                                        <option value="bultos">Bultos</option>
-                                    </select>
-                                    @error('uniIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            </div>
+                    <!-- Fila 2: Marca y Unidad -->
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <!-- Marca -->
+                        <div>
+                            <label for="marIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Marca
+                            </label>
+                            <input type="text" 
+                                   wire:model="marIns"
+                                   id="marIns"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                   placeholder="Ej: Zoetis, Bayer">
+                        </div>
 
-                            <!-- Fechas - Solo vencimiento -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="fecVenIns" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Fecha de Vencimiento
-                                    </label>
-                                    <input type="date" 
-                                           id="fecVenIns" 
-                                           wire:model="fecVenIns" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('fecVenIns') border-red-500 @enderror">
-                                    @error('fecVenIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        Para alertas de vencimiento
-                                    </p>
-                                </div>
-                                <div>
-                                    <!-- Campo vacío para mantener el grid -->
-                                </div>
-                            </div>
+                        <!-- Unidad de Medida -->
+                        <div>
+                            <label for="uniIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Unidad de Medida *
+                            </label>
+                            <select wire:model="uniIns" 
+                                    id="uniIns"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('uniIns') border-red-500 @enderror">
+                                <option value="">Selecciona una unidad</option>
+                                @foreach($unidadesDisponibles as $unidad)
+                                    <option value="{{ $unidad }}">{{ $unidad }}</option>
+                                @endforeach
+                            </select>
+                            @error('uniIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
 
-                            <!-- Alertas de Vencimiento -->
-                            @if($vencimientoAlert)
-                            <div class="mb-6">
-                                <div class="bg-{{ $vencimientoAlert['type'] }}-50 border border-{{ $vencimientoAlert['type'] }}-200 text-{{ $vencimientoAlert['type'] }}-800 px-4 py-3 rounded-lg flex items-center">
-                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    <div>
-                                        <strong>{{ ucfirst($vencimientoAlert['type']) }}:</strong> {{ $vencimientoAlert['message'] }}
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-
-                            <!-- Control de Stock -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                                <div>
-                                    <label for="stockMinIns" class="block text-sm font-medium text-gray-700 mb-2">Stock Mínimo</label>
-                                    <input type="number" 
-                                           id="stockMinIns" 
-                                           wire:model="stockMinIns" 
-                                           min="0" 
-                                           step="0.01"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('stockMinIns') border-red-500 @enderror"
-                                           placeholder="Cantidad mínima">
-                                    @error('stockMinIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        Para alertas de reabastecimiento
-                                    </p>
-                                </div>
-                                <div>
-                                    <label for="stockMaxIns" class="block text-sm font-medium text-gray-700 mb-2">Stock Máximo</label>
-                                    <input type="number" 
-                                           id="stockMaxIns" 
-                                           wire:model="stockMaxIns" 
-                                           min="0" 
-                                           step="0.01"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('stockMaxIns') border-red-500 @enderror"
-                                           placeholder="Cantidad máxima">
-                                    @error('stockMaxIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        Cantidad máxima operativa
-                                    </p>
-                                </div>
-                                <div>
-                                    <label for="idProveIns" class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
-                                    <select id="idProveIns" 
-                                            wire:model="idProveIns" 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('idProveIns') border-red-500 @enderror">
-                                        <option value="">Sin proveedor</option>
-                                        @foreach($proveedores as $proveedor)
-                                            <option value="{{ $proveedor->idProve }}">
-                                                {{ $proveedor->nomProve }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('idProveIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        Proveedor habitual
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Estado -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                                <div>
-                                    <label for="estIns" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Estado <span class="text-red-500">*</span>
-                                    </label>
-                                    <select id="estIns" 
-                                            wire:model="estIns" 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('estIns') border-red-500 @enderror"
-                                            required>
-                                        <option value="disponible">Disponible</option>
-                                        <option value="agotado">Agotado</option>
-                                        <option value="vencido">Vencido</option>
-                                    </select>
-                                    @error('estIns')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                                <div class="md:col-span-2">
-                                    @if($showStockWarning)
-                                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                                        <div class="flex">
-                                            <div class="flex-shrink-0">
-                                                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
+                    <!-- Sección Proveedor -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Proveedor
+                        </label>
+                        
+                        <!-- Proveedor Seleccionado -->
+                        @if($idProveIns)
+                            @php
+                                $proveedorSeleccionado = $proveedores->find($idProveIns);
+                            @endphp
+                            @if($proveedorSeleccionado)
+                                <div class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                    </svg>
+                                                </div>
                                             </div>
                                             <div class="ml-3">
-                                                <p class="text-sm text-yellow-700">
-                                                    El stock mínimo no puede ser mayor al stock máximo
-                                                </p>
+                                                <p class="text-sm font-medium text-green-800">{{ $proveedorSeleccionado->nomProve }}</p>
+                                                <p class="text-xs text-green-600">{{ $proveedorSeleccionado->nitProve }}</p>
                                             </div>
                                         </div>
+                                        <button type="button" 
+                                                wire:click="clearProveedor"
+                                                class="cursor-pointer text-green-600 hover:text-green-800">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
                                     </div>
-                                    @endif
+                                </div>
+                            @endif
+                        @else
+                            <!-- Búsqueda de Proveedor -->
+                            <div class="space-y-3">
+                                <div class="flex space-x-2">
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                               wire:model.live.debounce.300ms="searchProveedor"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                               placeholder="Buscar proveedor por nombre o NIT...">
+                                    </div>
+                                    <button type="button" 
+                                            wire:click="toggleCreateProveedor"
+                                            class="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- Lista de Proveedores -->
+                                @if($searchProveedor && $proveedores->count() > 0)
+                                    <div class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
+                                        @foreach($proveedores as $proveedor)
+                                            <button type="button" 
+                                                    wire:click="selectProveedor({{ $proveedor->idProve }})"
+                                                    class="cursor-pointer w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center">
+                                                <div class="flex-shrink-0 h-8 w-8">
+                                                    <div class="h-8 w-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <p class="text-sm font-medium text-gray-900">{{ $proveedor->nomProve }}</p>
+                                                    <p class="text-xs text-gray-500">{{ $proveedor->nitProve }}</p>
+                                                </div>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @elseif($searchProveedor && $proveedores->count() === 0)
+                                    <div class="text-center py-4 text-gray-500 text-sm">
+                                        No se encontraron proveedores con ese criterio
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
+                        @error('idProveIns')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Formulario Crear Proveedor -->
+                    @if($showCreateProveedor)
+                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 class="text-lg font-medium text-blue-900 mb-4">Crear Nuevo Proveedor</h4>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="nuevoProveedorNombre" class="block text-sm font-medium text-blue-700 mb-1">
+                                        Nombre *
+                                    </label>
+                                    <input type="text" 
+                                           wire:model="nuevoProveedorNombre"
+                                           id="nuevoProveedorNombre"
+                                           class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 @error('nuevoProveedorNombre') border-red-500 @enderror">
+                                    @error('nuevoProveedorNombre')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                <div>
+                                    <label for="nuevoProveedorNit" class="block text-sm font-medium text-blue-700 mb-1">
+                                        NIT *
+                                    </label>
+                                    <input type="text" 
+                                           wire:model="nuevoProveedorNit"
+                                           id="nuevoProveedorNit"
+                                           class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 @error('nuevoProveedorNit') border-red-500 @enderror">
+                                    @error('nuevoProveedorNit')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                <div>
+                                    <label for="nuevoProveedorTelefono" class="block text-sm font-medium text-blue-700 mb-1">
+                                        Teléfono
+                                    </label>
+                                    <input type="text" 
+                                           wire:model="nuevoProveedorTelefono"
+                                           id="nuevoProveedorTelefono"
+                                           class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label for="nuevoProveedorEmail" class="block text-sm font-medium text-blue-700 mb-1">
+                                        Email
+                                    </label>
+                                    <input type="email" 
+                                           wire:model="nuevoProveedorEmail"
+                                           id="nuevoProveedorEmail"
+                                           class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 @error('nuevoProveedorEmail') border-red-500 @enderror">
+                                    @error('nuevoProveedorEmail')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
-
-                            <!-- Observaciones -->
-                            <div class="mb-6">
-                                <label for="obsIns" class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
-                                <textarea id="obsIns" 
-                                          wire:model="obsIns" 
-                                          rows="4" 
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('obsIns') border-red-500 @enderror"
-                                          placeholder="Observaciones adicionales sobre el insumo, modo de uso, contraindicaciones, etc..."></textarea>
-                                @error('obsIns')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Botones -->
-                            <div class="flex items-center justify-end space-x-4">
-                                <a href="{{ route('inventario.insumos.index') }}" wire:navigate
-                                   class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
-                                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
+                            <div class="flex justify-end space-x-3 mt-4">
+                                <button type="button" 
+                                        wire:click="toggleCreateProveedor"
+                                        class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg">
                                     Cancelar
-                                </a>
-                                <button type="submit" 
-                                        class="cursor-pointer px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-                                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
-                                    </svg>
-                                    Guardar Insumo
+                                </button>
+                                <button type="button" 
+                                        wire:click="crearProveedor"
+                                        class="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                                    Crear Proveedor
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+                        </div>
+                    @endif
 
-            <!-- Panel de Ayuda -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Consejos por Tipo -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-yellow-500 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                            </svg>
-                            Consejos por Tipo
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-4">
+                    <!-- Fila 3: Stocks -->
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <!-- Stock Mínimo -->
                         <div>
-                            <h4 class="font-medium {{ $this->consejos['color'] }} flex items-center mb-3">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $this->consejos['icon'] }}"></path>
-                                </svg>
-                                {{ $this->consejos['titulo'] }}
-                            </h4>
-                            <div class="space-y-2">
-                                @foreach($this->consejos['consejos'] as $consejo)
-                                <div class="flex items-start text-sm text-gray-600">
-                                    <svg class="w-4 h-4 {{ $this->consejos['color'] }} mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                    </svg>
-                                    {{ $consejo }}
-                                </div>
-                                @endforeach
-                            </div>
+                            <label for="stockMinIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Stock Mínimo
+                            </label>
+                            <input type="number" 
+                                   wire:model="stockMinIns"
+                                   id="stockMinIns"
+                                   step="0.01"
+                                   min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('stockMinIns') border-red-500 @enderror"
+                                   placeholder="Cantidad mínima para alertas">
+                            @error('stockMinIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
+
+                        <!-- Stock Máximo -->
+                        <div>
+                            <label for="stockMaxIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Stock Máximo
+                            </label>
+                            <input type="number" 
+                                   wire:model="stockMaxIns"
+                                   id="stockMaxIns"
+                                   step="0.01"
+                                   min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('stockMaxIns') border-red-500 @enderror"
+                                   placeholder="Cantidad máxima operativa">
+                            @error('stockMaxIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Fila 4: Vencimiento y Estado -->
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <!-- Fecha de Vencimiento -->
+                        <div>
+                            <label for="fecVenIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Fecha de Vencimiento
+                            </label>
+                            <input type="date" 
+                                   wire:model="fecVenIns"
+                                   id="fecVenIns"
+                                   min="{{ date('Y-m-d', strtotime('+1 day')) }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('fecVenIns') border-red-500 @enderror">
+                            @error('fecVenIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Estado -->
+                        <div>
+                            <label for="estIns" class="block text-sm font-medium text-gray-700 mb-2">
+                                Estado *
+                            </label>
+                            <select wire:model="estIns" 
+                                    id="estIns"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('estIns') border-red-500 @enderror">
+                                <option value="disponible">Disponible</option>
+                                <option value="agotado">Agotado</option>
+                                <option value="vencido">Vencido</option>
+                            </select>
+                            @error('estIns')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div>
+                        <label for="obsIns" class="block text-sm font-medium text-gray-700 mb-2">
+                            Observaciones
+                        </label>
+                        <textarea wire:model="obsIns"
+                                  id="obsIns"
+                                  rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                  placeholder="Información adicional sobre el insumo..."></textarea>
+                        @error('obsIns')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
-                <!-- Unidades Recomendadas -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-blue-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                            </svg>
-                            Unidades por Tipo
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="space-y-3 text-sm">
-                            <div>
-                                <h5 class="font-medium text-gray-900 text-blue-600">Medicamentos/Vacunas:</h5>
-                                <p class="text-gray-600">ml, dosis, frascos, unidades</p>
-                            </div>
-                            <div>
-                                <h5 class="font-medium text-gray-900 text-green-600">Concentrados:</h5>
-                                <p class="text-gray-600">kg, bultos (40kg), toneladas</p>
-                            </div>
-                            <div>
-                                <h5 class="font-medium text-gray-900 text-yellow-600">Vitaminas/Suplementos:</h5>
-                                <p class="text-gray-600">ml, g, kg, sobres, tabletas</p>
-                            </div>
-                            <div>
-                                <h5 class="font-medium text-gray-900 text-purple-600">Sal Mineralizada:</h5>
-                                <p class="text-gray-600">kg, bultos (25kg), sacos</p>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Botones -->
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" 
+                            wire:click="cancelar"
+                            class="cursor-pointer px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="cursor-pointer px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Crear Insumo
+                    </button>
                 </div>
+            </form>
+        </div>
 
-                <!-- Proveedores Disponibles -->
-                @if($proveedores->count() > 0)
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-gray-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
-                            </svg>
-                            Proveedores Disponibles
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        @foreach($proveedores->take(5) as $proveedor)
-                        <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-gray-200' : '' }}">
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-900">{{ $proveedor->nomProve }}</p>
-                                <p class="text-xs text-gray-500">{{ $proveedor->tipSumProve }}</p>
-                            </div>
-                            <button type="button" 
-                                    wire:click="$set('idProveIns', {{ $proveedor->idProve }})"
-                                    class="cursor-pointer text-green-600 hover:text-green-800 text-sm font-medium">
-                                Seleccionar
-                            </button>
-                        </div>
-                        @endforeach
-                        
-                        @if($proveedores->count() > 5)
-                        <div class="text-center mt-3">
-                            <p class="text-xs text-gray-500">y {{ $proveedores->count() - 5 }} más...</p>
-                        </div>
-                        @endif
-                    </div>
+        <!-- Información Adicional -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
                 </div>
-                @endif
-
-                <!-- Información Importante -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0118 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-blue-800">Importante</h3>
-                            <div class="mt-2 text-sm text-blue-700">
-                                <ul class="list-disc list-inside space-y-1">
-                                    <li>Verifica siempre las fechas de vencimiento</li>
-                                    <li>Los lotes ayudan a trazabilidad</li>
-                                    <li>Define stock mínimo para alertas automáticas</li>
-                                    <li>El stock inicial se registra después de crear el insumo</li>
-                                    <li>Los stocks se calcularán con el módulo de Movimientos</li>
-                                </ul>
-                            </div>
-                        </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">Información importante</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Los campos marcados con (*) son obligatorios</li>
+                            <li>El stock inicial será 0 - usa movimientos de inventario para registrar entradas</li>
+                            <li>Puedes crear un proveedor nuevo si no existe en la lista</li>
+                            <li>Los stocks mínimo y máximo son opcionales pero recomendados para alertas</li>
+                            <li>La fecha de vencimiento debe ser posterior a la fecha actual</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('notify', (event) => {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+        
+        Toast.fire({
+            icon: event.type,
+            title: event.message
+        });
+    });
+});
+</script>

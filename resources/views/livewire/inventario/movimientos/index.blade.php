@@ -15,6 +15,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public string $search = '';
     public string $tipo_movimiento = '';
     public string $tipo_item = '';
+    public string $proveedor_id = ''; // Nuevo filtro por proveedor
     public string $fecha_inicio = '';
     public string $fecha_fin = '';
     public int $perPage = 15;
@@ -65,9 +66,9 @@ new #[Layout('layouts.auth')] class extends Component {
 
     public function mount(): void
     {
-        $this->insumos = Insumo::all();
-        $this->herramientas = Herramienta::all();
-        $this->proveedores = Proveedor::all();
+        $this->insumos = Insumo::orderBy('nomIns')->get();
+        $this->herramientas = Herramienta::orderBy('nomHer')->get();
+        $this->proveedores = Proveedor::orderBy('nomProve')->get();
         $this->calcularEstadisticas();
     }
 
@@ -75,7 +76,8 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         return [
             'movimientos' => $this->getMovimientos(),
-            'estadisticas' => $this->estadisticas
+            'estadisticas' => $this->estadisticas,
+            'proveedores' => $this->proveedores
         ];
     }
 
@@ -93,16 +95,26 @@ new #[Layout('layouts.auth')] class extends Component {
                 ->orWhereHas('herramienta', function($subq) {
                     $subq->where('nomHer', 'like', '%'.$this->search.'%');
                 })
-                ->orWhereHas('usuario', function($subq) {
-                    $subq->where('name', 'like', '%'.$this->search.'%');
+                ->orWhereHas('proveedor', function($subq) {
+                    $subq->where('nomProve', 'like', '%'.$this->search.'%');
                 })
-                ->orWhere('obsInv', 'like', '%'.$this->search.'%');
+                ->orWhereHas('usuario', function($subq) {
+                    $subq->where('nomUsu', 'like', '%'.$this->search.'%')
+                          ->orWhere('apeUsu', 'like', '%'.$this->search.'%');
+                })
+                ->orWhere('obsInv', 'like', '%'.$this->search.'%')
+                ->orWhere('loteInv', 'like', '%'.$this->search.'%');
             });
         }
 
         // Filtro por tipo de movimiento
         if ($this->tipo_movimiento) {
             $query->where('tipMovInv', $this->tipo_movimiento);
+        }
+
+        // Filtro por proveedor
+        if ($this->proveedor_id) {
+            $query->where('idProve', $this->proveedor_id);
         }
 
         // Filtro por tipo de item
@@ -131,7 +143,9 @@ new #[Layout('layouts.auth')] class extends Component {
             'total_salidas' => Inventario::where('tipMovInv', 'salida')->count(),
             'total_consumos' => Inventario::where('tipMovInv', 'consumo')->count(),
             'movimientos_hoy' => Inventario::whereDate('fecMovInv', today())->count(),
-            'valor_total_movimientos' => Inventario::sum('costoTotInv') ?? 0
+            'valor_total_movimientos' => Inventario::sum('costoTotInv') ?? 0,
+            'movimientos_con_proveedor' => Inventario::whereNotNull('idProve')->count(),
+            'proveedores_activos' => Inventario::whereNotNull('idProve')->distinct('idProve')->count()
         ];
     }
 
@@ -140,6 +154,7 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->search = '';
         $this->tipo_movimiento = '';
         $this->tipo_item = '';
+        $this->proveedor_id = '';
         $this->fecha_inicio = '';
         $this->fecha_fin = '';
         $this->resetPage();
@@ -150,6 +165,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public function updatedSearch(): void { $this->resetPage(); }
     public function updatedTipoMovimiento(): void { $this->resetPage(); }
     public function updatedTipoItem(): void { $this->resetPage(); }
+    public function updatedProveedorId(): void { $this->resetPage(); }
     public function updatedFechaInicio(): void { $this->resetPage(); }
     public function updatedFechaFin(): void { $this->resetPage(); }
 
@@ -336,10 +352,11 @@ new #[Layout('layouts.auth')] class extends Component {
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900 flex items-center">
                         <svg class="w-8 h-8 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2 2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                         Movimientos de Inventario
                     </h1>
+                    <p class="mt-2 text-gray-600">Gestiona todos los movimientos de inventario con proveedores</p>
                 </div>
                 <div class="mt-4 sm:mt-0 flex space-x-3">
                     <button onclick="exportarMovimientos()" 
@@ -363,13 +380,27 @@ new #[Layout('layouts.auth')] class extends Component {
         <!-- Filtros -->
         <div class="bg-white shadow rounded-lg mb-6">
             <div class="px-6 py-4">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
+                    <!-- Búsqueda -->
                     <div>
                         <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
                         <input type="text" wire:model.live.debounce.500ms="search" id="search" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Item, usuario, observaciones...">
+                               placeholder="Item, proveedor, usuario...">
                     </div>
+
+                    <!-- Filtro por Proveedor -->
+                    <div>
+                        <label for="proveedor_id" class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                        <select wire:model.live="proveedor_id" id="proveedor_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Todos los proveedores</option>
+                            @foreach($proveedores as $proveedor)
+                                <option value="{{ $proveedor->idProve }}">{{ $proveedor->nomProve }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Tipo de Movimiento -->
                     <div>
                         <label for="tipo_movimiento" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                         <select wire:model.live="tipo_movimiento" id="tipo_movimiento" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
@@ -377,35 +408,41 @@ new #[Layout('layouts.auth')] class extends Component {
                             <option value="entrada">Entrada</option>
                             <option value="salida">Salida</option>
                             <option value="consumo">Consumo</option>
-                            <option value="aplicacion">Aplicación</option>
-                            <option value="compra">Compra</option>
-                            <option value="venta">Venta</option>
-                            <option value="donacion">Donación</option>
+                            <option value="ajuste_pos">Ajuste +</option>
+                            <option value="ajuste_neg">Ajuste -</option>
                             <option value="perdida">Pérdida</option>
-                            <option value="vencimiento">Vencimiento</option>
+                            <option value="venta">Venta</option>
                         </select>
                     </div>
+
+                    <!-- Tipo de Item -->
                     <div>
                         <label for="tipo_item" class="block text-sm font-medium text-gray-700 mb-1">Item</label>
                         <select wire:model.live="tipo_item" id="tipo_item" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                             <option value="">Todos</option>
-                            <option value="herramientas">Herramientas</option>
                             <option value="insumos">Insumos</option>
+                            <option value="herramientas">Herramientas</option>
                         </select>
                     </div>
+
+                    <!-- Fecha Inicio -->
                     <div>
                         <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 mb-1">Desde</label>
                         <input type="date" wire:model.live="fecha_inicio" id="fecha_inicio" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                     </div>
+
+                    <!-- Fecha Fin -->
                     <div>
                         <label for="fecha_fin" class="block text-sm font-medium text-gray-700 mb-1">Hasta</label>
                         <input type="date" wire:model.live="fecha_fin" id="fecha_fin" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                    <div class="flex items-end space-x-2">
+
+                    <!-- Botón Limpiar -->
+                    <div class="flex items-end">
                         <button wire:click="clearFilters" 
-                                class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                                class="cursor-pointer w-full px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
                             Limpiar
                         </button>
                     </div>
@@ -414,10 +451,10 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
 
         <!-- Estadísticas -->
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-8 gap-4 mb-6">
             <div class="bg-white border border-blue-200 rounded-lg p-4 text-center">
                 <div class="text-2xl font-bold text-blue-600">{{ $estadisticas['total_movimientos'] }}</div>
-                <div class="text-sm text-gray-600">Total Movimientos</div>
+                <div class="text-sm text-gray-600">Total</div>
             </div>
             <div class="bg-white border border-green-200 rounded-lg p-4 text-center">
                 <div class="text-2xl font-bold text-green-600">{{ $estadisticas['total_entradas'] }}</div>
@@ -438,6 +475,14 @@ new #[Layout('layouts.auth')] class extends Component {
             <div class="bg-white border border-indigo-200 rounded-lg p-4 text-center">
                 <div class="text-2xl font-bold text-indigo-600">${{ number_format($estadisticas['valor_total_movimientos'], 0, ',', '.') }}</div>
                 <div class="text-sm text-gray-600">Valor Total</div>
+            </div>
+            <div class="bg-white border border-teal-200 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-teal-600">{{ $estadisticas['movimientos_con_proveedor'] }}</div>
+                <div class="text-sm text-gray-600">Con Proveedor</div>
+            </div>
+            <div class="bg-white border border-pink-200 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-pink-600">{{ $estadisticas['proveedores_activos'] }}</div>
+                <div class="text-sm text-gray-600">Proveedores</div>
             </div>
         </div>
 
@@ -466,6 +511,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha/Hora</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
@@ -475,7 +521,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($movimientos as $movimiento)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $movimiento->id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $movimiento->idInv }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $movimiento->fecMovInv->format('d/m/Y') }}</div>
                                     <div class="text-xs text-gray-500">{{ $movimiento->fecMovInv->format('H:i:s') }}</div>
@@ -486,12 +532,11 @@ new #[Layout('layouts.auth')] class extends Component {
                                             'entrada' => ['bg-green-100 text-green-800', 'M12 6v6m0 0v6m0-6h6m-6 0H6'],
                                             'salida' => ['bg-red-100 text-red-800', 'M20 12H4'],
                                             'consumo' => ['bg-orange-100 text-orange-800', 'M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4'],
-                                            'aplicacion' => ['bg-blue-100 text-blue-800', 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
-                                            'compra' => ['bg-purple-100 text-purple-800', 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'],
-                                            'venta' => ['bg-indigo-100 text-indigo-800', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2'],
-                                            'donacion' => ['bg-pink-100 text-pink-800', 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z'],
+                                            'ajuste_pos' => ['bg-blue-100 text-blue-800', 'M12 6v6m0 0v6m0-6h6m-6 0H6'],
+                                            'ajuste_neg' => ['bg-yellow-100 text-yellow-800', 'M20 12H4'],
                                             'perdida' => ['bg-gray-100 text-gray-800', 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z'],
-                                            'vencimiento' => ['bg-yellow-100 text-yellow-800', 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
+                                            'venta' => ['bg-indigo-100 text-indigo-800', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2'],
+                                            'apertura' => ['bg-purple-100 text-purple-800', 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
                                             default => ['bg-gray-100 text-gray-800', 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z']
                                         };
                                     @endphp
@@ -505,7 +550,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                         </div>
                                         <div class="ml-3">
                                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $tipoInfo[0] }}">
-                                                {{ ucfirst($movimiento->tipMovInv) }}
+                                                {{ ucfirst(str_replace('_', ' ', $movimiento->tipMovInv)) }}
                                             </span>
                                         </div>
                                     </div>
@@ -527,22 +572,52 @@ new #[Layout('layouts.auth')] class extends Component {
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">
                                                 @if($movimiento->idHer)
-                                                    {{ $movimiento->herramienta->nomHer ?? 'Herramienta' }}
+                                                    {{ $movimiento->herramienta->nomHer ?? 'Herramienta eliminada' }}
                                                 @else
-                                                    {{ $movimiento->insumo->nomIns ?? 'Insumo' }}
+                                                    {{ $movimiento->insumo->nomIns ?? 'Insumo eliminado' }}
                                                 @endif
                                             </div>
                                             <div class="text-sm text-gray-500">
                                                 {{ $movimiento->idHer ? 'Herramienta' : 'Insumo' }}
+                                                @if($movimiento->loteInv)
+                                                    • Lote: {{ $movimiento->loteInv }}
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
                                 </td>
+
+                                <!-- Columna Proveedor -->
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($movimiento->proveedor)
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-8 w-8">
+                                                <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="text-sm font-medium text-gray-900">{{ $movimiento->proveedor->nomProve }}</div>
+                                                <div class="text-xs text-gray-500">{{ $movimiento->proveedor->nitProve }}</div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="flex items-center text-gray-400">
+                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                            </svg>
+                                            <span class="text-sm">Sin proveedor</span>
+                                        </div>
+                                    @endif
+                                </td>
+
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">
-                                        <div class="font-medium">{{ $movimiento->cantMovInv }} {{ $movimiento->uniMovInv }}</div>
-                                        @if($movimiento->loteInv)
-                                            <div class="text-xs text-gray-500">Lote: {{ $movimiento->loteInv }}</div>
+                                        <div class="font-medium">{{ number_format($movimiento->cantMovInv, 2) }} {{ $movimiento->uniMovInv }}</div>
+                                        @if($movimiento->fecVenceInv)
+                                            <div class="text-xs text-gray-500">Vence: {{ $movimiento->fecVenceInv->format('d/m/Y') }}</div>
                                         @endif
                                     </div>
                                 </td>
@@ -563,12 +638,18 @@ new #[Layout('layouts.auth')] class extends Component {
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $movimiento->usuario->name ?? 'Sistema' }}
+                                    @if($movimiento->usuario)
+                                        <div class="flex items-center">
+                                            <div class="text-sm font-medium text-gray-900">{{ $movimiento->usuario->nomUsu }} {{ $movimiento->usuario->apeUsu }}</div>
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400">Sistema</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                     <div class="flex items-center justify-center space-x-2">
                                         <!-- Ver -->
-                                        <a href="{{ route('inventario.movimientos.show', $movimiento) }}" wire:navigate
+                                        <a href="{{ route('inventario.movimientos.show', $movimiento->idInv) }}" wire:navigate
                                            class="text-indigo-600 hover:text-indigo-900 p-1" title="Ver detalles">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -577,7 +658,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                         </a>
                                         
                                         <!-- Editar -->
-                                        <a href="{{ route('inventario.movimientos.edit', $movimiento) }}" wire:navigate
+                                        <a href="{{ route('inventario.movimientos.edit', $movimiento->idInv) }}" wire:navigate
                                            class="text-blue-600 hover:text-blue-900 p-1" title="Editar">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -585,48 +666,20 @@ new #[Layout('layouts.auth')] class extends Component {
                                         </a>
                                         
                                         <!-- Eliminar -->
+                                        <button wire:click="confirmDelete({{ $movimiento->idInv }})" 
+                                                class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
 
-<button wire:click="confirmDelete({{ $movimiento->id }})" 
-        class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-    </svg>
-</button>
-                                        
-                                        <!-- Dropdown (opciones adicionales) -->
-                                        <div class="relative inline-block text-left">
-                                            <button type="button" onclick="toggleDropdown({{ $movimiento->id }})" 
-                                                    class="text-gray-400 hover:text-gray-600 p-1" title="Más opciones">
-                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
-                                                </svg>
-                                            </button>
-                                            <div id="dropdown-{{ $movimiento->id }}" 
-                                                 class="hidden absolute right-0 z-10 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
-                                                <div class="py-1">
-                                                    <a href="{{ route('inventario.movimientos.create') }}?tipo={{ $movimiento->tipMovInv }}&item={{ $movimiento->idHer ? 'herramienta' : 'insumo' }}&item_id={{ $movimiento->idHer ?? $movimiento->idIns }}" wire:navigate
-                                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                                        </svg>
-                                                        Duplicar Movimiento
-                                                    </a>
-                                                    <a href="#" onclick="generarReporte({{ $movimiento->id }})" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                        </svg>
-                                                        Generar Reporte
-                                                    </a>
-                                                    <a href="#" onclick="verHistorial('{{ $movimiento->idHer ? 'herramienta' : 'insumo' }}', {{ $movimiento->idHer ?? $movimiento->idIns }})" 
-                                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                        </svg>
-                                                        Ver Historial del Item
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <!-- Duplicar -->
+                                        <button wire:click="duplicarMovimiento({{ $movimiento->idInv }})" 
+                                                class="cursor-pointer text-green-600 hover:text-green-900 p-1" title="Duplicar">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -640,15 +693,31 @@ new #[Layout('layouts.auth')] class extends Component {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
                     <h3 class="mt-2 text-sm font-medium text-gray-900">No hay movimientos registrados</h3>
-                    <p class="mt-1 text-sm text-gray-500">Comienza registrando el primer movimiento de inventario.</p>
+                    <p class="mt-1 text-sm text-gray-500">
+                        @if($proveedor_id || $tipo_movimiento || $tipo_item || $search)
+                            No se encontraron movimientos con los filtros aplicados.
+                        @else
+                            Comienza registrando el primer movimiento de inventario.
+                        @endif
+                    </p>
                     <div class="mt-6">
-                        <a href="{{ route('inventario.movimientos.create') }}" wire:navigate
-                           class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Registrar Primer Movimiento
-                        </a>
+                        @if($proveedor_id || $tipo_movimiento || $tipo_item || $search)
+                            <button wire:click="clearFilters"
+                                   class="cursor-pointer inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Limpiar Filtros
+                            </button>
+                        @else
+                            <a href="{{ route('inventario.movimientos.create') }}" wire:navigate
+                               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Registrar Primer Movimiento
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -680,62 +749,73 @@ new #[Layout('layouts.auth')] class extends Component {
 
 <!-- Modal Eliminar Movimiento -->
 @if($showDeleteModal)
-    <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
-            <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <h3 class="ml-3 text-lg font-medium text-gray-900">Confirmar eliminación</h3>
+            </div>
             <p class="mb-4 text-sm text-gray-600">
                 ¿Está seguro que desea eliminar este movimiento de inventario? Esta acción afectará el stock actual y no se puede deshacer.
             </p>
             
-            <div class="flex justify-end gap-3">
+            @if($movimientoToDelete)
+                @php
+                    $movimiento = \App\Models\Inventario::find($movimientoToDelete);
+                @endphp
+                @if($movimiento)
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <p class="text-sm"><strong>Tipo:</strong> {{ ucfirst(str_replace('_', ' ', $movimiento->tipMovInv)) }}</p>
+                        <p class="text-sm"><strong>Cantidad:</strong> {{ $movimiento->cantMovInv }} {{ $movimiento->uniMovInv }}</p>
+                        @if($movimiento->proveedor)
+                            <p class="text-sm"><strong>Proveedor:</strong> {{ $movimiento->proveedor->nomProve }}</p>
+                        @endif
+                    </div>
+                @endif
+            @endif
+            
+            <div class="flex justify-end space-x-3">
                 <button wire:click="$set('showDeleteModal', false)"
-                        class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
+                        class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition">
+                    Cancelar
+                </button>
                 <button wire:click="deleteMovimiento"
-                        class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
+                        class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
+                    Eliminar
+                </button>
             </div>
         </div>
     </div>
 @endif
 
 <script>
-function toggleDropdown(id) {
-    const dropdown = document.getElementById(`dropdown-${id}`);
-    const allDropdowns = document.querySelectorAll('[id^="dropdown-"]');
-    
-    // Cerrar todos los otros dropdowns
-    allDropdowns.forEach(dd => {
-        if (dd.id !== `dropdown-${id}`) {
-            dd.classList.add('hidden');
-        }
-    });
-    
-    // Toggle el dropdown actual
-    dropdown.classList.toggle('hidden');
-}
-
-// Cerrar dropdowns al hacer click fuera
-document.addEventListener('click', function(event) {
-    const dropdowns = document.querySelectorAll('[id^="dropdown-"]');
-    dropdowns.forEach(dropdown => {
-        if (!dropdown.contains(event.target) && !event.target.closest('[onclick*="toggleDropdown"]')) {
-            dropdown.classList.add('hidden');
-        }
-    });
-});
-
 function exportarMovimientos() {
     // Función para exportar movimientos
     alert('Función de exportación - Por implementar');
 }
 
-function generarReporte(movimientoId) {
-    // Función para generar reporte específico
-    alert(`Generando reporte para movimiento ${movimientoId}`);
-}
-
-function verHistorial(tipoItem, itemId) {
-    // Función para ver historial completo del item
-    const url = `/inventario/movimientos?tipo_item=${tipoItem}&item_id=${itemId}`;
-    window.location.href = url;
-}
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('notify', (event) => {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+        
+        Toast.fire({
+            icon: event.type,
+            title: event.message
+        });
+    });
+});
 </script>

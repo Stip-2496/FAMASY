@@ -38,8 +38,6 @@ new #[Layout('layouts.auth')] class extends Component {
             $query->byEstado($this->estado);
         }
 
-        // TODO: Implementar filtro por stock cuando se tenga el cálculo de stock actual
-
         return [
             'herramientas' => $query->paginate($this->perPage),
             'categorias' => [
@@ -69,28 +67,28 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->showDeleteModal = true;
     }
 
-public function delete(): void
-{
-    try {
-        $herramienta = Herramienta::findOrFail($this->herramientaToDelete);
-    
-        if (!$herramienta->puedeEliminar()) {
-            $this->deleteError = 'No se puede eliminar porque ' . $herramienta->razonNoEliminar();
-            return;
-        }
+    public function delete(): void
+    {
+        try {
+            $herramienta = Herramienta::findOrFail($this->herramientaToDelete);
+        
+            if (!$herramienta->puedeEliminar()) {
+                $this->deleteError = 'No se puede eliminar porque ' . $herramienta->razonNoEliminar();
+                return;
+            }
 
-        $herramienta->delete();
-    
-        $this->showDeleteModal = false;
-        $this->resetPage(); // Agrega esto para refrescar la paginación
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Herramienta eliminada exitosamente.'
-        ]);
-    } catch (\Exception $e) {
-        $this->deleteError = 'Error al eliminar: ' . $e->getMessage();
+            $herramienta->delete();
+        
+            $this->showDeleteModal = false;
+            $this->resetPage();
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Herramienta eliminada exitosamente.'
+            ]);
+        } catch (\Exception $e) {
+            $this->deleteError = 'Error al eliminar: ' . $e->getMessage();
+        }
     }
-}
 }; ?>
 
 @section('title', 'Gestión de herramientas')
@@ -190,45 +188,66 @@ public function delete(): void
 
             @if($herramientas->count() > 0)
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200 text-xs">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Herramienta</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Existencias</th>
-                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">#</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Herramienta</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Existencias</th>
+                                <th class="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($herramientas as $herramienta)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $herramienta->idHer }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-2 whitespace-nowrap text-gray-900">{{ $herramienta->idHer }}</td>
+                                
+                                <!-- Columna Herramienta -->
+                                <td class="px-3 py-2 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                                </svg>
-                                            </div>
+                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            </svg>
                                         </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">{{ $herramienta->nomHer }}</div>
+                                        <div class="ml-2">
+                                            <div class="font-medium text-gray-900">{{ $herramienta->nomHer }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Columna Proveedor -->
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
+                                            <svg class="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-2">
                                             @if($herramienta->proveedor)
-                                                <div class="text-sm text-gray-500">{{ $herramienta->proveedor->nomProve }}</div>
+                                                <div class="font-medium text-gray-900">{{ $herramienta->proveedor->nomProve }}</div>
+                                                <div class="text-gray-500">{{ $herramienta->proveedor->nitProve }}</div>
+                                            @else
+                                                <div class="text-gray-400">Sin proveedor</div>
                                             @endif
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+
+                                <!-- Categoría -->
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xxs font-medium bg-blue-100 text-blue-800">
                                         {{ ucfirst($herramienta->catHer) }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+
+                                <!-- Estado -->
+                                <td class="px-3 py-2 whitespace-nowrap">
                                     @php
                                         $estadoClasses = match($herramienta->estHer) {
                                             'bueno' => 'bg-green-100 text-green-800',
@@ -237,42 +256,55 @@ public function delete(): void
                                             default => 'bg-gray-100 text-gray-800'
                                         };
                                     @endphp
-                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $estadoClasses }}">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xxs font-medium {{ $estadoClasses }}">
                                         {{ ucfirst($herramienta->estHer) }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+
+                                <!-- Ubicación -->
+                                <td class="px-3 py-2 whitespace-nowrap text-gray-900">
                                     {{ $herramienta->ubiHer ?? 'No especificada' }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">
-                                        <div class="font-medium">{{ $herramienta->stockActual ?? 0 }} unidades</div>
+
+                                <!-- Existencias -->
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    <div class="text-gray-900">
+                                        @php
+                                            // Calcular stock actual desde movimientos de inventario si existe
+                                            $stockActual = 0; // Este debería calcularse desde los movimientos
+                                        @endphp
+                                        <div class="font-medium">{{ $stockActual }} unidades</div>
                                         @if($herramienta->stockMinHer)
                                             <div class="text-gray-500">Mín: {{ $herramienta->stockMinHer }}</div>
                                         @endif
+                                        @if($herramienta->stockMaxHer)
+                                            <div class="text-gray-500">Máx: {{ $herramienta->stockMaxHer }}</div>
+                                        @endif
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                    <div class="flex items-center justify-center space-x-2">
+
+                                <!-- Acciones -->
+                                <td class="px-3 py-2 whitespace-nowrap font-medium">
+                                    <div class="flex space-x-1">
                                         <a href="{{ route('inventario.herramientas.show', $herramienta->idHer) }}" wire:navigate
-                                           class="text-indigo-600 hover:text-indigo-900 p-1" title="Ver detalles">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                           class="text-blue-600 hover:text-blue-900" title="Ver detalles">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                             </svg>
                                         </a>
                                         <a href="{{ route('inventario.herramientas.edit', $herramienta->idHer) }}" wire:navigate
-                                           class="text-blue-600 hover:text-blue-900 p-1" title="Editar">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                           class="text-indigo-600 hover:text-indigo-900" title="Editar">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </a>
                                         <button wire:click="confirmDelete({{ $herramienta->idHer }})"
-   class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-    </svg>
-</button>           
+                                                class="cursor-pointer text-red-600 hover:text-red-900" title="Eliminar">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>           
                                     </div>
                                 </td>
                             </tr>
@@ -324,46 +356,46 @@ public function delete(): void
     </div>
 
     <!-- Modal de Confirmación -->
-@if($showDeleteModal)
-<div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-gray-900">Confirmar eliminación</h3>
-            <button wire:click="$set('showDeleteModal', false)" class="text-gray-500 hover:text-gray-700">
-                <svg class="cursor-pointer w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        
-        <p class="text-gray-600 mb-4">¿Estás seguro de que deseas eliminar esta herramienta?</p>
-        
-        @if($deleteError)
-        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    @if($showDeleteModal)
+    <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Confirmar eliminación</h3>
+                <button wire:click="$set('showDeleteModal', false)" class="text-gray-500 hover:text-gray-700">
+                    <svg class="cursor-pointer w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-red-700">{{ $deleteError }}</p>
+                </button>
+            </div>
+            
+            <p class="text-gray-600 mb-4">¿Estás seguro de que deseas eliminar esta herramienta?</p>
+            
+            @if($deleteError)
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700">{{ $deleteError }}</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        @endif
-        
-        <div class="flex justify-end space-x-3">
-            <button wire:click="$set('showDeleteModal', false)" 
-                    class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
-                Cancelar
-            </button>
-            <button wire:click="delete" 
-                    class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
-                Eliminar
-            </button>
+            @endif
+            
+            <div class="flex justify-end space-x-3">
+                <button wire:click="$set('showDeleteModal', false)" 
+                        class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                    Cancelar
+                </button>
+                <button wire:click="delete" 
+                        class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                    Eliminar
+                </button>
+            </div>
         </div>
     </div>
-</div>
-@endif
+    @endif
 </div>

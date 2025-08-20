@@ -1,7 +1,8 @@
 <?php
-// resources/views/livewire/inventario/insumos/index.blade.php
+// resources/views/livewire/inventario/insumos/index.php
 
 use App\Models\Insumo;
+use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -14,6 +15,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public ?string $estado = null;
     public ?string $stock = null;
     public ?string $vencimiento = null;
+    public ?string $proveedor = null; // Nuevo filtro por proveedor
 
     public bool $verPapelera = false;
     public bool $showDeleteModal = false;
@@ -31,67 +33,127 @@ new #[Layout('layouts.auth')] class extends Component {
 
         $this->verPapelera
             ? $query->onlyTrashed()
-            : $query->activos();
+            : $query->whereNull('deleted_at');
 
+        // Filtro de búsqueda
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('nomIns', 'like', "%{$this->search}%")
                   ->orWhere('marIns', 'like', "%{$this->search}%")
-                  ->orWhere('tipIns', 'like', "%{$this->search}%");
+                  ->orWhere('tipIns', 'like', "%{$this->search}%")
+                  ->orWhereHas('proveedor', function($subQ) {
+                      $subQ->where('nomProve', 'like', "%{$this->search}%");
+                  });
             });
         }
 
+        // Filtro por tipo
         if ($this->tipo) {
-            $query->byTipo($this->tipo);
+            $query->where('tipIns', $this->tipo);
         }
 
+        // Filtro por estado
         if ($this->estado) {
-            $query->byEstado($this->estado);
+            $query->where('estIns', $this->estado);
         }
 
+        // Filtro por proveedor
+        if ($this->proveedor) {
+            $query->where('idProveIns', $this->proveedor);
+        }
+
+        // Filtro por stock
         if ($this->stock) {
-            $query->byStock($this->stock);
+            switch ($this->stock) {
+                case 'critico':
+                    $query->whereRaw('canIns <= stockMinIns')
+                          ->whereNotNull('stockMinIns');
+                    break;
+                case 'bajo':
+                    $query->whereRaw('canIns <= (stockMinIns * 1.2)')
+                          ->whereNotNull('stockMinIns');
+                    break;
+                case 'normal':
+                    $query->whereRaw('canIns > (stockMinIns * 1.2)')
+                          ->whereNotNull('stockMinIns');
+                    break;
+            }
         }
 
+        // Filtro por vencimiento
         if ($this->vencimiento) {
-            $query->byVencimiento($this->vencimiento);
+            switch ($this->vencimiento) {
+                case 'vencido':
+                    $query->where('fecVenIns', '<', now());
+                    break;
+                case 'urgente':
+                    $query->whereBetween('fecVenIns', [now(), now()->addDays(7)]);
+                    break;
+                case 'critico':
+                    $query->whereBetween('fecVenIns', [now(), now()->addDays(30)]);
+                    break;
+            }
         }
 
-        $insumos = $query->paginate(10);
+        $insumos = $query->orderBy('nomIns')->paginate(10);
 
+        // Estadísticas
         $estadisticas = !$this->verPapelera ? [
-            'total' => Insumo::activos()->count(),
-            'disponibles' => Insumo::activos()->where('estIns', 'disponible')->count(),
-            'stock_critico' => 0,
-            'por_vencer' => Insumo::activos()->whereBetween('fecVenIns', [now(), now()->addDays(30)])->count(),
-            'vencidos' => Insumo::activos()->where('fecVenIns', '<', now())->count(),
-            'valor_total' => 0,
+            'total' => Insumo::whereNull('deleted_at')->count(),
+            'disponibles' => Insumo::whereNull('deleted_at')->where('estIns', 'disponible')->count(),
+            'stock_critico' => Insumo::whereNull('deleted_at')
+                ->whereRaw('canIns <= stockMinIns')
+                ->whereNotNull('stockMinIns')
+                ->count(),
+            'por_vencer' => Insumo::whereNull('deleted_at')
+                ->whereBetween('fecVenIns', [now(), now()->addDays(30)])
+                ->count(),
+            'vencidos' => Insumo::whereNull('deleted_at')
+                ->where('fecVenIns', '<', now())
+                ->count(),
+            'con_proveedor' => Insumo::whereNull('deleted_at')
+                ->whereNotNull('idProveIns')
+                ->count(),
         ] : [];
 
+        // Próximos a vencer
         $proximosVencer = !$this->verPapelera
-            ? Insumo::activos()
+            ? Insumo::whereNull('deleted_at')
+                ->with('proveedor')
                 ->whereBetween('fecVenIns', [now(), now()->addDays(30)])
                 ->orderBy('fecVenIns')
                 ->get()
             : collect();
 
+        // Lista de proveedores para el filtro
+        $proveedores = Proveedor::orderBy('nomProve')->get();
+
+        // Tipos únicos para el filtro
+        $tipos = Insumo::whereNull('deleted_at')
+            ->whereNotNull('tipIns')
+            ->distinct()
+            ->pluck('tipIns')
+            ->sort();
+
         return [
             'insumos' => $insumos,
             'estadisticas' => $estadisticas,
-            'proximosVencer' => $proximosVencer
+            'proximosVencer' => $proximosVencer,
+            'proveedores' => $proveedores,
+            'tipos' => $tipos
         ];
     }
 
     public function updated($property): void
     {
-        if (in_array($property, ['search', 'tipo', 'estado', 'stock', 'vencimiento'])) {
+        if (in_array($property, ['search', 'tipo', 'estado', 'stock', 'vencimiento', 'proveedor'])) {
             $this->resetPage();
         }
     }
 
     public function clearFilters(): void
     {
-        $this->reset(['search', 'tipo', 'estado', 'stock', 'vencimiento']);
+        $this->reset(['search', 'tipo', 'estado', 'stock', 'vencimiento', 'proveedor']);
         $this->resetPage();
     }
 
@@ -120,7 +182,7 @@ new #[Layout('layouts.auth')] class extends Component {
             if (!$insumo->puedeEliminar()) {
                 $this->dispatch('notify', [
                     'type' => 'error',
-                    'message' => 'No se puede eliminar: ' . $insumo->razonNoEliminar()
+                    'message' => 'No se puede eliminar: tiene movimientos de inventario asociados'
                 ]);
                 return;
             }
@@ -157,10 +219,10 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         $insumo = Insumo::onlyTrashed()->findOrFail($id);
 
-        if ($insumo->movimientos()->count() > 0) {
+        if ($insumo->movimientosInventario()->count() > 0) {
             $this->dispatch('notify', [
                 'type' => 'error',
-                'message' => 'No se puede eliminar permanentemente porque tiene movimientos.'
+                'message' => 'No se puede eliminar permanentemente porque tiene movimientos de inventario.'
             ]);
             return;
         }
@@ -189,6 +251,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         </svg>
                         Gestión de Insumos
                     </h1>
+                    <p class="mt-2 text-gray-600">Administra tu inventario de insumos y sus proveedores</p>
                 </div>
                 <div class="mt-4 sm:mt-0 flex space-x-3">
                     <button wire:click="verificarVencimientos" 
@@ -197,6 +260,13 @@ new #[Layout('layouts.auth')] class extends Component {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
                         Vencimientos
+                    </button>
+                    <button wire:click="togglePapelera" 
+                            class="cursor-pointer inline-flex items-center px-4 py-2 {{ $verPapelera ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-500 hover:bg-gray-600' }} text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        {{ $verPapelera ? 'Ver Activos' : 'Papelera' }}
                     </button>
                     <a href="{{ route('inventario.insumos.create') }}" wire:navigate
                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
@@ -209,18 +279,8 @@ new #[Layout('layouts.auth')] class extends Component {
             </div>
         </div>
 
-        <!-- Nota Temporal -->
-        <div class="mb-6 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-            </svg>
-            <div>
-                <strong>Información:</strong> Los stocks actuales aparecen en 0 temporalmente. Se calcularán automáticamente cuando implementemos el módulo de Movimientos de Inventario.
-            </div>
-        </div>
-
         <!-- Alertas de Vencimiento -->
-        @if($proximosVencer->count() > 0)
+        @if($proximosVencer->count() > 0 && !$verPapelera)
             <div class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center justify-between">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -234,64 +294,94 @@ new #[Layout('layouts.auth')] class extends Component {
             </div>
         @endif
 
-        @if($mostrarVencimientos)
-    <div class="mb-6 bg-white border border-yellow-200 rounded-lg shadow overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-yellow-100 text-yellow-800">
-                <tr>
-                    <th class="px-4 py-2 text-left font-medium">Insumo</th>
-                    <th class="px-4 py-2 text-left font-medium">Tipo</th>
-                    <th class="px-4 py-2 text-left font-medium">Vencimiento</th>
-                    <th class="px-4 py-2 text-left font-medium">Días restantes</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($proximosVencer as $insumo)
-                    @php
-                        $diasRestantes = now()->diffInDays($insumo->fecVenIns, false);
-                        $nivel = $diasRestantes < 0 ? 'Vencido' : ($diasRestantes <= 7 ? 'Urgente' : 'Crítico');
-                        $clase = $diasRestantes < 0 ? 'text-gray-600' : ($diasRestantes <= 7 ? 'text-red-600' : 'text-yellow-600');
-                    @endphp
-                    <tr class="hover:bg-yellow-50 border-b">
-                        <td class="px-4 py-2">{{ $insumo->nomIns }}</td>
-                        <td class="px-4 py-2 capitalize">{{ $insumo->tipIns }}</td>
-                        <td class="px-4 py-2">{{ \Carbon\Carbon::parse($insumo->fecVenIns)->format('d/m/Y') }}</td>
-                        <td class="px-4 py-2 {{ $clase }}">
-                            {{ $diasRestantes < 0 ? 'Vencido hace '.abs($diasRestantes).' días' : $diasRestantes . ' días' }}
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="4" class="text-center px-4 py-3 text-gray-500">No hay insumos registrados como próximos a vencer.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-@endif
+        <!-- Detalles de Vencimientos -->
+        @if($mostrarVencimientos && $proximosVencer->count() > 0)
+            <div class="mb-6 bg-white border border-yellow-200 rounded-lg shadow overflow-x-auto">
+                <div class="px-4 py-3 bg-yellow-100 border-b border-yellow-200">
+                    <h3 class="text-lg font-medium text-yellow-800 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        Insumos Próximos a Vencer
+                    </h3>
+                </div>
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Insumo</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Proveedor</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Tipo</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Vencimiento</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-700">Días restantes</th>
+                            <th class="px-4 py-2 text-center font-medium text-gray-700">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @foreach($proximosVencer as $insumo)
+                            @php
+                                $diasRestantes = now()->diffInDays($insumo->fecVenIns, false);
+                                $nivel = $diasRestantes < 0 ? 'Vencido' : ($diasRestantes <= 7 ? 'Urgente' : 'Crítico');
+                                $clase = $diasRestantes < 0 ? 'text-gray-600 bg-gray-50' : ($diasRestantes <= 7 ? 'text-red-600 bg-red-50' : 'text-yellow-600 bg-yellow-50');
+                            @endphp
+                            <tr class="hover:bg-gray-50 {{ $clase }}">
+                                <td class="px-4 py-2 font-medium">{{ $insumo->nomIns }}</td>
+                                <td class="px-4 py-2 text-gray-600">
+                                    {{ $insumo->proveedor?->nomProve ?? 'Sin proveedor' }}
+                                </td>
+                                <td class="px-4 py-2 capitalize">{{ $insumo->tipIns }}</td>
+                                <td class="px-4 py-2">{{ \Carbon\Carbon::parse($insumo->fecVenIns)->format('d/m/Y') }}</td>
+                                <td class="px-4 py-2 font-medium">
+                                    {{ $diasRestantes < 0 ? 'Vencido hace '.abs($diasRestantes).' días' : $diasRestantes . ' días' }}
+                                </td>
+                                <td class="px-4 py-2 text-center">
+                                    <a href="{{ route('inventario.insumos.edit', $insumo->idIns) }}" wire:navigate
+                                       class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                                        Editar
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
 
         <!-- Filtros -->
         <div class="bg-white shadow rounded-lg mb-6">
             <div class="px-6 py-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                    <!-- Búsqueda -->
                     <div>
                         <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
                         <input type="text" 
                                wire:model.live.debounce.500ms="search"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                               placeholder="Nombre, marca...">
+                               placeholder="Nombre, marca, proveedor...">
                     </div>
+
+                    <!-- Filtro por Proveedor -->
+                    <div>
+                        <label for="proveedor" class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                        <select wire:model.live="proveedor" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                            <option value="">Todos los proveedores</option>
+                            @foreach($proveedores as $prov)
+                                <option value="{{ $prov->idProve }}">{{ $prov->nomProve }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Filtro por Tipo -->
                     <div>
                         <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                         <select wire:model.live="tipo" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                            <option value="">Todos</option>
-                            <option value="medicamento veterinario">Medicamento Veterinario</option>
-                            <option value="concentrado">Concentrado</option>
-                            <option value="vacuna">Vacuna</option>
-                            <option value="vitamina">Vitamina</option>
-                            <option value="suplemento">Suplemento</option>
+                            <option value="">Todos los tipos</option>
+                            @foreach($tipos as $tipoOption)
+                                <option value="{{ $tipoOption }}">{{ ucfirst($tipoOption) }}</option>
+                            @endforeach
                         </select>
                     </div>
+
+                    <!-- Filtro por Estado -->
                     <div>
                         <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
                         <select wire:model.live="estado" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
@@ -301,15 +391,8 @@ new #[Layout('layouts.auth')] class extends Component {
                             <option value="vencido">Vencido</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                        <select wire:model.live="stock" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                            <option value="">Todos</option>
-                            <option value="critico">Crítico</option>
-                            <option value="bajo">Bajo</option>
-                            <option value="normal">Normal</option>
-                        </select>
-                    </div>
+
+                    <!-- Filtro por Vencimiento -->
                     <div>
                         <label for="vencimiento" class="block text-sm font-medium text-gray-700 mb-1">Vencimiento</label>
                         <select wire:model.live="vencimiento" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
@@ -319,10 +402,12 @@ new #[Layout('layouts.auth')] class extends Component {
                             <option value="critico">Próximos 30 días</option>
                         </select>
                     </div>
-                    <div class="flex items-end space-x-2">
+
+                    <!-- Botón Limpiar -->
+                    <div class="flex items-end">
                         <button wire:click="clearFilters" 
-                                class="cursor-pointer flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
-                            Limpiar
+                                class="cursor-pointer w-full px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                            Limpiar Filtros
                         </button>
                     </div>
                 </div>
@@ -330,32 +415,34 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
 
         <!-- Estadísticas -->
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-            <div class="bg-white border border-green-200 rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-green-600">{{ $estadisticas['total'] ?? 0 }}</div>
-                <div class="text-sm text-gray-600">Total Insumos</div>
+        @if(!$verPapelera)
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                <div class="bg-white border border-green-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ $estadisticas['total'] ?? 0 }}</div>
+                    <div class="text-sm text-gray-600">Total Insumos</div>
+                </div>
+                <div class="bg-white border border-blue-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ $estadisticas['disponibles'] ?? 0 }}</div>
+                    <div class="text-sm text-gray-600">Disponibles</div>
+                </div>
+                <div class="bg-white border border-red-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-red-600">{{ $estadisticas['stock_critico'] ?? 0 }}</div>
+                    <div class="text-sm text-gray-600">Stock Crítico</div>
+                </div>
+                <div class="bg-white border border-yellow-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-yellow-600">{{ $estadisticas['por_vencer'] ?? 0 }}</div>
+                    <div class="text-sm text-gray-600">Por Vencer</div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-gray-600">{{ $estadisticas['vencidos'] ?? 0 }}</div>
+                    <div class="text-sm text-gray-600">Vencidos</div>
+                </div>
+                <div class="bg-white border border-purple-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600">{{ $estadisticas['con_proveedor'] ?? 0 }}</div>
+                    <div class="text-sm text-gray-600">Con Proveedor</div>
+                </div>
             </div>
-            <div class="bg-white border border-blue-200 rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-blue-600">{{ $estadisticas['disponibles'] ?? 0 }}</div>
-                <div class="text-sm text-gray-600">Disponibles</div>
-            </div>
-            <div class="bg-white border border-red-200 rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-red-600">{{ $estadisticas['stock_critico'] ?? 0 }}</div>
-                <div class="text-sm text-gray-600">Stock Crítico</div>
-            </div>
-            <div class="bg-white border border-yellow-200 rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-yellow-600">{{ $estadisticas['por_vencer'] ?? 0 }}</div>
-                <div class="text-sm text-gray-600">Por Vencer</div>
-            </div>
-            <div class="bg-white border border-gray-200 rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-gray-600">{{ $estadisticas['vencidos'] ?? 0 }}</div>
-                <div class="text-sm text-gray-600">Vencidos</div>
-            </div>
-            <div class="bg-white border border-purple-200 rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-purple-600">${{ number_format($estadisticas['valor_total'] ?? 0, 0, ',', '.') }}</div>
-                <div class="text-sm text-gray-600">Valor Total</div>
-            </div>
-        </div>
+        @endif
 
         <!-- Tabla -->
         <div class="bg-white shadow rounded-lg overflow-hidden">
@@ -365,7 +452,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
                         </svg>
-                        Lista de Insumos
+                        {{ $verPapelera ? 'Insumos Eliminados' : 'Lista de Insumos' }}
                     </h3>
                     <span class="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
                         {{ $insumos->total() }} insumos
@@ -380,8 +467,8 @@ new #[Layout('layouts.auth')] class extends Component {
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marca</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
@@ -391,12 +478,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($insumos as $insumo)
                             @php
-                                // Determinar clase de fila según stock y vencimiento
-                                $stockActual = 0; // Se calculará cuando implementemos movimientos
-                                $stockMin = $insumo->stockMinIns ?? 0;
-                                $claseFilaStock = '';
-                                
-                                // Verificar vencimiento
+                                // Determinar clase de fila según vencimiento
                                 $claseFilaVencimiento = '';
                                 if ($insumo->fecVenIns) {
                                     $diasParaVencer = now()->diffInDays($insumo->fecVenIns, false);
@@ -408,12 +490,11 @@ new #[Layout('layouts.auth')] class extends Component {
                                         $claseFilaVencimiento = 'bg-yellow-50'; // Vence en 30 días
                                     }
                                 }
-                                
-                                // Usar la clase más crítica (solo vencimiento por ahora)
-                                $claseFila = $claseFilaVencimiento;
                             @endphp
-                            <tr class="hover:bg-gray-50 {{ $claseFila }}">
+                            <tr class="hover:bg-gray-50 {{ $claseFilaVencimiento }}">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $insumo->idIns }}</td>
+                                
+                                <!-- Insumo con ícono -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -443,12 +524,42 @@ new #[Layout('layouts.auth')] class extends Component {
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">{{ $insumo->nomIns }}</div>
-                                            @if($insumo->proveedor)
-                                                <div class="text-sm text-gray-500">{{ $insumo->proveedor->nomProve }}</div>
+                                            @if($insumo->marIns)
+                                                <div class="text-xs text-gray-500">{{ $insumo->marIns }}</div>
                                             @endif
                                         </div>
                                     </div>
                                 </td>
+
+                                <!-- Proveedor -->
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($insumo->proveedor)
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-8 w-8">
+                                                <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="text-sm font-medium text-gray-900">{{ $insumo->proveedor->nomProve }}</div>
+                                                @if($insumo->proveedor->telProve)
+                                                    <div class="text-xs text-gray-500">{{ $insumo->proveedor->telProve }}</div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="flex items-center text-gray-400">
+                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                            </svg>
+                                            <span class="text-sm">Sin proveedor</span>
+                                        </div>
+                                    @endif
+                                </td>
+
+                                <!-- Tipo -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php
                                         $tipoColor = match(strtolower($insumo->tipIns)) {
@@ -464,21 +575,25 @@ new #[Layout('layouts.auth')] class extends Component {
                                         {{ ucfirst($insumo->tipIns) }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $insumo->marIns ?? 'Sin marca' }}
-                                </td>
+
+                                <!-- Stock -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">
-                                        <div class="font-medium">0 {{ $insumo->uniIns }}</div>
-                                        <div class="text-xs text-gray-500">
-                                            @if($insumo->stockMinIns)
-                                                Mín: {{ $insumo->stockMinIns }}
-                                            @else
-                                                Sin límites definidos
-                                            @endif
-                                        </div>
+                                        <div class="font-medium">{{ number_format($insumo->canIns ?? 0, 2) }} {{ $insumo->uniIns }}</div>
+                                        @if($insumo->stockMinIns)
+                                            <div class="text-xs text-gray-500">
+                                                Mín: {{ number_format($insumo->stockMinIns, 0) }} 
+                                                @if($insumo->stockMaxIns)
+                                                    | Máx: {{ number_format($insumo->stockMaxIns, 0) }}
+                                                @endif
+                                            </div>
+                                        @else
+                                            <div class="text-xs text-gray-400">Sin límites definidos</div>
+                                        @endif
                                     </div>
                                 </td>
+
+                                <!-- Vencimiento -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     @if($insumo->fecVenIns)
                                         @php
@@ -500,11 +615,11 @@ new #[Layout('layouts.auth')] class extends Component {
                                                 $bgVencimiento = 'bg-yellow-100';
                                                 $textoVencimiento = $diasParaVencer . ' días';
                                             } else {
-                                                $textoVencimiento = $insumo->fecVenIns->format('d/m/Y');
+                                                $textoVencimiento = 'Normal';
                                             }
                                         @endphp
                                         <div class="text-center">
-                                            <div class="{{ $colorVencimiento }} text-xs">
+                                            <div class="{{ $colorVencimiento }} text-xs font-medium">
                                                 {{ $insumo->fecVenIns->format('d/m/Y') }}
                                             </div>
                                             <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {{ $bgVencimiento }} {{ $colorVencimiento }}">
@@ -515,6 +630,8 @@ new #[Layout('layouts.auth')] class extends Component {
                                         <span class="text-gray-400 text-xs">Sin vencimiento</span>
                                     @endif
                                 </td>
+
+                                <!-- Estado -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php
                                         $estadoColor = match($insumo->estIns) {
@@ -528,28 +645,47 @@ new #[Layout('layouts.auth')] class extends Component {
                                         {{ ucfirst($insumo->estIns) }}
                                     </span>
                                 </td>
+
+                                <!-- Acciones -->
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                    <div class="flex items-center justify-center space-x-2">
-                                        <a href="{{ route('inventario.insumos.show', $insumo->idIns) }}" wire:navigate
-                                           class="text-indigo-600 hover:text-indigo-900 p-1" title="Ver detalles">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                            </svg>
-                                        </a>
-                                        <a href="{{ route('inventario.insumos.edit', $insumo->idIns) }}" wire:navigate
-                                           class="text-blue-600 hover:text-blue-900 p-1" title="Editar">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
-                                        </a>
-                                        <button wire:click="confirmDelete({{ $insumo->idIns }})"
-                                                class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
+                                    @if($verPapelera)
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <button wire:click="restaurar({{ $insumo->idIns }})"
+                                                    class="cursor-pointer text-green-600 hover:text-green-900 p-1" title="Restaurar">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                </svg>
+                                            </button>
+                                            <button wire:click="eliminarPermanente({{ $insumo->idIns }})"
+                                                    class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar permanentemente">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @else
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <a href="{{ route('inventario.insumos.show', $insumo->idIns) }}" wire:navigate
+                                               class="text-indigo-600 hover:text-indigo-900 p-1" title="Ver detalles">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                            </a>
+                                            <a href="{{ route('inventario.insumos.edit', $insumo->idIns) }}" wire:navigate
+                                               class="text-blue-600 hover:text-blue-900 p-1" title="Editar">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                            </a>
+                                            <button wire:click="confirmDelete({{ $insumo->idIns }})"
+                                                    class="cursor-pointer text-red-600 hover:text-red-900 p-1" title="Eliminar">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach
@@ -561,20 +697,27 @@ new #[Layout('layouts.auth')] class extends Component {
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">No hay insumos registrados</h3>
-                    <p class="mt-1 text-sm text-gray-500">Comienza agregando tu primer insumo al inventario.</p>
-                    <div class="mt-6">
-                        <a href="{{ route('inventario.insumos.create') }}" wire:navigate
-                           class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Agregar Insumo
-                        </a>
-                    </div>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">
+                        {{ $verPapelera ? 'No hay insumos eliminados' : 'No hay insumos registrados' }}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{ $verPapelera ? 'Todos tus insumos están activos.' : 'Comienza agregando tu primer insumo al inventario.' }}
+                    </p>
+                    @if(!$verPapelera)
+                        <div class="mt-6">
+                            <a href="{{ route('inventario.insumos.create') }}" wire:navigate
+                               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Agregar Insumo
+                            </a>
+                        </div>
+                    @endif
                 </div>
             @endif
 
+            <!-- Paginación -->
             @if($insumos->hasPages())
                 <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
                     <div class="flex items-center justify-between">
@@ -599,125 +742,53 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
 
-    <!-- Modal Vencimientos -->
-<x-modal name="vencimientos" maxWidth="2xl">
-    <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-gray-900 flex items-center">
-                <svg class="w-6 h-6 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                </svg>
-                Insumos Próximos a Vencer
-            </h3>
-            <button x-on:click="$dispatch('close')" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insumo</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimiento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Días Restantes</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nivel</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @foreach($proximosVencer as $insumo)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $insumo->nomIns }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $insumo->tipIns }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0 {{ $insumo->uniIns }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $insumo->fecVenIns?->format('d/m/Y') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ now()->diffInDays($insumo->fecVenIns, false) }} días
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @php
-                                $dias = now()->diffInDays($insumo->fecVenIns, false);
-                                $nivel = match(true) {
-                                    $dias <= 7 => ['text' => 'Urgente', 'color' => 'red'],
-                                    $dias <= 30 => ['text' => 'Crítico', 'color' => 'yellow'],
-                                    default => ['text' => 'Normal', 'color' => 'green']
-                                };
-                            @endphp
-                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-{{ $nivel['color'] }}-100 text-{{ $nivel['color'] }}-800">
-                                {{ $nivel['text'] }}
-                            </span>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-</x-modal>
-
-<!-- Modal Eliminar Insumo -->
-@if($showDeleteModal)
-    <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
-            <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
-            <p class="mb-4 text-sm text-gray-600">
-                ¿Está seguro que desea eliminar este insumo? Esta acción no se puede deshacer.
-            </p>
-            
-            @if($insumoToDelete)
-                @php
-                    $insumo = Insumo::find($insumoToDelete);
-                @endphp
-                <div class="mb-4">
-                    <p><strong>Insumo:</strong> {{ $insumo->nomIns ?? '' }}</p>
-                    <p><strong>Tipo:</strong> {{ $insumo->tipIns ?? '' }}</p>
-                    <p><strong>Marca:</strong> {{ $insumo->marIns ?? 'Sin marca' }}</p>
+    <!-- Modal Eliminar Insumo -->
+    @if($showDeleteModal)
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-3 text-lg font-medium text-gray-900">Confirmar eliminación</h3>
                 </div>
-            @endif
-            
-            <div class="flex justify-end gap-3">
-                <button wire:click="$set('showDeleteModal', false)"
-                        class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
-                <button wire:click="deleteInsumo"
-                        class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
+                <p class="mb-4 text-sm text-gray-600">
+                    ¿Está seguro que desea eliminar este insumo? Esta acción se puede deshacer desde la papelera.
+                </p>
+                
+                @if($insumoToDelete)
+                    @php
+                        $insumo = Insumo::find($insumoToDelete);
+                    @endphp
+                    @if($insumo)
+                        <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <p class="text-sm"><strong>Insumo:</strong> {{ $insumo->nomIns }}</p>
+                            <p class="text-sm"><strong>Tipo:</strong> {{ $insumo->tipIns }}</p>
+                            @if($insumo->proveedor)
+                                <p class="text-sm"><strong>Proveedor:</strong> {{ $insumo->proveedor->nomProve }}</p>
+                            @endif
+                        </div>
+                    @endif
+                @endif
+                
+                <div class="flex justify-end space-x-3">
+                    <button wire:click="$set('showDeleteModal', false)"
+                            class="cursor-pointer px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition">
+                        Cancelar
+                    </button>
+                    <button wire:click="deleteInsumo"
+                            class="cursor-pointer px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
+                        Eliminar
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-@endif
+    @endif
 </div>
 
-
-
-
 <script>
-function toggleDropdown(id) {
-    const dropdown = document.getElementById(`dropdown-${id}`);
-    const allDropdowns = document.querySelectorAll('[id^="dropdown-"]');
-    
-    // Cerrar todos los otros dropdowns
-    allDropdowns.forEach(dd => {
-        if (dd.id !== `dropdown-${id}`) {
-            dd.classList.add('hidden');
-        }
-    });
-    
-    // Toggle el dropdown actual
-    dropdown.classList.toggle('hidden');
-}
-
-// Cerrar dropdowns al hacer click fuera
-document.addEventListener('click', function(event) {
-    const dropdowns = document.querySelectorAll('[id^="dropdown-"]');
-    dropdowns.forEach(dropdown => {
-        if (!dropdown.contains(event.target) && !event.target.closest('[onclick*="toggleDropdown"]')) {
-            dropdown.classList.add('hidden');
-        }
-    });
-});
-
 document.addEventListener('livewire:initialized', () => {
     Livewire.on('notify', (event) => {
         const Toast = Swal.mixin({
