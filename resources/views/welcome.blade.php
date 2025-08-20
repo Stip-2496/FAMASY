@@ -9,20 +9,20 @@
   <h1 class="w-full text-white font-bold text-2xl sm:text-4xl flex justify-center items-center mb-4 sm:mb-0 sm:absolute sm:top-8">¿QUÉ ES FAMASY?</h1>
   <div class="sm:absolute sm:inset-0 flex items-center justify-center">
     <div class="flex flex-col sm:flex-row justify-center gap-4 sm:gap-1 text-center px-4 sm:px-0"> 
-      <a href="#" class="block w-full sm:w-48 md:w-56 lg:w-64 h-auto sm:h-80 p-4 sm:p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 flex flex-col items-center text-center gap-2 card-abbr" data-abbr="FA" data-full="FARM">
-        <h5 class="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white abbr-text">FA</h5>
+      <a href="#" class="block w-full sm:w-48 md:w-56 lg:w-64 h-auto sm:h-80 p-4 sm:p-6 border rounded-lg shadow-sm bg-gray-800 border-gray-700 hover:bg-gray-700 flex flex-col items-center text-center gap-2 card-abbr" data-abbr="FA" data-full="FARM">
+        <h5 class="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-white abbr-text">FA</h5>
         <img src="/assets/images/icons/farm-icon.png" class="w-16 h-16 sm:w-[100px] sm:h-[100px] rounded" alt="Icono de granja automizada">
-        <p class="font-normal text-sm sm:text-base text-gray-700 dark:text-gray-400">Facilidad de adaptación a tus necesidades agropecuarias, con la automatización de procesos agropecuarios con precisión.</p>
+        <p class="font-normal text-sm sm:text-base text-gray-400">Facilidad de adaptación a tus necesidades agropecuarias, con la automatización de procesos agropecuarios con precisión.</p>
       </a>
-      <a href="#" class="block w-full sm:w-48 md:w-56 lg:w-64 h-auto sm:h-80 p-4 sm:p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 flex flex-col items-center text-center gap-2 card-abbr" data-abbr="MA" data-full="MANAGEMENT">
-        <h5 class="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white abbr-text">MA</h5>
+      <a href="#" class="block w-full sm:w-48 md:w-56 lg:w-64 h-auto sm:h-80 p-4 sm:p-6 border rounded-lg shadow-sm bg-gray-800 border-gray-700 hover:bg-gray-700 flex flex-col items-center text-center gap-2 card-abbr" data-abbr="MA" data-full="MANAGEMENT">
+        <h5 class="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-white abbr-text">MA</h5>
         <img src="/assets/images/icons/manage-icon.png" class="w-16 h-16 sm:w-[100px] sm:h-[100px] rounded" alt="Icono de trazabilidad de ganado.">
-        <p class="font-normal text-sm sm:text-base text-gray-700 dark:text-gray-400">Máximo rendimiento con mínimo esfuerzo sobre gestión de inventarios, producción y trazabilidad.</p>
+        <p class="font-normal text-sm sm:text-base text-gray-400">Máximo rendimiento con mínimo esfuerzo sobre gestión de inventarios, producción y trazabilidad.</p>
       </a>
-      <a href="#" class="block w-full sm:w-48 md:w-56 lg:w-64 h-auto sm:h-80 p-4 sm:p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 flex flex-col items-center text-center gap-2 card-abbr" data-abbr="SY" data-full="SYSTEM">
-        <h5 class="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white abbr-text">SY</h5>
+      <a href="#" class="block w-full sm:w-48 md:w-56 lg:w-64 h-auto sm:h-80 p-4 sm:p-6 border rounded-lg shadow-sm bg-gray-800 border-gray-700 hover:bg-gray-700 flex flex-col items-center text-center gap-2 card-abbr" data-abbr="SY" data-full="SYSTEM">
+        <h5 class="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-white abbr-text">SY</h5>
         <img src="/assets/images/icons/system-icon.png" class="w-16 h-16 sm:w-[100px] sm:h-[100px] rounded" alt="Icono de sistema escalable">
-        <p class="font-normal text-sm sm:text-base text-gray-700 dark:text-gray-400">Sistema con arquitectura adaptable a cualquier tamaño de operación.</p>
+        <p class="font-normal text-sm sm:text-base text-gray-400">Sistema con arquitectura adaptable a cualquier tamaño de operación.</p>
       </a>
     </div>
   </div>

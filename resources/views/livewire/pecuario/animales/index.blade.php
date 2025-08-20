@@ -18,13 +18,15 @@ new #[Layout('layouts.auth')] class extends Component {
             'animales' => Animal::query()
                 ->when($this->search, function ($query) {
                     $query->where(function($q) {
-                        $q->where('nomAni', 'like', '%'.$this->search.'%')
+                        $q->where('ideAni', 'like', '%'.$this->search.'%')
                           ->orWhere('espAni', 'like', '%'.$this->search.'%')
                           ->orWhere('razAni', 'like', '%'.$this->search.'%')
-                          ->orWhere('idAni', 'like', '%'.$this->search.'%');
+                          ->orWhere('idAni', 'like', '%'.$this->search.'%')
+                          ->orWhere('nitAni', 'like', '%'.$this->search.'%') // ✅ Busqueda por NIT
+                          ->orWhere('ubicacionAni', 'like', '%'.$this->search.'%'); // ✅ Busqueda por ubicación
                     });
                 })
-                ->orderBy('nomAni', 'asc')
+                ->orderBy('ideAni', 'asc')
                 ->paginate($this->perPage)
         ];
     }
@@ -71,40 +73,41 @@ new #[Layout('layouts.auth')] class extends Component {
 @section('title', 'Gestión de Animales')
 
 <div class="container mx-auto px-4 py-6">
-    <!-- Header -->
     <div class="text-center mb-8">
         <h1 class="text-4xl font-bold text-gray-800 mb-2">Gestión de Animales</h1>
         <p class="text-gray-600">Administra y controla todos tus animales</p>
     </div>
 
-    <!-- Barra de búsqueda -->
     <div class="bg-white rounded-lg shadow-md border-2 border-gray-200 p-4 mb-6">
-        <div class="flex gap-4 items-end">
-            <div class="flex-1">
+        <div class="flex flex-col md:flex-row gap-4 items-end justify-between">
+            <div class="flex-1 w-full md:w-auto">
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Buscar animales</label>
                 <input type="text"
                 wire:model.live.debounce.500ms="search"
                 wire:keydown.enter="$set('search', $event.target.value)"
                 wire:change="$set('search', $event.target.value)"
-                placeholder="Buscar por nombre, especie, raza o ID..."
+                placeholder="Buscar por nombre, especie, raza, ID, NIT o ubicación..."
                 class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0">
                 <a href="{{ route('pecuario.animales.create') }}" wire:navigate
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 text-center">
                     <i class="fas fa-plus mr-2"></i>Registrar
                 </a>
                 @if($search)
                 <button wire:click="clearSearch"
-                    class="cursor-pointer bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                    class="cursor-pointer bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200 text-center">
                     <i class="fas fa-times mr-2"></i>Limpiar
                 </button>
                 @endif
+                <a href="{{ route('pecuario.dashboard') }}" wire:navigate
+                   class="bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded-lg transition duration-200 text-center">
+                    <i class="fas fa-arrow-left mr-2"></i>Volver
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Tabla de animales -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         @if($animales->count() > 0)
         <div class="overflow-x-auto">
@@ -113,10 +116,12 @@ new #[Layout('layouts.auth')] class extends Component {
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">#</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">NIT</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nombre</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Especie/Raza</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Sexo</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Edad</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ubicación</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Estado</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Acciones</th>
                     </tr>
@@ -131,7 +136,10 @@ new #[Layout('layouts.auth')] class extends Component {
                             <div class="text-sm font-medium text-gray-900">{{ $animal->idAni }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $animal->nomAni ?? 'Sin nombre' }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ $animal->nitAni ?? 'N/A' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ $animal->ideAni ?? 'Sin nombre' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $animal->espAni }}</div>
@@ -156,6 +164,9 @@ new #[Layout('layouts.auth')] class extends Component {
                                     N/A
                                 @endif
                             </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ $animal->ubicacionAni ?? 'No especificada' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @switch($animal->estAni)
@@ -197,7 +208,6 @@ new #[Layout('layouts.auth')] class extends Component {
             </table>
         </div>
 
-        <!-- Paginación -->
         <div class="px-6 py-4 bg-gray-50">
             {{ $animales->links() }}
         </div>
@@ -214,7 +224,6 @@ new #[Layout('layouts.auth')] class extends Component {
         @endif
     </div>
 
-    <!-- Modal Eliminar Animal -->
     @if($showDeleteModal)
         <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white p-6 rounded-lg max-w-sm w-full">
@@ -224,7 +233,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </p>
                 
                 <div class="mb-4">
-                    <p><strong>Animal:</strong> {{ Animal::find($animalToDelete)->nomAni ?? 'Sin nombre' }}</p>
+                    <p><strong>Animal:</strong> {{ Animal::find($animalToDelete)->ideAni ?? 'Sin nombre' }}</p>
                     <p><strong>Especie:</strong> {{ Animal::find($animalToDelete)->espAni ?? '' }}</p>
                 </div>
                 
@@ -238,7 +247,6 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     @endif
 
-    <!-- Script para notificaciones -->
     <script>
         document.addEventListener('livewire:initialized', () => {
             Livewire.on('notify', (event) => {

@@ -44,7 +44,7 @@ new #[Layout('layouts.auth')] class extends Component {
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
             <i class="fas fa-paw text-green-600"></i>
-            {{ $animal->nomAni ?? 'Animal #' . $animal->idAni }}
+            {{ $animal->ideAni ?? 'Animal #' . $animal->idAni }}
         </h1>
         <div class="flex space-x-2">
             <a href="{{ route('pecuario.animales.edit', $animal->idAni) }}" wire:navigate
@@ -61,7 +61,7 @@ new #[Layout('layouts.auth')] class extends Component {
     <!-- Información del Animal -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="px-6 py-4 bg-green-600 text-white">
-            <h2 class="text-xl font-semibold">{{ $animal->nomAni ?? 'Animal #' . $animal->idAni }}</h2>
+            <h2 class="text-xl font-semibold">{{ $animal->ideAni ?? 'Animal #' . $animal->idAni }}</h2>
             <p class="text-sm opacity-90">ID: {{ $animal->idAni }}</p>
         </div>
 
@@ -72,6 +72,31 @@ new #[Layout('layouts.auth')] class extends Component {
                     <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
                         <i class="fas fa-info-circle text-blue-500 mr-2"></i>Información Básica
                     </h3>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">NIT del Animal:</label>
+                        <p class="text-gray-900">{{ $animal->nitAni ?? 'No registrado' }}</p>
+                    </div>
+
+                    @if($animal->fotoAni)
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Foto:</label>
+                            <div class="mt-1">
+                                <img src="{{ asset('storage/' . $animal->fotoAni) }}" alt="Foto del animal" 
+                                     class="w-32 h-32 object-cover rounded-lg border border-gray-200 shadow-sm">
+                            </div>
+                        </div>
+                    @else
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Foto:</label>
+                            <p class="text-gray-900">No registrada</p>
+                        </div>
+                    @endif
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Ubicación:</label>
+                        <p class="text-gray-900">{{ $animal->ubicacionAni ?? 'No registrada' }}</p>
+                    </div>
 
                     <div>
                         <label class="text-sm font-medium text-gray-500">Especie:</label>
@@ -248,7 +273,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </p>
                 
                 <div class="mb-4">
-                    <p><strong>Animal:</strong> {{ $animal->nomAni ?? 'Sin nombre' }}</p>
+                    <p><strong>Animal:</strong> {{ $animal->ideAni ?? 'Sin nombre' }}</p>
                     <p><strong>Especie:</strong> {{ $animal->espAni }}</p>
                     <p><strong>ID:</strong> {{ $animal->idAni }}</p>
                 </div>

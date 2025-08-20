@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -23,40 +25,78 @@ new #[Layout('layouts.app')] class extends Component {
     public bool $submitAttempted = false;
     public bool $shouldShowErrors = false;
 
+    /**
+     * Método principal para manejar el inicio de sesión
+     */
     public function login(): void
     {
+        // Marcar que se intentó enviar el formulario y mostrar errores si existen
         $this->submitAttempted = true;
         $this->shouldShowErrors = true;
         $this->validateForm();
         
+        // Si hay errores de validación, detener el proceso
         if (count($this->errors) > 0) {
             $this->dispatch('validation-failed', errors: $this->errors);
             return;
         }
 
+        // Verificar límite de intentos de inicio de sesión
         $this->ensureIsNotRateLimited();
 
+        // Intentar autenticar al usuario
         if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+            // Incrementar el contador de intentos fallidos
             RateLimiter::hit($this->throttleKey());
+
+            // Disparar evento de fallo de login
+            event(new Failed('web', null, [
+                'email' => $this->email,
+                'password' => $this->password,
+            ]));
+
             $this->errors[] = 'Credenciales incorrectas';
             $this->dispatch('validation-failed', errors: $this->errors);
             return;
         }
 
+        // Limpiar el contador de intentos fallidos
         RateLimiter::clear($this->throttleKey());
+        
+        // Regenerar la sesión por seguridad
         Session::regenerate();
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        // Obtener el usuario autenticado
+        $user = Auth::user();
+
+        // Disparar evento de login exitoso
+        event(new Login('web', $user, $this->remember));
+        
+        // Redirigir según el ID del rol del usuario
+        $redirectRoute = match($user->idRolUsu) {
+            1 => route('inventario.dashboard'), // Administrador (idRolUsu = 1)
+            2 => route('settings.manage-users.dashboard'), // Superusuario (idRolUsu = 2)
+            3 => route('inventario.prestamos.index'), // Aprendiz (idRolUsu = 3)
+            default => route('dashboard') // Ruta por defecto
+        };
+        
+        // Redirección con navegación optimizada (Livewire)
+        $this->redirect($redirectRoute, navigate: true);
     }
 
+    /**
+     * Verifica que no se haya excedido el límite de intentos de inicio de sesión
+     */
     protected function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 3)) {
             return;
         }
 
+        // Disparar evento de bloqueo
         event(new Lockout(request()));
 
+        // Calcular tiempo de espera
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         $this->errors[] = __('auth.throttle', [
@@ -66,11 +106,17 @@ new #[Layout('layouts.app')] class extends Component {
         $this->dispatch('validation-failed', errors: $this->errors);
     }
 
+    /**
+     * Genera una clave única para el límite de intentos basada en email e IP
+     */
     protected function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
     }
     
+    /**
+     * Valida los campos del formulario
+     */
     public function validateForm(): void
     {
         $this->errors = [];
@@ -89,6 +135,9 @@ new #[Layout('layouts.app')] class extends Component {
         }
     }
     
+    /**
+     * Limpia los errores cuando se editan los campos
+     */
     public function updated($property)
     {
         if (in_array($property, ['email', 'password'])) {
@@ -100,7 +149,7 @@ new #[Layout('layouts.app')] class extends Component {
 };
 ?>
 
-@section('title', 'Inicio de sesión') <!--- título de la página  -->
+@section('title', 'Inicio de sesión') <!-- Título de la página -->
 
 <div class="flex items-center justify-center p-4 min-h-screen">
     <div class="w-full max-w-md bg-white shadow rounded-lg p-8 border border-gray-300">
@@ -110,10 +159,10 @@ new #[Layout('layouts.app')] class extends Component {
             <p class="text-sm text-gray-500">Ingresa tus credenciales para acceder</p>
         </div>
 
-        <!-- Estado de sesión -->
+        <!-- Estado de sesión - Muestra mensajes de estado como "Sesión iniciada" -->
         <x-auth-session-status class="mb-4 text-center text-sm text-green-600" :status="session('status')" />
 
-        <!-- Mensajes de error -->
+        <!-- Mensajes de error - Maneja los errores de validación -->
         <div class="text-center mb-4" 
              x-data="{
                  showErrors: false,
@@ -123,7 +172,7 @@ new #[Layout('layouts.app')] class extends Component {
                  showErrors = true;
                  errors = $event.detail.errors;">
             
-            <!-- Mensajes de error -->
+            <!-- Muestra los errores si existen -->
             <template x-if="showErrors && errors.length > 0">
                 <div class="rounded bg-red-100 px-4 py-2 text-red-800 border border-red-400 text-left mb-4">
                     <ul class="list-disc list-inside">
@@ -135,8 +184,9 @@ new #[Layout('layouts.app')] class extends Component {
             </template>
         </div>
 
+        <!-- Formulario de inicio de sesión -->
         <form wire:submit.prevent="login" class="space-y-6">
-            <!-- Correo -->
+            <!-- Campo de correo electrónico -->
             <div>
                 <label class="block text-sm font-medium text-gray-800 mb-1">Correo Electrónico</label>
                 <input type="email"
@@ -145,7 +195,7 @@ new #[Layout('layouts.app')] class extends Component {
                        class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
             </div>
 
-            <!-- Contraseña -->
+            <!-- Campo de contraseña con toggle para mostrar/ocultar -->
             <div>
                 <label class="block text-sm font-medium text-gray-800 mb-1">Contraseña</label>
                 <div class="relative" x-data="{ show: false, hasValue: false }">
@@ -155,6 +205,7 @@ new #[Layout('layouts.app')] class extends Component {
                            autocomplete="current-password"
                            @input="const val = $event.target.value; hasValue = val.length > 0; if (val.length === 0) show = false;">
 
+                    <!-- Botón para mostrar/ocultar contraseña -->
                     <button type="button"
                             x-show="hasValue"
                             class="absolute inset-y-0 right-0 pr-3 flex items-center justify-center text-black w-10 h-full"
@@ -178,19 +229,13 @@ new #[Layout('layouts.app')] class extends Component {
                 </div>
             </div>
 
-            <!-- Recordarme -->
-            <div class="flex items-center gap-2">
-                <input type="checkbox"
-                       wire:model="remember"
-                       class="h-4 w-4 text-green-600 border-gray-400 rounded">
-                <label class="text-sm text-gray-800">Recordarme</label>
-            </div>
-
-            <!-- Botónes de volver y login -->
+            <!-- Botones de acción -->
             <div class="text-center mb-4 space-x-4">
+                <!-- Botón para volver a la página de inicio -->
                 <a href="{{ route('welcome') }}" wire:navigate class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
                     Volver
                 </a>
+                <!-- Botón de inicio de sesión -->
                 <button type="submit" 
                         class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150"
                         :disabled="$wire.shouldShowErrors && $wire.errors.length > 0"
@@ -200,7 +245,7 @@ new #[Layout('layouts.app')] class extends Component {
             </div>
         </form>
 
-        <!-- Enlaces adicionales -->
+        <!-- Enlace para recuperación de contraseña -->
         <div class="mt-4 text-center text-sm text-gray-800">
             ¿Olvidaste tu contraseña?
             @if (Route::has('password.request'))

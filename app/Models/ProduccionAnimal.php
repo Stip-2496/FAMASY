@@ -16,12 +16,14 @@ class ProduccionAnimal extends Model
         'canProAni',
         'uniProAni',
         'fecProAni',
-        'obsProAni'
+        'obsProAni',
+        'canTotProAni'
     ];
     
     protected $casts = [
         'fecProAni' => 'date',
         'canProAni' => 'decimal:2',
+        'canTotProAni' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
@@ -47,10 +49,16 @@ class ProduccionAnimal extends Model
      */
     public function getCantidadFormateadaAttribute(): string
     {
-        $unidad = $this->uniProAni ?? (
-            $this->tipProAni === 'leche' ? 'L' : 'kg'
-        );
-        
+        $unidad = $this->uniProAni ?? 'unidad';
         return number_format($this->canProAni, 2).' '.$unidad;
+    }
+    
+    /**
+     * Accesor para cantidad total formateada
+     */
+    public function getCantidadTotalFormateadaAttribute(): string
+    {
+        $unidad = $this->uniProAni ?? 'unidad';
+        return number_format($this->canTotProAni, 2).' '.$unidad;
     }
 }

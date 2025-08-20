@@ -93,6 +93,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         </svg>
                         Volver
                     </a>
+                    @can('admin')
                     @if($prestamo->estPre !== 'devuelto')
                     <a href="{{ route('inventario.prestamos.edit', $prestamo) }}" wire:navigate
                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
@@ -102,6 +103,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         Editar
                     </a>
                     @endif
+                    @endcan
                 </div>
             </div>
         </div>
@@ -393,13 +395,14 @@ new #[Layout('layouts.auth')] class extends Component {
                             </div>
                             @endif
                         </div>
-
+                        @can('admin')
                         <div class="mt-4">
                             <a href="{{ route('inventario.herramientas.show', $prestamo->herramienta) }}" wire:navigate
                                class="w-full inline-flex items-center justify-center px-3 py-2 border border-purple-300 rounded-md shadow-sm text-sm font-medium text-purple-700 bg-white hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
                                 Ver Herramienta Completa
                             </a>
                         </div>
+                        @endcan
                         @else
                         <p class="text-gray-500">Herramienta no encontrada</p>
                         @endif
@@ -452,6 +455,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
 
                 <!-- Acciones Rápidas -->
+                @can('admin')
                 <div class="bg-white shadow rounded-lg">
                     <div class="px-6 py-4 bg-blue-600 rounded-t-lg">
                         <h3 class="text-lg font-medium text-white flex items-center">
@@ -492,7 +496,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             Eliminar Préstamo
                         </button>
                         @endif
-
+                        
                         <a href="{{ route('inventario.prestamos.create') }}" wire:navigate
                            class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -502,6 +506,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         </a>
                     </div>
                 </div>
+                @endcan
             </div>
         </div>
     </div>

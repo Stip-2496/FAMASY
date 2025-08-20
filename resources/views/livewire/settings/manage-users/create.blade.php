@@ -30,6 +30,13 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->sexUsu = 'Hombre';
     }
 
+    public function updatedIdRolUsu($value)
+    {
+        if ($value == 2) {
+            $this->dispatch('show-superuser-warning');
+        }
+    }
+
     public function createUser(): void
     {
         $validated = $this->validate([
@@ -82,7 +89,17 @@ new #[Layout('layouts.auth')] class extends Component {
             'idConUsu' => $contacto->idCon,
         ]);
 
-        $this->redirect(route('settings.manage-users'), navigate: true);
+        // Verificar si se está creando un superusuario
+        if ($this->idRolUsu == 2) { // ID de superusuario
+            // Buscar y actualizar el superusuario actual si existe
+            $currentSuperuser = User::where('idRolUsu', 2)->first();
+        
+            if ($currentSuperuser) {
+                $currentSuperuser->update(['idRolUsu' => 1]); // Cambiar a administrador
+            }
+        }
+
+        $this->redirect(route('settings.manage-users.index'), navigate: true);
     }
 }; ?>
 
@@ -114,18 +131,18 @@ new #[Layout('layouts.auth')] class extends Component {
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Número de documento</label>
-                            <input type="text" wire:model="numDocUsu" placeholder="0000-000-000" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-validation="document" data-trim="true" type="text" wire:model="numDocUsu" placeholder="0.000.000.000" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                     </div>
 
                     <div class="flex gap-4 mb-4">
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Nombre</label>
-                            <input type="text" wire:model="nomUsu" placeholder="Nombre(s)" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-validation="text-only" data-trim="true" data-format="capitalize" type="text" wire:model="nomUsu" placeholder="Nombre(s)" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Apellido</label>
-                            <input type="text" wire:model="apeUsu" placeholder="Apellidos" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-validation="text-only" data-trim="true" data-format="capitalize" type="text" wire:model="apeUsu" placeholder="Apellidos" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                     </div>
 
@@ -150,11 +167,11 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="flex gap-4 mb-4">
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Célular</label>
-                            <input type="text" wire:model="celCon" placeholder="000-000-0000" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-validation="phone" type="text" wire:model="celCon" placeholder="000-000-0000" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Correo electrónico</label>
-                            <input type="email" wire:model="email" placeholder="ejemplo@dominio.com" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-validation="email" data-php-validation="email" data-trim="true" type="email" wire:model="email" placeholder="ejemplo@dominio.com" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                     </div>
                     <div class="mb-4">
@@ -176,22 +193,22 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">Calle</label>
-                            <input type="text" wire:model="calDir" placeholder="Calle" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-trim="true" data-php-validation="no-html" type="text" wire:model="calDir" placeholder="Calle" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">Barrio</label>
-                            <input type="text" wire:model="barDir" placeholder="Barrio" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-trim="true" data-php-validation="no-html" type="text" wire:model="barDir" placeholder="Barrio" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">Ciudad</label>
-                            <input type="text" wire:model="ciuDir" placeholder="Ciudad" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input data-trim="true" data-format="capitalize" data-php-validation="no-html" type="text" wire:model="ciuDir" placeholder="Ciudad" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">Departamento</label>
-                            <input type="text" wire:model="depDir" placeholder="Departamento" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="text" wire:model="depDir" placeholder="Departamento" readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">Código postal</label>
@@ -199,7 +216,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">País</label>
-                            <input type="text" wire:model="paiDir" placeholder="País" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="text" wire:model="paiDir" placeholder="País" readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
                         </div>
                     </div>
                 </div>
@@ -207,21 +224,46 @@ new #[Layout('layouts.auth')] class extends Component {
                 <!-- Seguridad -->
                 <div class="flex-1 border border-gray-300 rounded-lg p-4">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">Seguridad</h2>
-                    <div class="flex gap-4">
-                        <div class="flex-1">
+                    <div class="space-y-4">
+                        <!-- Campo de Contraseña -->
+                        <div>
                             <label class="block text-sm font-medium text-gray-800 mb-1">Contraseña</label>
-                            <input type="password" wire:model="password" placeholder="••••••••" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-sm font-medium text-gray-800 mb-1">Confirmar contraseña</label>
-                            <input type="password" wire:model="password_confirmation" placeholder="••••••••" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <div class="relative" x-data="{ show: false, hasValue: false }">
+                                <input data-validation="password" 
+                                       wire:model="password" 
+                                       :type="show ? 'text' : 'password'" 
+                                       placeholder="••••••••" 
+                                       class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white pr-10"
+                                       @input="const val = $event.target.value; hasValue = val.length > 0; if (val.length === 0) show = false;">
+
+                                <button type="button"
+                                        x-show="hasValue"
+                                        class="absolute inset-y-0 right-0 pr-3 flex items-center justify-center text-black w-10 h-full"
+                                        @click="show = !show"
+                                        x-cloak>
+                                    <svg x-show="!show" xmlns="http://www.w3.org/2000/svg" class="cursor-pointer h-5 w-5" fill="none"
+                                         viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7s-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <svg x-show="show" xmlns="http://www.w3.org/2000/svg" class="cursor-pointer h-5 w-5" fill="none"
+                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/>
+                                        <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/>
+                                        <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/>
+                                        <path d="m2 2 20 20"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Botones -->
-            <div class="text-center mb-4 space-x-4">
+            <div class="flex justify-center space-x-4 mt-6">
                 <a href="{{ route('settings.manage-users') }}" wire:navigate class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
                     Cancelar
                 </a>
@@ -232,3 +274,16 @@ new #[Layout('layouts.auth')] class extends Component {
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('show-superuser-warning', () => {
+        Swal.fire({
+            title: '¡Advertencia!',
+            text: 'Al asignar el rol de Superusuario, el superusuario actual será cambiado a Administrador automáticamente.',
+            icon: 'warning',
+            confirmButtonText: 'Entendido'
+        });
+    });
+});
+</script>

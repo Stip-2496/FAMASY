@@ -3,6 +3,7 @@ use App\Models\PrestamoHerramienta;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Auth;
 
 new #[Layout('layouts.auth')] class extends Component {
     use WithPagination;
@@ -22,9 +23,24 @@ new #[Layout('layouts.auth')] class extends Component {
         // Actualizar primero los préstamos vencidos
         $this->actualizarPrestamosVencidos();
 
+        // Obtener el usuario autenticado
+        $user = Auth::user();
+        $userId = $user->id;
+        $userRol = $user->idRolUsu;
+
         return [
             'prestamos' => PrestamoHerramienta::query()
                 ->with(['herramienta', 'usuario', 'solicitante'])
+                // Filtrar según el rol del usuario autenticado
+                ->when($userRol == 1, function ($query) use ($userId) {
+                    // Administrador: solo préstamos donde él sea el encargado (idUsuPre)
+                    $query->where('idUsuPre', $userId);
+                })
+                ->when($userRol == 3, function ($query) use ($userId) {
+                    // Aprendiz: solo préstamos donde él sea el solicitante (idUsuSol)
+                    $query->where('idUsuSol', $userId);
+                })
+                // Resto de filtros
                 ->when($this->filtroEstado, function ($query) {
                     $query->where('estPre', $this->filtroEstado);
                 })
@@ -35,10 +51,10 @@ new #[Layout('layouts.auth')] class extends Component {
                     });
                 })
                 ->when($this->filtroSolicitante, function ($query) {
-                $query->whereHas('solicitante', function($q) {
-                    $q->where('nomUsu', 'like', '%'.$this->filtroSolicitante.'%')
-                      ->orWhere('apeUsu', 'like', '%'.$this->filtroSolicitante.'%')
-                      ->orWhere('numDocUsu', 'like', '%'.$this->filtroSolicitante.'%');
+                    $query->whereHas('solicitante', function($q) {
+                        $q->where('nomUsu', 'like', '%'.$this->filtroSolicitante.'%')
+                          ->orWhere('apeUsu', 'like', '%'.$this->filtroSolicitante.'%')
+                          ->orWhere('numDocUsu', 'like', '%'.$this->filtroSolicitante.'%');
                     });
                 })
                 ->when($this->filtroHerramienta, function ($query) {
@@ -48,15 +64,51 @@ new #[Layout('layouts.auth')] class extends Component {
                 })
                 ->orderBy('fecPre', 'desc')
                 ->paginate($this->perPage),
+            
             'estadisticas' => [
-                'prestados' => PrestamoHerramienta::where('estPre', 'prestado')->count(),
-                'devueltos' => PrestamoHerramienta::where('estPre', 'devuelto')->count(),
-                'vencidos' => PrestamoHerramienta::where('estPre', 'vencido')->count(),
-                'total' => PrestamoHerramienta::count()
+                'prestados' => PrestamoHerramienta::query()
+                    ->when($userRol == 1, function ($query) use ($userId) {
+                        $query->where('idUsuPre', $userId);
+                    })
+                    ->when($userRol == 3, function ($query) use ($userId) {
+                        $query->where('idUsuSol', $userId);
+                    })
+                    ->where('estPre', 'prestado')
+                    ->count(),
+                    
+                'devueltos' => PrestamoHerramienta::query()
+                    ->when($userRol == 1, function ($query) use ($userId) {
+                        $query->where('idUsuPre', $userId);
+                    })
+                    ->when($userRol == 3, function ($query) use ($userId) {
+                        $query->where('idUsuSol', $userId);
+                    })
+                    ->where('estPre', 'devuelto')
+                    ->count(),
+                    
+                'vencidos' => PrestamoHerramienta::query()
+                    ->when($userRol == 1, function ($query) use ($userId) {
+                        $query->where('idUsuPre', $userId);
+                    })
+                    ->when($userRol == 3, function ($query) use ($userId) {
+                        $query->where('idUsuSol', $userId);
+                    })
+                    ->where('estPre', 'vencido')
+                    ->count(),
+                    
+                'total' => PrestamoHerramienta::query()
+                    ->when($userRol == 1, function ($query) use ($userId) {
+                        $query->where('idUsuPre', $userId);
+                    })
+                    ->when($userRol == 3, function ($query) use ($userId) {
+                        $query->where('idUsuSol', $userId);
+                    })
+                    ->count()
             ]
         ];
     }
 
+    // Resto del código permanece igual...
     protected function actualizarPrestamosVencidos(): void
     {
         // Actualizar préstamos con fecha de devolución pasada y estado 'prestado'
@@ -143,6 +195,8 @@ new #[Layout('layouts.auth')] class extends Component {
                     </h1>
                     <p class="mt-1 text-sm text-gray-600">Gestión y seguimiento de préstamos de herramientas</p>
                 </div>
+                
+                @can('admin')
                 <div class="mt-4 sm:mt-0 flex space-x-3">
                     <a href="{{ route('inventario.prestamos.create') }}" wire:navigate
                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
@@ -152,6 +206,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         Nuevo Préstamo
                     </a>
                 </div>
+                @endcan
             </div>
         </div>
 
@@ -204,6 +259,7 @@ new #[Layout('layouts.auth')] class extends Component {
     </div>
 </div>
 
+        @can('admin')
         <!-- Estadísticas rápidas -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white overflow-hidden shadow rounded-lg">
@@ -286,8 +342,9 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
             </div>
         </div>
+        @endcan
 
-        <!-- Tabla de préstamos compacta -->
+<!-- Tabla de préstamos compacta -->
 <div class="bg-white shadow overflow-hidden sm:rounded-lg">
     <div class="px-4 py-3 bg-blue-600"> <!-- Reducido de px-6 py-4 a px-4 py-3 -->
         <h3 class="text-md font-medium text-white">Lista de Préstamos</h3> <!-- Texto más pequeño -->
@@ -302,7 +359,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         Herramienta
                     </th>
                     <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">
-                        Usuario
+                        Encargado
                     </th>
                     <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">
                         Solicitante
@@ -457,6 +514,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </svg>
                 <h3 class="mt-2 text-sm font-medium text-gray-900">No hay préstamos</h3>
                 <p class="mt-1 text-sm text-gray-500">Comienza registrando tu primer préstamo de herramienta.</p>
+                @can('admin')
                 <div class="mt-6">
                     <a href="{{ route('inventario.prestamos.create') }}" wire:navigate
                        class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -466,6 +524,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         Nuevo Préstamo
                     </a>
                 </div>
+                @endcan
             </div>
             @endif
         </div>

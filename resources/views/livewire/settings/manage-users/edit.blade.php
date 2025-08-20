@@ -47,49 +47,62 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->paiDir = $user->direccion->paiDir ?? '';
     }
 
-    public function updateUser(): void
-    {
-        $validated = $this->validate([
-            'tipDocUsu' => ['required', 'string', 'max:10'],
-            'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($this->user->id)],
-            'nomUsu' => ['required', 'string', 'max:100'],
-            'apeUsu' => ['required', 'string', 'max:100'],
-            'fecNacUsu' => ['required', 'date'],
-            'sexUsu' => ['required', 'in:Hombre,Mujer'],
-            'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user->id)],
-            'idRolUsu' => ['required', 'exists:rol,idRol'],
-            
-            'celCon' => ['required', 'string', 'max:15'],
-            'calDir' => ['required', 'string', 'max:100'],
-            'barDir' => ['required', 'string', 'max:100'],
-            'ciuDir' => ['required', 'string', 'max:100'],
-            'depDir' => ['required', 'string', 'max:100'],
-            'codPosDir' => ['required', 'string', 'max:20'],
-            'paiDir' => ['required', 'string', 'max:100'],
-        ]);
-
-        $this->user->update($validated);
+public function updateUser(): void
+{
+    $validated = $this->validate([
+        'tipDocUsu' => ['required', 'string', 'max:10'],
+        'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($this->user->id)],
+        'nomUsu' => ['required', 'string', 'max:100'],
+        'apeUsu' => ['required', 'string', 'max:100'],
+        'fecNacUsu' => ['required', 'date'],
+        'sexUsu' => ['required', 'in:Hombre,Mujer'],
+        'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user->id)],
+        'idRolUsu' => ['required', 'exists:rol,idRol'],
         
-        if($this->user->contacto) {
-            $this->user->contacto->update(['celCon' => $this->celCon]);
-            
-            if($this->user->direccion) {
-                $this->user->direccion->update([
-                    'calDir' => $this->calDir,
-                    'barDir' => $this->barDir,
-                    'ciuDir' => $this->ciuDir,
-                    'depDir' => $this->depDir,
-                    'codPosDir' => $this->codPosDir,
-                    'paiDir' => $this->paiDir,
-                ]);
-            }
-        }
+        'celCon' => ['required', 'string', 'max:15'],
+        'calDir' => ['required', 'string', 'max:100'],
+        'barDir' => ['required', 'string', 'max:100'],
+        'ciuDir' => ['required', 'string', 'max:100'],
+        'depDir' => ['required', 'string', 'max:100'],
+        'codPosDir' => ['required', 'string', 'max:20'],
+        'paiDir' => ['required', 'string', 'max:100'],
+    ]);
 
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Usuario actualizado correctamente'
-        ]);
+    // Verificar si se está cambiando a superusuario
+    if ($this->idRolUsu == 2) { // ID de superusuario
+        // Buscar el superusuario actual
+        $currentSuperuser = User::where('idRolUsu', 2)
+                              ->where('id', '!=', $this->user->id)
+                              ->first();
+        
+        if ($currentSuperuser) {
+            // Cambiar el superusuario actual a administrador
+            $currentSuperuser->update(['idRolUsu' => 1]); // ID de administrador
+        }
     }
+
+    $this->user->update($validated);
+    
+    if($this->user->contacto) {
+        $this->user->contacto->update(['celCon' => $this->celCon]);
+        
+        if($this->user->direccion) {
+            $this->user->direccion->update([
+                'calDir' => $this->calDir,
+                'barDir' => $this->barDir,
+                'ciuDir' => $this->ciuDir,
+                'depDir' => $this->depDir,
+                'codPosDir' => $this->codPosDir,
+                'paiDir' => $this->paiDir,
+            ]);
+        }
+    }
+
+    $this->dispatch('notify', [
+        'type' => 'success',
+        'message' => 'Usuario actualizado correctamente'
+    ]);
+}
 
     public function cancelarCambios(): void
     {

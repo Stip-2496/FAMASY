@@ -27,10 +27,13 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     Volt::route('Configuración/Base-de-datos', 'settings.database')->name('settings.database');
     
     // Rutas para gestión de usuarios
-    Volt::route('Gestionar-usuarios', 'settings.manage-users.index')->name('settings.manage-users');
-    Volt::route('Gestionar-usuarios/crear', 'settings.manage-users.create')->name('settings.manage-users.create');
-    Volt::route('Gestionar-usuarios/{user}/editar', 'settings.manage-users.edit')->name('settings.manage-users.edit');
-    Volt::route('Gestionar-usuarios/{user}', 'settings.manage-users.show')->name('settings.manage-users.show');
+    Volt::route('Panel-de-usuarios/dashboard', 'settings.manage-users.dashboard')->name('settings.manage-users.dashboard');
+    Volt::route('Panel-de-usuarios/lista-de-usuarios', 'settings.manage-users.index')->name('settings.manage-users');
+    Volt::route('Panel-de-usuarios/crear', 'settings.manage-users.create')->name('settings.manage-users.create');
+    Volt::route('Panel-de-usuarios/{user}/editar', 'settings.manage-users.edit')->name('settings.manage-users.edit');
+    Volt::route('Panel-de-usuarios/{user}', 'settings.manage-users.show')->name('settings.manage-users.show');
+    Volt::route('/eventos', 'settings.manage-users.events')->name('settings.manage-users.events');
+    Volt::route('/eventos-anormales', 'settings.manage-users.unusual-events')->name('settings.manage-users.unusual-events');
 
     // Ruta de descarga de la copia de base de datos 
     Route::get('/download-backup/{filename}', function ($filename) {
@@ -47,17 +50,61 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     Volt::route('proveedores/{proveedor}/editar', 'proveedores.edit')->name('proveedores.edit');
     Volt::route('proveedores/{proveedor}', 'proveedores.show')->name('proveedores.show');
     
-    // Rutas del módulo contabilidad 
-    Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
-        Volt::route('/', 'contabilidad.index')->name('index'); // Dashboard principal
-        Volt::route('movimientos', 'contabilidad.movimientos.index')->name('movimientos.index'); // Movimientos
-        Volt::route('facturas', 'contabilidad.facturas.index')->name('facturas.index'); // Facturas
-        Volt::route('gastos', 'contabilidad.gastos.index')->name('gastos.index'); // Gastos        
-        Volt::route('pagos', 'contabilidad.pagos.index')->name('pagos.index'); // Pagos      
-        Volt::route('cuentas-pendientes', 'contabilidad.cuentas-pendientes.index')->name('cuentas-pendientes.index'); // Cuentas Pendientes     
-        Volt::route('reportes', 'contabilidad.reportes.index')->name('reportes.index'); // Reportes     
-        Volt::route('configuracion', 'contabilidad.configuracion.index')->name('configuracion.index'); // Configuración
+   // Rutas del módulo contabilidad 
+Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
+    
+    // Dashboard principal - Volt Component
+    Volt::route('/', 'contabilidad.index')->name('index');
+    
+    // Movimientos - Volt Component
+    Route::prefix('movimientos')->name('movimientos.')->group(function () {
+        Volt::route('/', 'contabilidad.movimientos.index')->name('index');
     });
+    
+    // Reportes - Volt Component  
+    Route::prefix('reportes')->name('reportes.')->group(function () {
+        Volt::route('/', 'contabilidad.reportes.index')->name('index');
+    });
+    
+    // Facturas - Volt Component
+    Route::prefix('facturas')->name('facturas.')->group(function () {
+        Volt::route('/', 'contabilidad.facturas.index')->name('index');
+        Volt::route('/crear', 'contabilidad.facturas.create')->name('create');
+        Volt::route('/{factura}', 'contabilidad.facturas.show')->name('show');
+        Volt::route('/{factura}/editar', 'contabilidad.facturas.edit')->name('edit');
+    });
+    
+    // Gastos - Volt Component
+    Route::prefix('gastos')->name('gastos.')->group(function () {
+        Volt::route('/', 'contabilidad.gastos.index')->name('index');
+        Volt::route('/crear', 'contabilidad.gastos.create')->name('create');
+        Volt::route('/{gasto}', 'contabilidad.gastos.show')->name('show');
+        Volt::route('/{gasto}/editar', 'contabilidad.gastos.edit')->name('edit');
+    });
+    
+    // Pagos - Volt Component
+    Route::prefix('pagos')->name('pagos.')->group(function () {
+        Volt::route('/', 'contabilidad.pagos.index')->name('index');
+        Volt::route('/crear', 'contabilidad.pagos.create')->name('create');
+        Volt::route('/{pago}', 'contabilidad.pagos.show')->name('show');
+        Volt::route('/{pago}/editar', 'contabilidad.pagos.edit')->name('edit');
+    });
+    
+    // Cuentas Pendientes - Volt Component
+    Route::prefix('cuentas-pendientes')->name('cuentas-pendientes.')->group(function () {
+        Volt::route('/', 'contabilidad.cuentas-pendientes.index')->name('index');
+        Volt::route('/crear', 'contabilidad.cuentas-pendientes.create')->name('create');
+        Volt::route('/{cuenta}', 'contabilidad.cuentas-pendientes.show')->name('show');
+        Volt::route('/{cuenta}/editar', 'contabilidad.cuentas-pendientes.edit')->name('edit');
+    });
+    
+    // Configuración - Volt Component
+     Route::prefix('configuracion')->name('configuracion.')->group(function () {
+        Volt::route('/', 'contabilidad.configuracion.index')->name('index');
+    });
+    
+});
+
     
     // Módulo Pecuario (Animales, Producción, Salud y Peso)
     Route::prefix('pecuario')->name('pecuario.')->group(function () {
@@ -77,8 +124,8 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     
         Volt::route('salud-peso', 'pecuario.salud-peso.index')->name('salud-peso.index');
         Volt::route('salud-peso/crear', 'pecuario.salud-peso.create')->name('salud-peso.create');
-        Volt::route('salud-peso/{historial}', 'pecuario.salud-peso.show')->name('salud-peso.show');
-        Volt::route('salud-peso/{historial}/editar', 'pecuario.salud-peso.edit')->name('salud-peso.edit');
+        Volt::route('salud-peso/{historial}', 'pecuario.salud-peso.show')->name('salud-peso.show')->where(['historial' => '[0-9]+']);
+        Volt::route('salud-peso/{historial}/editar', 'pecuario.salud-peso.edit')->name('salud-peso.edit')->where(['historial' => '[0-9]+']);
     });
 
     // Módulo de Inventario
