@@ -142,18 +142,6 @@ new #[Layout('layouts.auth')] class extends Component {
                     <input type="date" wire:model.live="fecha" class="w-full border border-gray-300 rounded px-3 py-2">
                 </div>
 
-                {{-- Control para elementos por página --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Por página</label>
-                    <select wire:model.live="perPage" class="w-full border border-gray-300 rounded px-3 py-2">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                    </select>
-                </div>
-                {{-- Fin del control --}}
-
                 <div class="flex items-end gap-2">
                     <button wire:click="clearFilters"
                             class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded">
@@ -199,24 +187,29 @@ new #[Layout('layouts.auth')] class extends Component {
                             <td class="border border-gray-300 px-3 py-2 text-sm">{{ \Carbon\Carbon::parse($historial->fecHisMed)->format('d/m/Y') }}</td>
                             <td class="border border-gray-300 px-3 py-2 text-sm">{{ $historial->responHisMed }}</td>
                             <td class="border border-gray-300 px-3 py-2 text-center text-sm">
-                                <div class="inline-flex space-x-1">
-                                    <a href="{{ route('pecuario.salud-peso.show', $historial->idHisMed) }}" wire:navigate
-                                       class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
-                                       title="Ver">
-                                        Ver
-                                    </a>
-                                    <a href="{{ route('pecuario.salud-peso.edit', $historial->idHisMed) }}" wire:navigate
-                                       class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
-                                       title="Editar">
-                                        Editar
-                                    </a>
-                                    <button wire:click="confirmDelete({{ $historial->idHisMed }})"
-                                            class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-                                            title="Eliminar">
-                                        Eliminar
-                                    </button>
-                                </div>
-                            </td>
+                        <div class="inline-flex space-x-1">
+                            <!-- Botón Ver -->
+                            <a href="{{ route('pecuario.salud-peso.show', $historial->idHisMed) }}" wire:navigate
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
+                            title="Ver">
+                                Ver
+                            </a>
+                            
+                            <!-- Botón Editar -->
+                            <a href="{{ route('pecuario.salud-peso.edit', $historial->idHisMed) }}" wire:navigate
+                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+                            title="Editar">
+                                Editar
+                            </a>
+                            
+                            <!-- Botón Eliminar (ya funciona correctamente) -->
+                            <button wire:click="confirmDelete({{ $historial->idHisMed }})"
+                                    class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+                                    title="Eliminar">
+                                Eliminar
+                            </button>
+                        </div>
+                    </td>
                         </tr>
                         @endforeach
                     </tbody>

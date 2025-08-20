@@ -74,6 +74,31 @@ new #[Layout('layouts.auth')] class extends Component {
                     </h3>
 
                     <div>
+                        <label class="text-sm font-medium text-gray-500">NIT del Animal:</label>
+                        <p class="text-gray-900">{{ $animal->nitAni ?? 'No registrado' }}</p>
+                    </div>
+
+                    @if($animal->fotoAni)
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Foto:</label>
+                            <div class="mt-1">
+                                <img src="{{ asset('storage/' . $animal->fotoAni) }}" alt="Foto del animal" 
+                                     class="w-32 h-32 object-cover rounded-lg border border-gray-200 shadow-sm">
+                            </div>
+                        </div>
+                    @else
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Foto:</label>
+                            <p class="text-gray-900">No registrada</p>
+                        </div>
+                    @endif
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Ubicación:</label>
+                        <p class="text-gray-900">{{ $animal->ubicacionAni ?? 'No registrada' }}</p>
+                    </div>
+
+                    <div>
                         <label class="text-sm font-medium text-gray-500">Especie:</label>
                         <p class="text-gray-900">{{ $animal->espAni }}</p>
                     </div>

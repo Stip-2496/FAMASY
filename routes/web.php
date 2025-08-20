@@ -71,8 +71,8 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
     
         Volt::route('salud-peso', 'pecuario.salud-peso.index')->name('salud-peso.index');
         Volt::route('salud-peso/crear', 'pecuario.salud-peso.create')->name('salud-peso.create');
-        Volt::route('salud-peso/{historial}', 'pecuario.salud-peso.show')->name('salud-peso.show');
-        Volt::route('salud-peso/{historial}/editar', 'pecuario.salud-peso.edit')->name('salud-peso.edit');
+        Volt::route('salud-peso/{historial}', 'pecuario.salud-peso.show')->name('salud-peso.show')->where(['historial' => '[0-9]+']);
+        Volt::route('salud-peso/{historial}/editar', 'pecuario.salud-peso.edit')->name('salud-peso.edit')->where(['historial' => '[0-9]+']);
     });
 
     // Módulo de Inventario

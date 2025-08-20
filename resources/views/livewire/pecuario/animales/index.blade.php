@@ -21,7 +21,9 @@ new #[Layout('layouts.auth')] class extends Component {
                         $q->where('nomAni', 'like', '%'.$this->search.'%')
                           ->orWhere('espAni', 'like', '%'.$this->search.'%')
                           ->orWhere('razAni', 'like', '%'.$this->search.'%')
-                          ->orWhere('idAni', 'like', '%'.$this->search.'%');
+                          ->orWhere('idAni', 'like', '%'.$this->search.'%')
+                          ->orWhere('nitAni', 'like', '%'.$this->search.'%') // ✅ Busqueda por NIT
+                          ->orWhere('ubicacionAni', 'like', '%'.$this->search.'%'); // ✅ Busqueda por ubicación
                     });
                 })
                 ->orderBy('nomAni', 'asc')
@@ -84,7 +86,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 wire:model.live.debounce.500ms="search"
                 wire:keydown.enter="$set('search', $event.target.value)"
                 wire:change="$set('search', $event.target.value)"
-                placeholder="Buscar por nombre, especie, raza o ID..."
+                placeholder="Buscar por nombre, especie, raza, ID, NIT o ubicación..."
                 class="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
             </div>
             <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0">
@@ -114,10 +116,12 @@ new #[Layout('layouts.auth')] class extends Component {
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">#</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">NIT</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nombre</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Especie/Raza</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Sexo</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Edad</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Ubicación</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Estado</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Acciones</th>
                     </tr>
@@ -130,6 +134,9 @@ new #[Layout('layouts.auth')] class extends Component {
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $animal->idAni }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ $animal->nitAni ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $animal->nomAni ?? 'Sin nombre' }}</div>
@@ -157,6 +164,9 @@ new #[Layout('layouts.auth')] class extends Component {
                                     N/A
                                 @endif
                             </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ $animal->ubicacionAni ?? 'No especificada' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @switch($animal->estAni)

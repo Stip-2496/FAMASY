@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('rol', function (Blueprint $table) {
-            $table->id('idRol');
-            $table->string('nomRol', 50);
-            $table->text('desRol')->nullable();
-            $table->enum('estRol', ['activo', 'inactivo'])->default('activo');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('rol')) {
+            Schema::create('rol', function (Blueprint $table) {
+                $table->id('idRol');
+                $table->string('nomRol', 50);
+                $table->text('desRol')->nullable();
+                $table->enum('estRol', ['activo', 'inactivo'])->default('activo');
+                $table->timestamps();
+            });
+        }
     }
 
     /**
