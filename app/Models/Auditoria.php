@@ -22,7 +22,7 @@ class Auditoria extends Model
         'fecAud'
     ];
 
-    // 👇 Esto convierte automáticamente fecAud en Carbon
+    //  Esto convierte automáticamente fecAud en Carbon
     protected $casts = [
         'fecAud' => 'datetime',
     ];

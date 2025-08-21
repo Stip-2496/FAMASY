@@ -1,11 +1,12 @@
 <?php
 use App\Models\User;
 use App\Models\Rol;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
+use App\Models\Auditoria;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
+use App\Rules\SingleSuperAdmin;
 
 new #[Layout('layouts.auth')] class extends Component {
     public User $user;
@@ -47,62 +48,107 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->paiDir = $user->direccion->paiDir ?? '';
     }
 
-public function updateUser(): void
-{
-    $validated = $this->validate([
-        'tipDocUsu' => ['required', 'string', 'max:10'],
-        'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($this->user->id)],
-        'nomUsu' => ['required', 'string', 'max:100'],
-        'apeUsu' => ['required', 'string', 'max:100'],
-        'fecNacUsu' => ['required', 'date'],
-        'sexUsu' => ['required', 'in:Hombre,Mujer'],
-        'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user->id)],
-        'idRolUsu' => ['required', 'exists:rol,idRol'],
+    public function updatedIdRolUsu($value)
+    {
+        \Log::info("Role updated to: " . $value);
         
-        'celCon' => ['required', 'string', 'max:15'],
-        'calDir' => ['required', 'string', 'max:100'],
-        'barDir' => ['required', 'string', 'max:100'],
-        'ciuDir' => ['required', 'string', 'max:100'],
-        'depDir' => ['required', 'string', 'max:100'],
-        'codPosDir' => ['required', 'string', 'max:20'],
-        'paiDir' => ['required', 'string', 'max:100'],
-    ]);
-
-    // Verificar si se está cambiando a superusuario
-    if ($this->idRolUsu == 2) { // ID de superusuario
-        // Buscar el superusuario actual
-        $currentSuperuser = User::where('idRolUsu', 2)
-                              ->where('id', '!=', $this->user->id)
-                              ->first();
-        
-        if ($currentSuperuser) {
-            // Cambiar el superusuario actual a administrador
-            $currentSuperuser->update(['idRolUsu' => 1]); // ID de administrador
+        if ($value == 2) {
+            $existingSuperuser = User::where('idRolUsu', 2)
+                                   ->where('id', '!=', $this->user->id)
+                                   ->exists();
+            
+            if ($existingSuperuser) {
+                $this->dispatch('show-superuser-warning');
+            }
         }
     }
 
-    $this->user->update($validated);
-    
-    if($this->user->contacto) {
-        $this->user->contacto->update(['celCon' => $this->celCon]);
-        
-        if($this->user->direccion) {
-            $this->user->direccion->update([
-                'calDir' => $this->calDir,
-                'barDir' => $this->barDir,
-                'ciuDir' => $this->ciuDir,
-                'depDir' => $this->depDir,
-                'codPosDir' => $this->codPosDir,
-                'paiDir' => $this->paiDir,
+    public function revertRoleSelection(): void
+    {
+        $this->idRolUsu = $this->user->idRolUsu;
+        $this->dispatch('notify', [
+            'type' => 'info',
+            'message' => 'Selección de rol revertida'
+        ]);
+    }
+
+    public function updateUser(): void
+    {
+        $validated = $this->validate([
+            'tipDocUsu' => ['required', 'string', 'max:10'],
+            'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($this->user->id)],
+            'nomUsu' => ['required', 'string', 'max:100'],
+            'apeUsu' => ['required', 'string', 'max:100'],
+            'fecNacUsu' => ['required', 'date'],
+            'sexUsu' => ['required', 'in:Hombre,Mujer'],
+            'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user->id)],
+            'idRolUsu' => ['required', 'exists:rol,idRol', new SingleSuperAdmin($this->user->id)],
+            
+            'celCon' => ['required', 'string', 'max:15'],
+            'calDir' => ['required', 'string', 'max:100'],
+            'barDir' => ['required', 'string', 'max:100'],
+            'ciuDir' => ['required', 'string', 'max:100'],
+            'depDir' => ['required', 'string', 'max:100'],
+            'codPosDir' => ['required', 'string', 'max:20'],
+            'paiDir' => ['required', 'string', 'max:100'],
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            if ($this->idRolUsu == 2) {
+                $currentSuperuser = User::where('idRolUsu', 2)
+                                      ->where('id', '!=', $this->user->id)
+                                      ->first();
+                
+                if ($currentSuperuser) {
+                    $currentSuperuser->update(['idRolUsu' => 1]);
+
+                    Auditoria::create([
+                        'idUsuAud' => auth()->id(),
+                        'usuAud' => auth()->user()->nomUsu . ' ' . auth()->user()->apeUsu,
+                        'rolAud' => auth()->user()->rol->nomRol,
+                        'opeAud' => 'UPDATE',
+                        'tablaAud' => 'users',
+                        'regAud' => $currentSuperuser->id,
+                        'desAud' => 'Superusuario cambiado a Administrador automáticamente',
+                        'ipAud' => request()->ip()
+                    ]);
+                }
+            }
+
+            $this->user->update($validated);
+            
+            if($this->user->contacto) {
+                $this->user->contacto->update(['celCon' => $this->celCon]);
+                
+                if($this->user->direccion) {
+                    $this->user->direccion->update([
+                        'calDir' => $this->calDir,
+                        'barDir' => $this->barDir,
+                        'ciuDir' => $this->ciuDir,
+                        'depDir' => $this->depDir,
+                        'codPosDir' => $this->codPosDir,
+                        'paiDir' => $this->paiDir,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Usuario actualizado correctamente'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Error al actualizar usuario: ' . $e->getMessage()
             ]);
         }
     }
-
-    $this->dispatch('notify', [
-        'type' => 'success',
-        'message' => 'Usuario actualizado correctamente'
-    ]);
-}
 
     public function cancelarCambios(): void
     {
@@ -244,3 +290,33 @@ public function updateUser(): void
         </form>
     </div>
 </div>
+<script>
+document.addEventListener('livewire:initialized', () => {
+    console.log('Livewire initialized - edit superuser script loaded');
+    
+    Livewire.on('show-superuser-warning', () => {
+        console.log('show-superuser-warning event received in edit');
+        
+        Swal.fire({
+            title: '¡Advertencia!',
+            html: `Al asignar el rol de Superusuario:<br>
+                  • El superusuario actual será cambiado a Administrador automáticamente<br>
+                  • Esta acción se registrará en el sistema de auditoría`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Continuar',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+                popup: 'text-sm'
+            }
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                console.log('User cancelled, reverting role selection');
+                Livewire.dispatch('revert-role-selection');
+            } else {
+                console.log('User confirmed superuser assignment');
+            }
+        });
+    });
+});
+</script>

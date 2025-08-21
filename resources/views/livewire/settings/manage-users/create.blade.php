@@ -1,9 +1,12 @@
 <?php
 use App\Models\User;
 use App\Models\Rol;
+use App\Models\Auditoria;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use App\Rules\SingleSuperAdmin;
 
 new #[Layout('layouts.auth')] class extends Component {
     public string $tipDocUsu = '';
@@ -21,9 +24,9 @@ new #[Layout('layouts.auth')] class extends Component {
     public string $calDir = '';
     public string $barDir = '';
     public string $ciuDir = '';
-    public string $depDir = '';
+    public string $depDir = 'Huila';
     public string $codPosDir = '';
-    public string $paiDir = '';
+    public string $paiDir = 'Colombia';
 
     public function mount(): void
     {
@@ -33,8 +36,17 @@ new #[Layout('layouts.auth')] class extends Component {
     public function updatedIdRolUsu($value)
     {
         if ($value == 2) {
-            $this->dispatch('show-superuser-warning');
+            $existingSuperuser = User::where('idRolUsu', 2)->exists();
+            
+            if ($existingSuperuser) {
+                $this->dispatch('show-superuser-warning');
+            }
         }
+    }
+
+    public function revertRoleSelection(): void
+    {
+        $this->idRolUsu = 1;
     }
 
     public function createUser(): void
@@ -48,7 +60,7 @@ new #[Layout('layouts.auth')] class extends Component {
             'sexUsu' => ['required', 'in:Hombre,Mujer'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
-            'idRolUsu' => ['required', 'exists:rol,idRol'],
+            'idRolUsu' => ['required', 'exists:rol,idRol', new SingleSuperAdmin()],
             
             'celCon' => ['required', 'string', 'max:15'],
             'calDir' => ['required', 'string', 'max:100'],
@@ -59,47 +71,68 @@ new #[Layout('layouts.auth')] class extends Component {
             'paiDir' => ['required', 'string', 'max:100'],
         ]);
 
-        // Crear contacto
-        $contacto = \App\Models\Contacto::create([
-            'celCon' => $this->celCon,
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Crear dirección
-        \App\Models\Direccion::create([
-            'idConDir' => $contacto->idCon,
-            'calDir' => $this->calDir,
-            'barDir' => $this->barDir,
-            'ciuDir' => $this->ciuDir,
-            'depDir' => $this->depDir,
-            'codPosDir' => $this->codPosDir,
-            'paiDir' => $this->paiDir,
-        ]);
+            // Crear contacto
+            $contacto = \App\Models\Contacto::create(['celCon' => $this->celCon]);
 
-        // Crear usuario
-        User::create([
-            'tipDocUsu' => $this->tipDocUsu,
-            'numDocUsu' => $this->numDocUsu,
-            'nomUsu' => $this->nomUsu,
-            'apeUsu' => $this->apeUsu,
-            'fecNacUsu' => $this->fecNacUsu,
-            'sexUsu' => $this->sexUsu,
-            'email' => $this->email,
-            'password' => Hash::make($this->password),
-            'idRolUsu' => $this->idRolUsu,
-            'idConUsu' => $contacto->idCon,
-        ]);
+            // Crear dirección
+            \App\Models\Direccion::create([
+                'idConDir' => $contacto->idCon,
+                'calDir' => $this->calDir,
+                'barDir' => $this->barDir,
+                'ciuDir' => $this->ciuDir,
+                'depDir' => $this->depDir,
+                'codPosDir' => $this->codPosDir,
+                'paiDir' => $this->paiDir,
+            ]);
 
-        // Verificar si se está creando un superusuario
-        if ($this->idRolUsu == 2) { // ID de superusuario
-            // Buscar y actualizar el superusuario actual si existe
-            $currentSuperuser = User::where('idRolUsu', 2)->first();
-        
-            if ($currentSuperuser) {
-                $currentSuperuser->update(['idRolUsu' => 1]); // Cambiar a administrador
+            // Manejar cambio de superusuario si es necesario
+            if ($this->idRolUsu == 2) {
+                $currentSuperuser = User::where('idRolUsu', 2)->first();
+            
+                if ($currentSuperuser) {
+                    $currentSuperuser->update(['idRolUsu' => 1]);
+
+                    Auditoria::create([
+                        'idUsuAud' => auth()->id(),
+                        'usuAud' => auth()->user()->nomUsu . ' ' . auth()->user()->apeUsu,
+                        'rolAud' => auth()->user()->rol->nomRol,
+                        'opeAud' => 'UPDATE',
+                        'tablaAud' => 'users',
+                        'regAud' => $currentSuperuser->id,
+                        'desAud' => 'Superusuario cambiado a Administrador automáticamente',
+                        'ipAud' => request()->ip()
+                    ]);
+                }
             }
-        }
 
-        $this->redirect(route('settings.manage-users.index'), navigate: true);
+            // Crear usuario
+            User::create([
+                'tipDocUsu' => $this->tipDocUsu,
+                'numDocUsu' => $this->numDocUsu,
+                'nomUsu' => $this->nomUsu,
+                'apeUsu' => $this->apeUsu,
+                'fecNacUsu' => $this->fecNacUsu,
+                'sexUsu' => $this->sexUsu,
+                'email' => $this->email,
+                'password' => Hash::make($this->password),
+                'idRolUsu' => $this->idRolUsu,
+                'idConUsu' => $contacto->idCon,
+            ]);
+
+            DB::commit();
+
+            $this->redirect(route('settings.manage-users.index'), navigate: true);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Error al crear usuario: ' . $e->getMessage()
+            ]);
+        }
     }
 }; ?>
 
@@ -274,15 +307,33 @@ new #[Layout('layouts.auth')] class extends Component {
         </form>
     </div>
 </div>
-
 <script>
 document.addEventListener('livewire:initialized', () => {
+    console.log('Livewire initialized - superuser script loaded');
+    
     Livewire.on('show-superuser-warning', () => {
+        console.log('show-superuser-warning event received');
+        
         Swal.fire({
             title: '¡Advertencia!',
-            text: 'Al asignar el rol de Superusuario, el superusuario actual será cambiado a Administrador automáticamente.',
+            html: `Al asignar el rol de Superusuario:<br>
+                  • El superusuario actual será cambiado a Administrador automáticamente<br>
+                  • Usted obtendrá todos los permisos de superusuario<br>
+                  • Esta acción se registrará en el sistema de auditoría`,
             icon: 'warning',
-            confirmButtonText: 'Entendido'
+            showCancelButton: true,
+            confirmButtonText: 'Continuar',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+                popup: 'text-sm'
+            }
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                console.log('User cancelled, reverting role selection');
+                Livewire.dispatch('revert-role-selection');
+            } else {
+                console.log('User confirmed superuser assignment');
+            }
         });
     });
 });

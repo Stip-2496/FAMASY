@@ -110,12 +110,12 @@ new #[Layout('layouts.auth')] class extends Component {
             ->orderBy('fecha', 'asc')
             ->get();
             
-            // Eventos recientes (últimos 5 eventos normales)
+            // Eventos recientes (últimos 3 eventos normales)
             $this->eventosRecientes = Auditoria::query()
                 ->with('usuario')
                 ->whereNotIn('opeAud', ['LOGIN_FAILED', 'UNAUTHORIZED_ACCESS'])
                 ->orderBy('fecAud', 'desc')
-                ->take(5)
+                ->take(3)
                 ->get()
                 ->map(function($log) {
                     return [
@@ -126,7 +126,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     ];
                 });
             
-            // Eventos anormales (últimos 5 eventos anómalos)
+            // Eventos anormales (últimos 3 eventos anómalos)
             $this->eventosAnormales = Auditoria::query()
                 ->with('usuario')
                 ->where(function($query) {
@@ -135,7 +135,7 @@ new #[Layout('layouts.auth')] class extends Component {
                           ->orWhere('desAud', 'like', '%acceso no autorizado%');
                 })
                 ->orderBy('fecAud', 'desc')
-                ->take(5)
+                ->take(3)
                 ->get()
                 ->map(function($log) {
                     return [
@@ -186,9 +186,11 @@ new #[Layout('layouts.auth')] class extends Component {
             <!-- Card 1: Total de usuarios con Pie Chart -->
             <div>
                 <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
+                    <a href="{{ route('settings.manage-users') }}" wire:navigate >
                     <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 to-blue-400 text-white shadow-blue-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                        <a href="{{ route('settings.manage-users') }}" wire:navigate ><i class="fas fa-users text-xl"></i></a>
+                        <i class="fas fa-users text-xl"></i>
                     </div>
+                    </a>
                     <div class="p-4 text-right">
                         <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Total de usuarios</p>
                         <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">{{ number_format($totalUsuarios) }}</h4>
@@ -257,9 +259,11 @@ new #[Layout('layouts.auth')] class extends Component {
         <!-- Card: Eventos -->
         <div>
             <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white shadow-indigo-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                    <a href="{{ route('settings.manage-users.events') }}" wire:navigate><i class="fas fa-calendar-check text-xl"></i></a>
+                <a href="{{ route('settings.manage-users.events') }}" wire:navigate>
+                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white shadow-indigo-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
+                    <i class="fas fa-calendar-check text-xl"></i>
                 </div>
+                </a>
                 <div class="p-4 text-right">
                     <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Eventos</p>
                     <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">Últimos registros</h4>
@@ -287,9 +291,11 @@ new #[Layout('layouts.auth')] class extends Component {
         <!-- Card: Eventos Anormales -->
         <div>
             <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-red-600 to-red-400 text-white shadow-red-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                    <a href="{{ route('settings.manage-users.unusual-events') }}" wire:navigate><i class="fas fa-exclamation-triangle text-xl"></i></a>
+                <a href="{{ route('settings.manage-users.unusual-events') }}" wire:navigate>
+                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-red-600 to-red-400 text-white shadow-red-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
                 </div>
+                </a>
                 <div class="p-4 text-right">
                     <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Eventos anormales</p>
                     <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">Alertas recientes</h4>
