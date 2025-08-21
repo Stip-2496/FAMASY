@@ -303,13 +303,13 @@ new #[Layout('layouts.auth')] class extends Component {
                             </label>
                             <select id="operacion"
                                     wire:model.live="operacion"
-                                    class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-xs">
+                                    class="w-full cursor-pointer px-2 py-1 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-xs">
                                 <option value="">Todas</option>
-                                <option value="INSERT">INSERT</option>
-                                <option value="UPDATE">UPDATE</option>
-                                <option value="DELETE">DELETE</option>
-                                <option value="LOGIN">LOGIN</option>
-                                <option value="LOGOUT">LOGOUT</option>
+                                <option value="INSERT">Insert</option>
+                                <option value="UPDATE">Update</option>
+                                <option value="DELETE">Delete</option>
+                                <option value="LOGIN">Login</option>
+                                <option value="LOGOUT">Logout</option>
                             </select>
                         </div>
 
@@ -322,7 +322,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             <!-- Botón para abrir el modal de fechas -->
                             <button type="button" 
                                     wire:click="openDateModal"
-                                    class="w-full px-2 py-1 bg-white border border-gray-300 rounded shadow-sm flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs">
+                                    class="w-full cursor-pointer px-2 py-1 bg-white border border-gray-300 rounded shadow-sm flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs">
                                 <span class="truncate mr-1">
                                     {{ \Carbon\Carbon::parse($startDate)->format('d/M/Y') }} → {{ \Carbon\Carbon::parse($endDate)->format('d/M/Y') }}
                                 </span>
@@ -345,13 +345,13 @@ new #[Layout('layouts.auth')] class extends Component {
                         </div>
 
                         <!-- Rol (compacto) -->
-                        <div class="w-[100px]">
+                        <div class="w-[100px] ">
                             <label for="rol" class="block text-xs font-medium text-gray-700 mb-1">
                                 <i class="fa fa-users text-gray-400 mr-1"></i> Rol
                             </label>
                             <select id="rol"
                                     wire:model.live="rol"
-                                    class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-xs">
+                                    class="w-full cursor-pointer px-2 py-1 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-xs">
                                 <option value="">Todos</option>
                                 <option value="Superusuario">Superusuario</option>
                                 <option value="Administrador">Administrador</option>
@@ -363,7 +363,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <div class="flex items-end">
                             <button type="button"
                                     wire:click="clearFilters"
-                                    class="px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded transition duration-150 ease-in-out text-xs whitespace-nowrap">
+                                    class="cursor-pointer px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded transition duration-150 ease-in-out text-xs whitespace-nowrap">
                                 <i class="fa fa-eraser mr-1"></i> Limpiar
                             </button>
                         </div>
@@ -378,11 +378,6 @@ new #[Layout('layouts.auth')] class extends Component {
             <div class="relative top-20 mx-auto p-4 border w-full max-w-4xl shadow-lg rounded-md bg-white">
                 <div class="flex justify-between items-center pb-3 border-b">
                     <h3 class="text-xl font-semibold text-gray-900">Seleccionar rango de fechas</h3>
-                    <button wire:click="cancelDateFilter" class="text-gray-400 hover:text-gray-500">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
                 </div>
                 
                 <div class="flex mt-4 h-96">
@@ -391,25 +386,25 @@ new #[Layout('layouts.auth')] class extends Component {
                         <ul class="space-y-2">
                             <li>
                                 <button wire:click="selectRange('all_time')" 
-                                        class="w-full text-left px-3 py-2 rounded {{ $selectedRangeType === 'all_time' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'all_time' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
                                     Todo el tiempo
                                 </button>
                             </li>
                             <li>
                                 <button wire:click="selectRange('last_24_hours')" 
-                                        class="w-full text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_24_hours' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_24_hours' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
                                     Últimas 24 horas
                                 </button>
                             </li>
                             <li>
                                 <button wire:click="selectRange('last_7_days')" 
-                                        class="w-full text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_7_days' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_7_days' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
                                     Últimos 7 días
                                 </button>
                             </li>
                             <li>
                                 <button wire:click="selectRange('last_30_days')" 
-                                        class="w-full text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_30_days' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_30_days' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
                                     Últimos 30 días
                                 </button>
                             </li>
@@ -419,7 +414,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                     @foreach($availableYears as $year)
                                     <li>
                                         <button wire:click="selectRange('year_{{ $year }}')" 
-                                                class="w-full text-left px-3 py-1 rounded {{ $selectedRangeType === 'year_' . $year ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
+                                                class="w-full cursor-pointer text-left px-3 py-1 rounded {{ $selectedRangeType === 'year_' . $year ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100' }}">
                                             {{ $year }}
                                         </button>
                                     </li>
@@ -433,26 +428,26 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="w-3/4 pl-4">
                         <!-- Controles de mes y año -->
                         <div class="flex justify-between items-center mb-4">
-                            <button wire:click="changeCalendarMonth('prev')" class="p-2 rounded hover:bg-gray-100">
+                            <button wire:click="changeCalendarMonth('prev')" class="p-2 rounded hover:bg-gray-100 cursor-pointer">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
                             </button>
                             
                             <div class="flex items-center space-x-2">
-                                <select wire:model="calendarMonth" class="px-2 py-1 border rounded">
+                                <select wire:model="calendarMonth" class="px-2 py-1 border rounded cursor-pointer">
                                     @for($i = 1; $i <= 12; $i++)
                                     <option value="{{ $i }}">{{ DateTime::createFromFormat('!m', $i)->format('F') }}</option>
                                     @endfor
                                 </select>
-                                <select wire:model="calendarYear" class="px-2 py-1 border rounded">
+                                <select wire:model="calendarYear" class="px-2 py-1 border rounded cursor-pointer">
                                     @foreach($availableYears as $year)
                                     <option value="{{ $year }}">{{ $year }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             
-                            <button wire:click="changeCalendarMonth('next')" class="p-2 rounded hover:bg-gray-100">
+                            <button wire:click="changeCalendarMonth('next')" class="p-2 rounded hover:bg-gray-100 cursor-pointer">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                 </svg>
@@ -490,7 +485,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                     $isToday = $day['date'] == now()->format('Y-m-d');
                                 @endphp
                                 <button wire:click="selectDate('{{ $day['date'] }}')"
-                                        class="w-8 h-8 rounded-full flex items-center justify-center text-sm
+                                        class="w-8 h-8 cursor-pointer rounded-full flex items-center justify-center text-sm
                                             {{ $isToday ? 'border border-blue-500' : '' }}
                                             {{ $isStart || $isEnd ? 'bg-blue-500 text-white' : '' }}
                                             {{ $isInRange && !$isStart && !$isEnd ? 'bg-blue-100' : '' }}
@@ -519,11 +514,11 @@ new #[Layout('layouts.auth')] class extends Component {
                                 </div>
                                 <div class="space-x-2">
                                     <button wire:click="cancelDateFilter" 
-                                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 cursor-pointer">
                                         Cancelar
                                     </button>
                                     <button wire:click="applyDateFilter" 
-                                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
                                             {{ !$tempStartDate || !$tempEndDate ? 'disabled' : '' }}>
                                         Aplicar
                                     </button>
@@ -612,7 +607,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                     <div class="flex justify-center space-x-1">
                                         <!-- Icono de ojo para ver detalles - CAMBIO: usar $log->id en lugar de $log->idAud -->
                                         <button wire:click="showLogDetails('{{ $log->idAud }}')"
-                                                class="text-blue-600 hover:text-blue-900 transition-colors duration-200"
+                                                class="cursor-pointer text-blue-600 hover:text-blue-900 transition-colors duration-200"
                                                 title="Ver detalles del evento">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
