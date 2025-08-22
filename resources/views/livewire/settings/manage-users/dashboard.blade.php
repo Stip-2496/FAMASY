@@ -147,6 +147,9 @@ new #[Layout('layouts.auth')] class extends Component {
                     ];
                 });
             
+            // EMITIR EVENTO CUANDO LOS DATOS ESTÉN CARGADOS
+            $this->dispatch('datosCargados');
+            
         } catch (\Exception $e) {
             // Log del error
             \Log::error('Error al cargar datos del dashboard de usuarios: ' . $e->getMessage());
@@ -402,13 +405,32 @@ new #[Layout('layouts.auth')] class extends Component {
     </div>
 </div>
 
-<!-- Scripts para gráficos -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Bandera para prevenir múltiples inicializaciones
+let graficosInicializados = false;
+
 // Función para inicializar todos los gráficos
 function inicializarGraficosUsuarios() {
+    // Prevenir múltiples ejecuciones
+    if (graficosInicializados) {
+        console.log('Gráficos ya inicializados, omitiendo...');
+        return;
+    }
+    
     console.log('Inicializando gráficos del dashboard de usuarios...');
     
+    // Verificar que los datos estén disponibles (del lado del cliente)
+    const distribucionRoles = @json($distribucionRoles);
+    const tendenciaUsuarios = @json($tendenciaUsuarios);
+    const registrosNuevos = @json($registrosNuevos);
+    
+    if (!distribucionRoles || !tendenciaUsuarios || !registrosNuevos || 
+        distribucionRoles.length === 0 || tendenciaUsuarios.length === 0 || registrosNuevos.length === 0) {
+        console.log('Datos no disponibles, reintentando en 500ms...');
+        setTimeout(inicializarGraficosUsuarios, 500);
+        return;
+    }
+
     // Gráfico de distribución de roles (Pie Chart)
     const ctxPie = document.getElementById('totalUsersChart');
     if (ctxPie) {
@@ -420,10 +442,10 @@ function inicializarGraficosUsuarios() {
         ctxPie.chart = new Chart(ctxPie.getContext('2d'), {
             type: 'pie',
             data: {
-                labels: @json($distribucionRoles->pluck('nombre')),
+                labels: distribucionRoles.map(item => item.nombre),
                 datasets: [{
-                    data: @json($distribucionRoles->pluck('cantidad')),
-                    backgroundColor: @json($distribucionRoles->pluck('color')),
+                    data: distribucionRoles.map(item => item.cantidad),
+                    backgroundColor: distribucionRoles.map(item => item.color),
                     borderWidth: 1
                 }]
             },
@@ -460,10 +482,10 @@ function inicializarGraficosUsuarios() {
         ctxLine.chart = new Chart(ctxLine.getContext('2d'), {
             type: 'line',
             data: {
-                labels: @json($tendenciaUsuarios->pluck('periodo')),
+                labels: tendenciaUsuarios.map(item => item.periodo),
                 datasets: [{
                     label: 'Usuarios registrados',
-                    data: @json($tendenciaUsuarios->pluck('total')),
+                    data: tendenciaUsuarios.map(item => item.total),
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
@@ -494,10 +516,10 @@ function inicializarGraficosUsuarios() {
         ctxBar.chart = new Chart(ctxBar.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: @json($registrosNuevos->pluck('fecha')),
+                labels: registrosNuevos.map(item => item.fecha),
                 datasets: [{
                     label: 'Nuevos usuarios',
-                    data: @json($registrosNuevos->pluck('total')),
+                    data: registrosNuevos.map(item => item.total),
                     backgroundColor: '#10b981',
                     borderColor: '#10b981',
                     borderWidth: 1
@@ -514,18 +536,20 @@ function inicializarGraficosUsuarios() {
             }
         });
     }
+    
+    // Marcar como inicializado al final
+    graficosInicializados = true;
 }
 
-// Inicializar cuando el DOM está listo
-document.addEventListener('DOMContentLoaded', inicializarGraficosUsuarios);
+// SOLO mantener estos dos event listeners:
 
-// Y también cuando Livewire termina de navegar
-document.addEventListener('livewire:navigated', inicializarGraficosUsuarios);
+// Cuando Livewire termina de cargar (primera carga)
+document.addEventListener('livewire:load', function() {
+    setTimeout(inicializarGraficosUsuarios, 800);
+});
 
-// También inicializar cuando se carga el componente de Livewire
-document.addEventListener('livewire:init', function() {
-    Livewire.on('datos-cargados', function() {
-        setTimeout(inicializarGraficosUsuarios, 100);
-    });
+// Cuando los datos específicamente se han cargado (evento personalizado)
+Livewire.on('datosCargados', () => {
+    setTimeout(inicializarGraficosUsuarios, 50);
 });
 </script>
