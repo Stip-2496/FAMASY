@@ -49,11 +49,8 @@ new #[Layout('layouts.app')] class extends Component {
             // Incrementar el contador de intentos fallidos
             RateLimiter::hit($this->throttleKey());
 
-            // Disparar evento de fallo de login
-            event(new Failed('web', null, [
-                'email' => $this->email,
-                'password' => $this->password,
-            ]));
+            // El evento Failed se maneja automáticamente a través de AuditServiceProvider
+            // No es necesario dispararlo manualmente para evitar duplicación
 
             $this->errors[] = 'Credenciales incorrectas';
             $this->dispatch('validation-failed', errors: $this->errors);
@@ -69,9 +66,6 @@ new #[Layout('layouts.app')] class extends Component {
         // Obtener el usuario autenticado
         $user = Auth::user();
 
-        // Disparar evento de login exitoso
-        event(new Login('web', $user, $this->remember));
-        
         // Redirigir según el ID del rol del usuario
         $redirectRoute = match($user->idRolUsu) {
             1 => route('inventario.dashboard'), // Administrador (idRolUsu = 1)
@@ -93,8 +87,8 @@ new #[Layout('layouts.app')] class extends Component {
             return;
         }
 
-        // Disparar evento de bloqueo
-        event(new Lockout(request()));
+        // El evento Lockout se maneja automáticamente a través de AuditServiceProvider
+        // No es necesario dispararlo manualmente para evitar duplicación
 
         // Calcular tiempo de espera
         $seconds = RateLimiter::availableIn($this->throttleKey());
