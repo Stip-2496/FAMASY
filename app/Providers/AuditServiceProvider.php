@@ -6,10 +6,9 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Event;
 use App\Models\Auditoria;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User; 
 
 class AuditServiceProvider extends ServiceProvider
 {
@@ -20,7 +19,7 @@ class AuditServiceProvider extends ServiceProvider
 
     public function boot()
     {
-        // Registrar eventos de autenticación
+        // Eventos de autenticación
         Event::listen(Login::class, function ($event) {
             $this->logAuthEvent('LOGIN', $event->user, 'Inicio de sesión exitoso');
         });
@@ -31,6 +30,10 @@ class AuditServiceProvider extends ServiceProvider
 
         Event::listen(Failed::class, function ($event) {
             $this->logFailedLogin($event);
+        });
+
+        Event::listen(Lockout::class, function ($event) {
+            $this->logLockout($event);
         });
     }
 
@@ -50,14 +53,24 @@ class AuditServiceProvider extends ServiceProvider
 
     protected function logFailedLogin($event)
     {
-        $user = User::where('email', $event->credentials['email'])->first();
-
         Auditoria::create([
             'usuAud' => $event->credentials['email'],
             'rolAud' => 'N/A',
             'opeAud' => 'LOGIN_FAILED',
             'tablaAud' => 'users',
             'desAud' => 'Intento fallido de inicio de sesión',
+            'ipAud' => request()->ip()
+        ]);
+    }
+
+    protected function logLockout($event)
+    {
+        Auditoria::create([
+            'usuAud' => $event->request->email ?? 'Desconocido',
+            'rolAud' => 'N/A',
+            'opeAud' => 'LOGIN_FAILED',
+            'tablaAud' => 'users',
+            'desAud' => 'Bloqueo por demasiados intentos fallidos',
             'ipAud' => request()->ip()
         ]);
     }
