@@ -14,8 +14,7 @@ class Logout
         
         Auth::guard('web')->logout();
 
-        // Disparar evento de logout
-        event(new LogoutEvent('web', $user));
+     
 
         Session::invalidate();
         Session::regenerateToken();
