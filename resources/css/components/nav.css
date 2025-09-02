@@ -1,0 +1,7 @@
+.clip-diagonal{
+  clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%);
+}
+
+iframe {
+    border: 0;
+  }
