@@ -405,41 +405,90 @@ new #[Layout('layouts.auth')] class extends Component {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Bandera para prevenir múltiples inicializaciones
 let graficosInicializados = false;
+let chartsInstances = {
+    pieChart: null,
+    lineChart: null,
+    barChart: null
+};
+
+// Función para verificar si Chart.js está cargado
+function chartJsEstaCargado() {
+    return typeof Chart !== 'undefined' && typeof Chart === 'function';
+}
+
+// Función para resetear el estado de inicialización
+function resetearInicializacionGraficos() {
+    graficosInicializados = false;
+    
+    // Destruir gráficos existentes
+    if (chartsInstances.pieChart) {
+        chartsInstances.pieChart.destroy();
+        chartsInstances.pieChart = null;
+    }
+    if (chartsInstances.lineChart) {
+        chartsInstances.lineChart.destroy();
+        chartsInstances.lineChart = null;
+    }
+    if (chartsInstances.barChart) {
+        chartsInstances.barChart.destroy();
+        chartsInstances.barChart = null;
+    }
+    
+    console.log('Estado de gráficos reseteado para re-inicialización');
+}
 
 // Función para inicializar todos los gráficos
 function inicializarGraficosUsuarios() {
-    // Prevenir múltiples ejecuciones
+    // Prevenir múltiples ejecuciones si ya están inicializados
     if (graficosInicializados) {
         console.log('Gráficos ya inicializados, omitiendo...');
         return;
     }
     
+    // Verificar que Chart.js esté cargado
+    if (!chartJsEstaCargado()) {
+        console.log('Chart.js no está cargado, reintentando en 100ms...');
+        setTimeout(inicializarGraficosUsuarios, 100);
+        return;
+    }
+    
     console.log('Inicializando gráficos del dashboard de usuarios...');
     
-    // Verificar que los datos estén disponibles (del lado del cliente)
+    // Verificar que los elementos canvas existan en el DOM
+    const ctxPie = document.getElementById('totalUsersChart');
+    const ctxLine = document.getElementById('activeUsersChart');
+    const ctxBar = document.getElementById('newUsersChart');
+    
+    if (!ctxPie || !ctxLine || !ctxBar) {
+        console.log('Elementos canvas no encontrados en el DOM, reintentando en 100ms...');
+        setTimeout(inicializarGraficosUsuarios, 100);
+        return;
+    }
+    
+    // Verificar que los datos estén disponibles
     const distribucionRoles = @json($distribucionRoles);
     const tendenciaUsuarios = @json($tendenciaUsuarios);
     const registrosNuevos = @json($registrosNuevos);
     
     if (!distribucionRoles || !tendenciaUsuarios || !registrosNuevos || 
         distribucionRoles.length === 0 || tendenciaUsuarios.length === 0 || registrosNuevos.length === 0) {
-        console.log('Datos no disponibles, reintentando en 500ms...');
-        setTimeout(inicializarGraficosUsuarios, 500);
+        console.log('Datos no disponibles, reintentando en 100ms...');
+        setTimeout(inicializarGraficosUsuarios, 100);
         return;
     }
 
-    // Gráfico de distribución de roles (Pie Chart)
-    const ctxPie = document.getElementById('totalUsersChart');
-    if (ctxPie) {
-        // Destruir gráfico existente si hay uno
-        if (ctxPie.chart) {
-            ctxPie.chart.destroy();
-        }
-        
-        ctxPie.chart = new Chart(ctxPie.getContext('2d'), {
+    // Destruir gráficos existentes si los hay
+    if (chartsInstances.pieChart) chartsInstances.pieChart.destroy();
+    if (chartsInstances.lineChart) chartsInstances.lineChart.destroy();
+    if (chartsInstances.barChart) chartsInstances.barChart.destroy();
+
+    try {
+        // Gráfico de distribución de roles (Pie Chart)
+        chartsInstances.pieChart = new Chart(ctxPie, {
             type: 'pie',
             data: {
                 labels: distribucionRoles.map(item => item.nombre),
@@ -469,17 +518,9 @@ function inicializarGraficosUsuarios() {
                 }
             }
         });
-    }
 
-    // Gráfico de tendencia de usuarios activos (Line Chart)
-    const ctxLine = document.getElementById('activeUsersChart');
-    if (ctxLine) {
-        // Destruir gráfico existente si hay uno
-        if (ctxLine.chart) {
-            ctxLine.chart.destroy();
-        }
-        
-        ctxLine.chart = new Chart(ctxLine.getContext('2d'), {
+        // Gráfico de tendencia de usuarios activos (Line Chart)
+        chartsInstances.lineChart = new Chart(ctxLine, {
             type: 'line',
             data: {
                 labels: tendenciaUsuarios.map(item => item.periodo),
@@ -503,17 +544,9 @@ function inicializarGraficosUsuarios() {
                 }
             }
         });
-    }
 
-    // Gráfico de nuevos usuarios (Bar Chart)
-    const ctxBar = document.getElementById('newUsersChart');
-    if (ctxBar) {
-        // Destruir gráfico existente si hay uno
-        if (ctxBar.chart) {
-            ctxBar.chart.destroy();
-        }
-        
-        ctxBar.chart = new Chart(ctxBar.getContext('2d'), {
+        // Gráfico de nuevos usuarios (Bar Chart)
+        chartsInstances.barChart = new Chart(ctxBar, {
             type: 'bar',
             data: {
                 labels: registrosNuevos.map(item => item.fecha),
@@ -535,21 +568,59 @@ function inicializarGraficosUsuarios() {
                 }
             }
         });
+        
+        graficosInicializados = true;
+        console.log('Todos los gráficos inicializados correctamente');
+        
+    } catch (error) {
+        console.error('Error inicializando gráficos:', error);
+        console.log('Reintentando en 200ms...');
+        setTimeout(inicializarGraficosUsuarios, 200);
     }
-    
-    // Marcar como inicializado al final
-    graficosInicializados = true;
 }
 
 // SOLO mantener estos dos event listeners:
 
 // Cuando Livewire termina de cargar (primera carga)
 document.addEventListener('livewire:load', function() {
+    console.log('Livewire cargado - Programando inicialización de gráficos');
     setTimeout(inicializarGraficosUsuarios, 800);
 });
 
 // Cuando los datos específicamente se han cargado (evento personalizado)
 Livewire.on('datosCargados', () => {
+    console.log('Datos cargados - Programando inicialización de gráficos');
     setTimeout(inicializarGraficosUsuarios, 50);
 });
+
+// NUEVO: Escuchar cuando el componente es destruido (navegación fuera del dashboard)
+Livewire.on('destroyed', () => {
+    console.log('Componente destruido - Reseteando gráficos');
+    resetearInicializacionGraficos();
+});
+
+// NUEVO: Escuchar cuando Livewire actualiza el DOM (navegación SPA)
+document.addEventListener('livewire:navigated', function() {
+    console.log('Livewire navigated - Verificando si estamos en dashboard');
+    
+    // Verificar si el dashboard está en el URL actual
+    if (window.location.href.includes('/dashboard') || 
+        window.location.href.includes('manage-users') ||
+        document.getElementById('totalUsersChart')) {
+        console.log('Dashboard detectado - Reseteando gráficos para re-inicialización');
+        resetearInicializacionGraficos();
+        setTimeout(inicializarGraficosUsuarios, 300);
+    }
+});
+
+// También intentar inicializar cuando el DOM esté listo como fallback
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM cargado - Intentando inicializar gráficos');
+        setTimeout(inicializarGraficosUsuarios, 500);
+    });
+} else {
+    console.log('DOM ya listo - Intentando inicializar gráficos');
+    setTimeout(inicializarGraficosUsuarios, 500);
+}
 </script>

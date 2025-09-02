@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
 use App\Models\Inventario;
 use App\Models\Insumo;
 use App\Models\Herramienta;
@@ -8,8 +9,8 @@ use App\Models\Proveedor;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
-new class extends Component
-{
+new #[Layout('layouts.auth')] class extends Component {
+
     // Campos del movimiento
     public $fecMovInv = '';
     public $tipMovInv = '';
@@ -252,7 +253,8 @@ new class extends Component
         
         return 0;
     }
-}; ?>
+}; // <-- Aquí estaba el error: faltaba cerrar la clase y el componente
+?>
 
 <div class="max-w-4xl mx-auto p-6">
     @if (session()->has('success'))

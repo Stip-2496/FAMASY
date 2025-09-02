@@ -10,37 +10,13 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="//unpkg.com/alpinejs" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Favicons -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>           
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet"/>
-    
-    <script>
-        // Manejar la inicialización de componentes
-        function inicializarComponentes() {
-            if (window.Alpine) {
-                window.Alpine.start();
-            }
-            
-            // Disparar evento personalizado para gráficos
-            if (typeof inicializarGraficosUsuarios === 'function') {
-                setTimeout(inicializarGraficosUsuarios, 300);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', inicializarComponentes);
-        document.addEventListener('livewire:navigated', inicializarComponentes);
-        document.addEventListener('livewire:load', inicializarComponentes);
-    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="min-h-screen flex flex-col">
   <div class="flex flex-1">

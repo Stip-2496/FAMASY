@@ -17,7 +17,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public function with(): array
     {
         // Calcular stock actual
-        $stockActual = $this->insumo->movimientosInventario()
+        $stockActual = $this->insumo->movimientos()
             ->selectRaw('
                 SUM(CASE 
                     WHEN tipMovInv IN ("entrada", "apertura", "ajuste_pos") THEN cantMovInv
@@ -27,7 +27,7 @@ new #[Layout('layouts.auth')] class extends Component {
             ->value('stock_total') ?? 0;
 
         // Últimos movimientos
-        $ultimosMovimientos = $this->insumo->movimientosInventario()
+        $ultimosMovimientos = $this->insumo->movimientos()
             ->orderBy('fecMovInv', 'desc')
             ->limit(5)
             ->get();
@@ -320,7 +320,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="px-6 py-6 space-y-4">
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-500">Total movimientos</span>
-                            <span class="text-sm font-medium text-gray-900">{{ $insumo->movimientosInventario()->count() }}</span>
+                            <span class="text-sm font-medium text-gray-900">{{ $insumo->movimientos()->count() }}</span>
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-500">Último movimiento</span>

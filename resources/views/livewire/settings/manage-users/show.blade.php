@@ -133,22 +133,5 @@ new #[Layout('layouts.auth')] class extends Component {
             </div>
             @endif
         </div>
-
-        <!-- Footer compacto -->
-        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div class="text-xs text-gray-500">
-                ID: {{ $user->id }} • Registrado: {{ $user->created_at->format('d/m/Y H:i') }}
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ route('settings.manage-users.edit', $user->id) }}" wire:navigate
-                    class="text-xs text-yellow-600 hover:text-yellow-800 font-medium">
-                    <i class="fas fa-edit mr-1"></i>Editar
-                </a>
-                <a href="{{ route('settings.manage-users') }}" wire:navigate
-                    class="text-xs text-gray-600 hover:text-gray-800 font-medium">
-                    <i class="fas fa-users mr-1"></i>Lista de usuarios
-                </a>
-            </div>
-        </div>
     </div>
 </div>

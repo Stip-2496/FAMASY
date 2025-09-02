@@ -219,7 +219,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Departamento</label>
-                        <input type="text" wire:model="depDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="depDir" readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Código postal</label>
@@ -227,7 +227,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">País</label>
-                        <input type="text" wire:model="paiDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="paiDir" readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
                     </div>
                 </div>
             </div>

@@ -218,10 +218,28 @@ new #[Layout('layouts.auth')] class extends Component {
             </table>
         </div>
 
-        <!-- Paginación -->
-        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-            {{ $users->links() }}
-        </div>
+        <!-- Paginación mejorada -->
+        @if($users->hasPages())
+            <div class="bg-white px-3 py-2 border-t border-gray-200 sm:px-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1 flex justify-between sm:hidden">
+                        {{ $users->links() }}
+                    </div>
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-xs text-gray-700">
+                                Mostrando <span class="font-medium">{{ $users->firstItem() }}</span> a 
+                                <span class="font-medium">{{ $users->lastItem() }}</span> de 
+                                <span class="font-medium">{{ $users->total() }}</span> usuarios
+                            </p>
+                        </div>
+                        <div>
+                            {{ $users->links() }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
         @else
         <div class="px-6 py-8 text-center">
             <i class="fas fa-users text-gray-400 text-3xl mb-3"></i>

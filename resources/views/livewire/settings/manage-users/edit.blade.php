@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
-use App\Rules\SingleSuperAdmin;
 
 new #[Layout('layouts.auth')] class extends Component {
     public User $user;
@@ -48,17 +47,23 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->paiDir = $user->direccion->paiDir ?? '';
     }
 
+    // Este método se ejecutará automáticamente cuando idRolUsu cambie
     public function updatedIdRolUsu($value)
     {
-        \Log::info("Role updated to: " . $value);
-        
-        if ($value == 2) {
-            $existingSuperuser = User::where('idRolUsu', 2)
-                                   ->where('id', '!=', $this->user->id)
-                                   ->exists();
-            
-            if ($existingSuperuser) {
+        if ($value == 2) { // 2 = Superadministrador
+            $exists = User::where('idRolUsu', 2)
+                          ->where('id', '!=', $this->user->id)
+                          ->exists();
+
+            if ($exists) {
+                // Muestra error debajo del campo
+                $this->addError('idRolUsu', 'Solo puede existir un superadministrador en el sistema.');
+
+                // Lanza el modal de advertencia
                 $this->dispatch('show-superuser-warning');
+                
+                // Revertir inmediatamente el valor
+                $this->idRolUsu = $this->user->idRolUsu;
             }
         }
     }
@@ -68,12 +73,35 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->idRolUsu = $this->user->idRolUsu;
         $this->dispatch('notify', [
             'type' => 'info',
-            'message' => 'Selección de rol revertida'
+            'message' => 'Rol revertido al valor original'
         ]);
+    }
+
+    // Método para cancelar cambios (restablece los valores originales)
+    public function cancelarCambios(): void
+    {
+        $this->mount($this->user);
+        
+        // Disparar evento para mostrar mensaje
+        $this->dispatch('actualizacion-cancelada');
     }
 
     public function updateUser(): void
     {
+        // Validación manual para el rol de superadministrador
+        if ($this->idRolUsu == 2) {
+            $exists = User::where('idRolUsu', 2)
+                          ->where('id', '!=', $this->user->id)
+                          ->exists();
+
+            if ($exists) {
+                $this->addError('idRolUsu', 'Solo puede existir un superadministrador en el sistema.');
+                $this->dispatch('show-superuser-warning');
+                return;
+            }
+        }
+
+        // Validación completa
         $validated = $this->validate([
             'tipDocUsu' => ['required', 'string', 'max:10'],
             'numDocUsu' => ['required', 'string', 'max:20', Rule::unique(User::class)->ignore($this->user->id)],
@@ -82,8 +110,7 @@ new #[Layout('layouts.auth')] class extends Component {
             'fecNacUsu' => ['required', 'date'],
             'sexUsu' => ['required', 'in:Hombre,Mujer'],
             'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user->id)],
-            'idRolUsu' => ['required', 'exists:rol,idRol', new SingleSuperAdmin($this->user->id)],
-            
+            'idRolUsu' => ['required', 'exists:rol,idRol'],
             'celCon' => ['required', 'string', 'max:15'],
             'calDir' => ['required', 'string', 'max:100'],
             'barDir' => ['required', 'string', 'max:100'],
@@ -100,8 +127,9 @@ new #[Layout('layouts.auth')] class extends Component {
                 $currentSuperuser = User::where('idRolUsu', 2)
                                       ->where('id', '!=', $this->user->id)
                                       ->first();
-                
+
                 if ($currentSuperuser) {
+                    // Forzar cambio automático del actual superadmin a admin
                     $currentSuperuser->update(['idRolUsu' => 1]);
 
                     Auditoria::create([
@@ -118,10 +146,10 @@ new #[Layout('layouts.auth')] class extends Component {
             }
 
             $this->user->update($validated);
-            
+
             if($this->user->contacto) {
                 $this->user->contacto->update(['celCon' => $this->celCon]);
-                
+
                 if($this->user->direccion) {
                     $this->user->direccion->update([
                         'calDir' => $this->calDir,
@@ -136,6 +164,9 @@ new #[Layout('layouts.auth')] class extends Component {
 
             DB::commit();
 
+            // Disparar evento para mostrar mensaje de éxito
+            $this->dispatch('actualizacion-exitosa');
+
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Usuario actualizado correctamente'
@@ -149,24 +180,43 @@ new #[Layout('layouts.auth')] class extends Component {
             ]);
         }
     }
-
-    public function cancelarCambios(): void
-    {
-        $this->mount($this->user); 
-        $this->dispatch('notify', [
-            'type' => 'info',
-            'message' => 'Cambios descartados'
-        ]);
-    }
 }; ?>
 
 @section('title', 'Editar Usuario')
 
 <div class="flex items-center justify-center p-4">
-    <div class="w-full max-w-6xl bg-white shadow rounded-lg p-8">
-        <!-- Encabezado -->
-        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Editar Usuario</h1>
-        <p class="text-center text-gray-500 mb-8">Actualiza la información del usuario</p>
+    <div class="w-full max-w-6xl bg-white shadow rounded-lg p-8 relative">
+        <!-- Botón Volver en esquina superior derecha -->
+        <div class="absolute top-4 right-4">
+            <a href="{{ route('settings.manage-users') }}" wire:navigate
+                class="bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1.5 px-3 rounded transition duration-200">
+                <i class="fas fa-arrow-left mr-1"></i>Volver
+            </a>
+        </div>
+
+        <!-- Encabezado centrado con mensajes de retroalimentación -->
+        <div class="text-center mb-8" x-data="{ showSuccess: false, showCancel: false }" 
+             x-on:actualizacion-exitosa.window="showSuccess = true; showCancel = false; setTimeout(() => showSuccess = false, 3000)" 
+             x-on:actualizacion-cancelada.window="showCancel = true; showSuccess = false; setTimeout(() => showCancel = false, 3000)">
+            
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Editar Usuario</h1>
+            
+            <template x-if="showSuccess">
+                <div class="rounded bg-green-100 px-4 text-green-800 border border-green-400 mb-2">
+                    ¡Usuario actualizado exitosamente!
+                </div>
+            </template>
+
+            <template x-if="showCancel">
+                <div class="rounded bg-yellow-100 px-4 text-yellow-800 border border-yellow-400 mb-2">
+                    Cambios descartados. Los datos se han restablecido.
+                </div>
+            </template>
+
+            <template x-if="!showSuccess && !showCancel">
+                <p class="text-gray-500">Actualiza la información del usuario</p>
+            </template>
+        </div>
 
         <form wire:submit.prevent="updateUser">
             <!-- Fila: Información personal + Contacto -->
@@ -184,21 +234,25 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <option value="PEP">Permiso Especial de Permanencia</option>
                                 <option value="PPT">Permiso por Protección Temporal</option>
                             </select>
+                            @error('tipDocUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Número de documento</label>
-                            <input type="text" wire:model="numDocUsu" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="text" wire:model="numDocUsu" placeholder="0.000.000.000" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @error('numDocUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
                     <div class="flex gap-4 mb-4">
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Nombre</label>
-                            <input type="text" wire:model="nomUsu" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="text" wire:model="nomUsu" placeholder="Nombre(s)" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @error('nomUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Apellido</label>
-                            <input type="text" wire:model="apeUsu" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="text" wire:model="apeUsu" placeholder="Apellidos" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @error('apeUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -206,6 +260,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Fecha de nacimiento</label>
                             <input type="date" wire:model="fecNacUsu" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @error('fecNacUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Sexo</label>
@@ -213,6 +268,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <option value="Hombre">Hombre</option>
                                 <option value="Mujer">Mujer</option>
                             </select>
+                            @error('sexUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
                 </div>
@@ -223,20 +279,24 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="flex gap-4 mb-4">
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Célular</label>
-                            <input type="text" wire:model="celCon" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="text" wire:model="celCon" placeholder="000-000-0000" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @error('celCon') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex-1">
                             <label class="block text-sm font-medium text-gray-800 mb-1">Correo electrónico</label>
-                            <input type="email" wire:model="email" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            <input type="email" wire:model="email" placeholder="ejemplo@dominio.com" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                            @error('email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-800 mb-1">Rol</label>
-                        <select wire:model="idRolUsu" class="border p-2 rounded w-full text-black bg-white border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <!-- Cambiado a wire:model.live para que se ejecute updatedIdRolUsu automáticamente -->
+                        <select wire:model.live="idRolUsu" class="border p-2 rounded w-full text-black bg-white border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
                             @foreach(Rol::all() as $rol)
                             <option value="{{ $rol->idRol }}">{{ $rol->nomRol }}</option>
                             @endforeach
                         </select>
+                        @error('idRolUsu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                 </div>
             </div>
@@ -247,75 +307,72 @@ new #[Layout('layouts.auth')] class extends Component {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Calle</label>
-                        <input type="text" wire:model="calDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="calDir" placeholder="Calle" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        @error('calDir') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Barrio</label>
-                        <input type="text" wire:model="barDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="barDir" placeholder="Barrio" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        @error('barDir') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Ciudad</label>
-                        <input type="text" wire:model="ciuDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="ciuDir" placeholder="Ciudad" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        @error('ciuDir') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Departamento</label>
-                        <input type="text" wire:model="depDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="depDir" placeholder="Departamento" readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                        @error('depDir') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">Código postal</label>
-                        <input type="text" wire:model="codPosDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="codPosDir" placeholder="Código postal" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        @error('codPosDir') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-800 mb-1">País</label>
-                        <input type="text" wire:model="paiDir" class="border p-2 rounded w-full text-black border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white">
+                        <input type="text" wire:model="paiDir" placeholder="País" readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed">
+                        @error('paiDir') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                 </div>
             </div>
 
             <!-- Botones -->
-            <div class="text-center mb-4 space-x-4">
-                <button type="submit" class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
-                    Guardar Cambios
-                </button>
+            <div class="flex justify-center space-x-4 mt-6">
                 <button type="button" wire:click="cancelarCambios" class="cursor-pointer px-6 py-2 bg-gray-500 text-white rounded-md font-semibold hover:bg-gray-600 transition duration-150">
                     Cancelar
                 </button>
-                <a href="{{ route('settings.manage-users') }}" wire:navigate class="cursor-pointer px-6 py-2 bg-red-500 text-white rounded-md font-semibold hover:bg-red-600 transition duration-150">
-                    Volver
-                </a>
+                <button type="submit" class="cursor-pointer px-6 py-2 bg-[#007832] text-white rounded-md font-semibold hover:bg-green-700 transition duration-150">
+                    Actualizar Usuario
+                </button>
             </div>
         </form>
     </div>
 </div>
+
 <script>
 document.addEventListener('livewire:initialized', () => {
-    console.log('Livewire initialized - edit superuser script loaded');
+    console.log('Livewire initialized - superuser script loaded');
     
     Livewire.on('show-superuser-warning', () => {
-        console.log('show-superuser-warning event received in edit');
+        console.log('show-superuser-warning event received');
         
         Swal.fire({
             title: '¡Advertencia!',
-            html: `Al asignar el rol de Superusuario:<br>
-                  • El superusuario actual será cambiado a Administrador automáticamente<br>
-                  • Esta acción se registrará en el sistema de auditoría`,
+            html: `No puede asignar el rol de Superusuario porque ya existe uno en el sistema.<br>
+                  Solo puede haber un Superusuario a la vez.`,
             icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Continuar',
-            cancelButtonText: 'Cancelar',
+            confirmButtonText: 'Entendido',
             customClass: {
                 popup: 'text-sm'
             }
-        }).then((result) => {
-            if (!result.isConfirmed) {
-                console.log('User cancelled, reverting role selection');
-                Livewire.dispatch('revert-role-selection');
-            } else {
-                console.log('User confirmed superuser assignment');
-            }
+        }).then(() => {
+            // Revertir la selección después de que el usuario cierre la alerta
+            Livewire.dispatch('revert-role-selection');
         });
     });
 });

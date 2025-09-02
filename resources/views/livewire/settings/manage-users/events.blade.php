@@ -672,81 +672,122 @@ new #[Layout('layouts.auth')] class extends Component {
             @endif
         </div>
 
-        <!-- Modal de Detalles del Evento -->
-        @if($showDetailModal && $selectedLog)
-        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center p-4 border-b">
-                    <h3 class="text-base font-semibold text-gray-900">Detalles del Evento</h3>
-                    <button wire:click="closeDetailModal" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
+<!-- Modal de Detalles del Evento -->
+@if($showDetailModal && $selectedLog)
+<div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 class="text-base font-semibold text-gray-900">Detalles del Evento</h3>
+            <button wire:click="closeDetailModal" class="cursor-pointer text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="p-4 space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-700">Fecha y Hora</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->fecAud->format('d/m/Y H:i:s') }}</p>
                 </div>
-                
-                <div class="p-4 space-y-3">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">Fecha y Hora</label>
-                            <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->fecAud->format('d/m/Y H:i:s') }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">Operación</label>
-                            <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->opeAud }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">Usuario</label>
-                            <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->usuAud ?? 'Sistema' }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">Rol</label>
-                            <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->rolAud }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">Tabla Afectada</label>
-                            <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->tablaAud }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">IP del Cliente</label>
-                            <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->ipAud ?? 'N/A' }}</p>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700">Descripción Completa</label>
-                        <div class="mt-1 p-2 bg-gray-50 rounded">
-                            <pre class="text-xs text-gray-900 whitespace-pre-wrap">{{ $selectedLog->desAud }}</pre>
-                        </div>
-                    </div>
-                    
-                    @if($selectedLog->usuario)
-                    <div class="pt-3 border-t">
-                        <label class="block text-xs font-medium text-gray-700">Información del Usuario</label>
-                        <div class="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <p class="text-xs"><span class="font-medium">Nombre:</span> {{ $selectedLog->usuario->nomUsu }} {{ $selectedLog->usuario->apeUsu }}</p>
-                            <p class="text-xs"><span class="font-medium">Email:</span> {{ $selectedLog->usuario->email }}</p>
-                            <p class="text-xs"><span class="font-medium">Documento:</span> {{ $selectedLog->usuario->tipDocUsu }} {{ $selectedLog->usuario->numDocUsu }}</p>
-                            <p class="text-xs"><span class="font-medium">Rol:</span> {{ $selectedLog->usuario->rol->nomRol ?? 'Sin rol' }}</p>
-                            <p class="text-xs"><span class="font-medium">Estado:</span> 
-                                <span class="px-1.5 py-0.5 text-xs font-semibold rounded-full {{ $selectedLog->usuario->estUsu === 'activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                    {{ $selectedLog->usuario->estUsu }}
-                                </span>
-                            </p>
-                        </div>
-                    </div>
-                    @endif
+                <div>
+                    <label class="block text-xs font-medium text-gray-700">Operación</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->opeAud }}</p>
                 </div>
-                
-                <div class="flex justify-end p-4 border-t bg-gray-50 rounded-b">
-                    <button wire:click="closeDetailModal"
-                            class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-200 text-xs">
-                        Cerrar
-                    </button>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700">Usuario</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->usuAud ?? 'Sistema' }}</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700">Rol</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->rolAud }}</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700">Tabla Afectada</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->tablaAud }}</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700">IP del Cliente</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->ipAud ?? 'N/A' }}</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700">Registro ID</label>
+                    <p class="mt-1 text-xs text-gray-900">{{ $selectedLog->regAud }}</p>
                 </div>
             </div>
+            
+            <div>
+                <label class="block text-xs font-medium text-gray-700">Descripción Completa</label>
+                <div class="mt-1 p-2 bg-gray-50 rounded">
+                    <pre class="text-xs text-gray-900 whitespace-pre-wrap">{{ $selectedLog->desAud }}</pre>
+                </div>
+            </div>
+            
+            <!-- Análisis de la descripción para mostrar información estructurada -->
+            @php
+                $description = $selectedLog->desAud;
+                $module = '';
+                $action = '';
+                $details = '';
+                
+                // Extraer información estructurada de la descripción
+                if (str_contains($description, 'módulo')) {
+                    $parts = explode('.', $description);
+                    if (count($parts) >= 2) {
+                        $modulePart = $parts[0];
+                        $detailsPart = implode('.', array_slice($parts, 1));
+                        
+                        // Extraer módulo
+                        if (preg_match('/módulo (.*)$/', $modulePart, $matches)) {
+                            $module = $matches[1];
+                        }
+                        
+                        // Determinar acción
+                        if (str_contains($modulePart, 'Creación')) {
+                            $action = 'Creación';
+                        } elseif (str_contains($modulePart, 'Actualización')) {
+                            $action = 'Actualización';
+                        } elseif (str_contains($modulePart, 'Eliminación')) {
+                            $action = 'Eliminación';
+                        }
+                        
+                        $details = trim($detailsPart);
+                    }
+                }
+            @endphp
+            
+            @if($module && $action)
+            <div class="pt-3 border-t">
+                <label class="block text-xs font-medium text-gray-700">Resumen del Evento</label>
+                <div class="mt-1 grid grid-cols-1 gap-2">
+                    <p class="text-xs"><span class="font-medium">Módulo:</span> {{ $module }}</p>
+                    <p class="text-xs"><span class="font-medium">Acción:</span> {{ $action }}</p>
+                    <p class="text-xs"><span class="font-medium">Detalles:</span> {{ $details }}</p>
+                </div>
+            </div>
+            @endif
+            
+            @if($selectedLog->usuario)
+            <div class="pt-3 border-t">
+                <label class="block text-xs font-medium text-gray-700">Información del encargado</label>
+                <div class="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <p class="text-xs"><span class="font-medium">Nombre:</span> {{ $selectedLog->usuario->nomUsu }} {{ $selectedLog->usuario->apeUsu }}</p>
+                    <p class="text-xs"><span class="font-medium">Email:</span> {{ $selectedLog->usuario->email }}</p>
+                    <p class="text-xs"><span class="font-medium">Documento:</span> {{ $selectedLog->usuario->tipDocUsu }} {{ $selectedLog->usuario->numDocUsu }}</p>
+                    <p class="text-xs"><span class="font-medium">Rol:</span> {{ $selectedLog->usuario->rol->nomRol ?? 'Sin rol' }}</p>
+                    <p class="text-xs"><span class="font-medium">Estado:</span> 
+                        <span class="px-1.5 py-0.5 text-xs font-semibold rounded-full {{ $selectedLog->usuario->estUsu === 'activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                            {{ $selectedLog->usuario->estUsu }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+            @endif
         </div>
-        @endif
+    </div>
+</div>
+@endif
     </div>
     <style>
     .grid.grid-cols-7 {
