@@ -10,36 +10,109 @@ FAMASY es una aplicación web moderna construida con Laravel, Livewire y Tailwin
 
 ```
 FAMASY/
-├── app/                    # Código fuente de la aplicación
-│   ├── Http/              # Controladores y middleware
-│   ├── Livewire/          # Componentes Livewire
-│   ├── Models/            # Modelos de Eloquent
-│   └── Providers/         # Service Providers
-├── bootstrap/             # Archivos de arranque
-├── config/                # Archivos de configuración
-├── database/              # Migraciones, seeders y factories
-│   ├── factories/         # Factories para testing
-│   ├── migrations/        # Migraciones de base de datos
-│   └── seeders/           # Seeders para datos iniciales
-├── public/                # Punto de entrada de la aplicación
-├── resources/             
-│   ├── css/               # Estilos CSS
-│   ├── js/                # JavaScript de la aplicación
-│   └── views/             # Vistas Blade y componentes
-│       ├── components/    # Componentes reutilizables
-│       └── livewire/      # Vistas de componentes Livewire
-├── routes/                # Definición de rutas
-│   ├── web.php           # Rutas web
-│   └── auth.php          # Rutas de autenticación
-├── storage/               # Almacenamiento de archivos
-├── tests/                 # Pruebas automatizadas
-│   ├── Feature/          # Pruebas de características
-│   └── Unit/             # Pruebas unitarias
-├── .env.example          # Variables de entorno de ejemplo
-├── artisan              # CLI de Laravel
-├── composer.json        # Dependencias de PHP
-└── package.json         # Dependencias de Node.js
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Auth/
+│   │   │   │   └── VerifyEmailController.php
+│   │   │   └── Controller.php
+│   │   ├── Middleware/
+│   │   │   └── CheckActiveSession.php
+│   │   └── Livewire/
+│   │       ├── Actions/
+│   │       │   └── Logout.php
+│   ├── Models/
+│   │   ├── Animal.php
+│   │   ├── Auditoria.php
+│   │   ├── Cliente.php
+│   │   ├── CompraGasto.php
+│   │   ├── Contacto.php
+│   │   ├── CuentaPendiente.php
+│   │   ├── DatabaseBackup.php
+│   │   ├── Direccion.php
+│   │   ├── Factura.php
+│   │   ├── Herramienta.php
+│   │   ├── HistorialMedico.php
+│   │   ├── Insumo.php
+│   │   ├── Inventario.php
+│   │   ├── Mantenimiento.php
+│   │   ├── MovimientoContable.php
+│   │   ├── Pago.php
+│   │   ├── PrestamoHerramienta.php
+│   │   ├── ProduccionAnimal.php
+│   │   ├── Proveedor.php
+│   │   ├── Rol.php
+│   │   └── User.php
+│   ├── Observers/
+│   │   └── ModelAuditObserver.php
+│   └── Providers/
+│       ├── AppServiceProvider.php
+│       ├── AuditServiceProvider.php
+│       ├── AuthServiceProvider.php
+│       └── VoltServiceProvider.php
+├── resources/
+│   ├── css/
+│   │   ├── components/
+│   │   │   ├── nav.css
+│   │   │   ├── sidebar.css
+│   │   │   └── app.css
+│   │   └── app.css
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── cards-hover.js
+│   │   └── sidebar.js
+│   └── views/
+│       ├── auth/
+│       │   └── home.blade.php
+│       ├── layouts/
+│       │   ├── app.blade.php
+│       │   └── auth.blade.php
+│       ├── livewire/
+│       │   ├── auth/
+│       │   ├── contabilidad/
+│       │   ├── inventario/
+│       │   ├── pecuario/
+│       │   ├── proveedores/
+│       │   └── settings/
+│       └── partials/
+│           ├── auth-footer.blade.php
+│           ├── auth-nav.blade.php
+│           ├── footer.blade.php
+│           ├── nav.blade.php
+│           └── sidebar.blade.php
+└── routes/
+    ├── auth.php
+    ├── console.php
+    └── web.php
 ```
+
+### Módulos Principales
+
+1. **Autenticación y Usuarios**
+   - Gestión de usuarios y roles
+   - Control de sesiones
+   - Perfiles de usuario
+
+2. **Inventario**
+   - Gestión de herramientas
+   - Control de insumos
+   - Mantenimientos
+   - Préstamos de herramientas
+
+3. **Pecuario**
+   - Registro de animales
+   - Seguimiento de producción
+   - Control de salud y peso
+
+4. **Contabilidad**
+   - Gestión de facturas
+   - Control de pagos
+   - Movimientos contables
+   - Cuentas pendientes
+
+5. **Configuración**
+   - Administración de usuarios
+   - Copias de seguridad
 
 ### Archivos Clave
 
