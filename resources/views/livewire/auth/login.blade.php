@@ -63,8 +63,10 @@ new #[Layout('layouts.app')] class extends Component {
         // Regenerar la sesión por seguridad
         Session::regenerate();
 
-        // Obtener el usuario autenticado
+        // Obtener el usuario autenticado y actualizar last_login_at
         $user = Auth::user();
+        $user->last_login_at = now();
+        $user->save();
 
         // Redirigir según el ID del rol del usuario
         $redirectRoute = match($user->idRolUsu) {
