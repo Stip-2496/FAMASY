@@ -17,3 +17,5 @@ new class extends Component {
         </flux:radio.group>
     </x-settings.layout>
 </section>
+
+}

@@ -13,6 +13,7 @@ new #[Layout('layouts.auth')] class extends Component {
     // Form properties
     public int $idHerPre;
     public int $idUsuPre;
+    public int $idUsuSol;
     public string $fecPre;
     public ?string $fecDev = null;
     public string $estPre;
@@ -20,15 +21,13 @@ new #[Layout('layouts.auth')] class extends Component {
     
     // Data for selects
     public $herramientas;
-    public $usuarios;
+    public $usuarioActual;
 
     public function rules(): array
     {
         return [
             'idHerPre' => 'required|exists:herramientas,idHer',
-            'idUsuPre' => 'required|exists:users,id',
-            'fecPre' => 'required|date',
-            'fecDev' => 'nullable|date|after_or_equal:fecPre',
+            'fecDev' => 'required|date|after_or_equal:fecPre',
             'estPre' => 'required|in:prestado,devuelto,vencido',
             'obsPre' => 'nullable|string'
         ];
@@ -39,28 +38,22 @@ new #[Layout('layouts.auth')] class extends Component {
         $this->prestamo = $prestamo;
         
         // Load relationships
-        $this->prestamo->load(['herramienta', 'usuario']);
+        $this->prestamo->load(['herramienta', 'usuario', 'solicitante']);
         
         // Initialize form properties
         $this->fill(
             $prestamo->only([
-                'idHerPre', 'idUsuPre', 'fecPre', 'fecDev', 'estPre', 'obsPre'
+                'idHerPre', 'idUsuPre', 'idUsuSol', 'fecPre', 'fecDev', 'estPre', 'obsPre'
             ])
         );
 
-        // Initialize form properties - MANUALMENTE para las fechas
-        $this->idHerPre = $prestamo->idHerPre;
-        $this->idUsuPre = $prestamo->idUsuPre;
-        $this->estPre = $prestamo->estPre;
-        $this->obsPre = $prestamo->obsPre;
-    
         // Formatear fechas explícitamente
-        $this->fecPre = $prestamo->fecPre->format('Y-m-d'); // fecPre es NOT NULL
-        $this->fecDev = $prestamo->fecDev ? $prestamo->fecDev->format('Y-m-d') : null;
+        $this->fecPre = $prestamo->fecPre->format('Y-m-d\TH:i');
+        $this->fecDev = $prestamo->fecDev ? $prestamo->fecDev->format('Y-m-d\TH:i') : null;
         
         // Get data for selects
         $this->herramientas = Herramienta::all();
-        $this->usuarios = User::all();
+        $this->usuarioActual = auth()->user();
     }
 
     public function update(): void
@@ -81,7 +74,7 @@ new #[Layout('layouts.auth')] class extends Component {
     {
         $this->fill(
             $this->prestamo->only([
-                'idHerPre', 'idUsuPre', 'fecPre', 'fecDev', 'estPre', 'obsPre'
+                'idHerPre', 'fecDev', 'estPre', 'obsPre'
             ])
         );
         $this->resetErrorBag();
@@ -129,8 +122,8 @@ new #[Layout('layouts.auth')] class extends Component {
                     <p class="text-blue-700">{{ $prestamo->herramienta->codHer }} - {{ $prestamo->herramienta->nomHer }}</p>
                 </div>
                 <div>
-                    <span class="font-medium text-blue-800">Usuario:</span>
-                    <p class="text-blue-700">{{ $prestamo->usuario->nomUsu }} {{ $prestamo->usuario->apeUsu }}</p>
+                    <span class="font-medium text-blue-800">Solicitante:</span>
+                    <p class="text-blue-700">{{ $prestamo->solicitante->nomUsu ?? '' }} {{ $prestamo->solicitante->apeUsu ?? '' }}</p>
                 </div>
                 <div>
                     <span class="font-medium text-blue-800">Estado Actual:</span>
@@ -207,42 +200,43 @@ new #[Layout('layouts.auth')] class extends Component {
                             </p>
                         </div>
 
-                        <!-- Usuario -->
+                        <!-- Encargado (readonly) -->
                         <div class="space-y-2">
-                            <label for="idUsuPre" class="block text-sm font-medium text-gray-700">
+                            <label class="block text-sm font-medium text-gray-700">
                                 <svg class="w-4 h-4 text-blue-500 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                 </svg>
-                                Usuario *
+                                Encargado
                             </label>
-                            <select wire:model="idUsuPre" id="idUsuPre" required
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('idUsuPre') border-red-300 @enderror">
-                                <option value="">Seleccione un usuario...</option>
-                                @foreach($usuarios as $usuario)
-                                    <option value="{{ $usuario->id }}" 
-                                            @if($usuario->id == old('idUsuPre', $idUsuPre)) selected @endif>
-                                        {{ $usuario->nomUsu }} {{ $usuario->apeUsu }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('idUsuPre')
-                                <p class="text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <div class="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg">
+                                {{ $usuarioActual->nomUsu }} {{ $usuarioActual->apeUsu }}
+                            </div>
+                            <input type="hidden" wire:model="idUsuPre">
                         </div>
 
-                        <!-- Fecha de Préstamo -->
+                        <!-- Solicitante (readonly) -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">
+                                <svg class="w-4 h-4 text-blue-500 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                Solicitante
+                            </label>
+                            <div class="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg">
+                                {{ $prestamo->solicitante->nomUsu ?? '' }} {{ $prestamo->solicitante->apeUsu ?? '' }}
+                            </div>
+                        </div>
+
+                        <!-- Fecha de Préstamo (readonly) -->
                         <div class="space-y-2">
                             <label for="fecPre" class="block text-sm font-medium text-gray-700">
                                 <svg class="w-4 h-4 text-blue-500 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                 </svg>
-                                Fecha de Préstamo *
+                                Fecha de Préstamo
                             </label>
-                            <input type="date" wire:model="fecPre" id="fecPre" required
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 @error('fecPre') border-red-300 @enderror">
-                            @error('fecPre')
-                                <p class="text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <input type="datetime-local" wire:model="fecPre" id="fecPre" readonly
+                                   class="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm cursor-not-allowed">
                         </div>
 
                         <!-- Fecha de Devolución -->
@@ -251,9 +245,9 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <svg class="w-4 h-4 text-green-500 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Fecha de Devolución
+                                Fecha de Devolución *
                             </label>
-                            <input type="date" wire:model="fecDev" id="fecDev"
+                            <input type="datetime-local" wire:model="fecDev" id="fecDev" required
                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200 @error('fecDev') border-red-300 @enderror">
                             @error('fecDev')
                                 <p class="text-sm text-red-600">{{ $message }}</p>
@@ -262,7 +256,7 @@ new #[Layout('layouts.auth')] class extends Component {
                                 <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Fecha real de devolución (dejar vacío si no se ha devuelto)
+                                Fecha y hora estimada de devolución (obligatoria)
                             </p>
                         </div>
 
@@ -346,14 +340,14 @@ new #[Layout('layouts.auth')] class extends Component {
                             Cancelar
                         </a>
                         <button type="button" wire:click="resetForm"
-                                class="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                class="cursor-pointer inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
                             Restaurar
                         </button>
                         <button type="submit"
-                                class="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
+                                class="cursor-pointer inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                             </svg>
@@ -371,6 +365,11 @@ document.addEventListener('livewire:initialized', () => {
     // Validación de fechas
     const fecPre = document.getElementById('fecPre');
     const fecDev = document.getElementById('fecDev');
+    
+    // Establecer la fecha mínima de devolución como la fecha de préstamo
+    if (fecPre.value) {
+        fecDev.min = fecPre.value;
+    }
     
     fecPre.addEventListener('change', function() {
         if (fecDev.value && fecDev.value < this.value) {
@@ -404,7 +403,11 @@ document.addEventListener('livewire:initialized', () => {
     estadoInputs.forEach(input => {
         input.addEventListener('change', function() {
             if (this.value === 'devuelto' && !fecDev.value) {
-                fecDev.value = new Date().toISOString().split('T')[0];
+                const now = new Date();
+                const timezoneOffset = now.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(now - timezoneOffset)).toISOString().slice(0, 16);
+                fecDev.value = localISOTime;
+                @this.set('fecDev', localISOTime.replace('T', ' '));
             }
         });
     });

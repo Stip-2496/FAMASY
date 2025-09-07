@@ -11,47 +11,41 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('users')) {
-            Schema::create('users', function (Blueprint $table) {
-                $table->id();
-                $table->unsignedBigInteger('idRolUsu');
-                $table->unsignedBigInteger('idConUsu');
-                $table->string('tipDocUsu');
-                $table->string('numDocUsu')->unique();
-                $table->string('nomUsu');
-                $table->string('apeUsu');
-                $table->date('fecNacUsu');
-                $table->enum('sexUsu', ['Hombre', 'Mujer']);
-                $table->string('email')->unique();
-                $table->timestamp('email_verified_at')->nullable();
-                $table->string('password');
-                $table->rememberToken();
-                $table->timestamps();
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('idRolUsu');
+            $table->unsignedBigInteger('idConUsu');
+            $table->string('tipDocUsu');
+            $table->string('numDocUsu')->unique();
+            $table->string('nomUsu');
+            $table->string('apeUsu');
+            $table->date('fecNacUsu');
+            $table->enum('sexUsu', ['Hombre', 'Mujer']);
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->rememberToken();
+            $table->timestamps();
 
-                // Relaciones
-                $table->foreign('idRolUsu')->references('idRol')->on('rol');
-                $table->foreign('idConUsu')->references('idCon')->on('contacto');
-            });
-        }
+            // Relaciones
+            $table->foreign('idRolUsu')->references('idRol')->on('rol');
+            $table->foreign('idConUsu')->references('idCon')->on('contacto');
+        });
 
-        if (!Schema::hasTable('password_reset_tokens')) {
-            Schema::create('password_reset_tokens', function (Blueprint $table) {
-                $table->string('email')->primary();
-                $table->string('token');
-                $table->timestamp('created_at')->nullable();
-            });
-        }
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
 
-        if (!Schema::hasTable('sessions')) {
-            Schema::create('sessions', function (Blueprint $table) {
-                $table->string('id')->primary();
-                $table->foreignId('user_id')->nullable()->index();
-                $table->string('ip_address', 45)->nullable();
-                $table->text('user_agent')->nullable();
-                $table->longText('payload');
-                $table->integer('last_activity')->index();
-            });
-        }
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
     }
 
     /**

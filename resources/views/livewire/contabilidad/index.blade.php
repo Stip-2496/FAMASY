@@ -622,10 +622,11 @@ new #[Layout('layouts.auth')] class extends Component {
                             <h6 class="text-lg font-semibold text-gray-800">Accesos Rápidos</h6>
                             <p class="text-sm text-gray-600">Navegación rápida a módulos principales</p>
                         </div>
-                        <a href="{{ route('contabilidad.configuracion.index') }}" 
-                           class="text-gray-600 hover:text-gray-800 text-sm">
-                            <i class="fas fa-cog mr-1"></i> Configuración
-                        </a>
+                       <a href="{{ route('contabilidad.configuracion.index') }}" 
+   class="text-gray-600 hover:text-gray-300 text-sm">
+   <i class="fas fa-cog mr-1"></i> Configuración
+</a>
+
                     </div>
                 </div>
                 <div class="p-6">
@@ -784,12 +785,28 @@ new #[Layout('layouts.auth')] class extends Component {
 </div>
 @endif
 
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Variables globales
 let flujoCajaChart = null;
 let categoriasChart = null;
 let tipoGraficoActual = 'line';
+
+// ✅ CORRECCIÓN 1: Datos desde PHP (asegurarse de que lleguen correctamente)
+const datosFlujoCaja = {
+    fechas: @json($flujo_caja['fechas'] ?? []),
+    ingresos: @json($flujo_caja['ingresos'] ?? []),
+    egresos: @json($flujo_caja['egresos'] ?? [])
+};
+
+const datosCategorias = {
+    labels: @json($categorias_chart['labels'] ?? []),
+    data: @json($categorias_chart['data'] ?? [])
+};
+
+console.log('📊 Datos de flujo de caja:', datosFlujoCaja);
+console.log('🥧 Datos de categorías:', datosCategorias);
 
 // Función para toggle tipo de gráfico
 function toggleTipoGrafico() {
@@ -807,20 +824,34 @@ function actualizarGraficos() {
         categoriasChart.destroy();
     }
     
-    inicializarGraficos();
+    // Esperar un poco antes de recrear
+    setTimeout(() => {
+        inicializarGraficos();
+    }, 100);
 }
 
-// Función para inicializar gráficos
+// ✅ CORRECCIÓN 2: Función mejorada para inicializar gráficos
 function inicializarGraficos() {
-    // Configuración del gráfico de flujo de caja
-    const ctxFlujo = document.getElementById('flujoCajaChart').getContext('2d');
+    console.log('🚀 Inicializando gráficos del dashboard...');
+    
+    // Verificar que los canvas existan
+    const canvasFlujoCaja = document.getElementById('flujoCajaChart');
+    const canvasCategorias = document.getElementById('categoriasChart');
+    
+    if (!canvasFlujoCaja || !canvasCategorias) {
+        console.warn('⚠️ Canvas no encontrados');
+        return;
+    }
+
+    // ✅ GRÁFICO DE FLUJO DE CAJA
+    const ctxFlujo = canvasFlujoCaja.getContext('2d');
     flujoCajaChart = new Chart(ctxFlujo, {
         type: tipoGraficoActual,
         data: {
-            labels: @json($flujo_caja['fechas'] ?? []),
+            labels: datosFlujoCaja.fechas,
             datasets: [{
                 label: 'Ingresos',
-                data: @json($flujo_caja['ingresos'] ?? []),
+                data: datosFlujoCaja.ingresos,
                 borderColor: '#10b981',
                 backgroundColor: tipoGraficoActual === 'bar' ? 'rgba(16, 185, 129, 0.7)' : 'rgba(16, 185, 129, 0.1)',
                 borderWidth: 3,
@@ -828,7 +859,7 @@ function inicializarGraficos() {
                 tension: 0.4
             }, {
                 label: 'Egresos',
-                data: @json($flujo_caja['egresos'] ?? []),
+                data: datosFlujoCaja.egresos,
                 borderColor: '#ef4444',
                 backgroundColor: tipoGraficoActual === 'bar' ? 'rgba(239, 68, 68, 0.7)' : 'rgba(239, 68, 68, 0.1)',
                 borderWidth: 3,
@@ -850,7 +881,7 @@ function inicializarGraficos() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ':  + context.parsed.y.toLocaleString();
+                            return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
                         }
                     }
                 }
@@ -860,7 +891,7 @@ function inicializarGraficos() {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return ' + value.toLocaleString();
+                            return '$' + value.toLocaleString();
                         }
                     }
                 }
@@ -872,14 +903,14 @@ function inicializarGraficos() {
         }
     });
 
-    // Configuración del gráfico de categorías
-    const ctxCategorias = document.getElementById('categoriasChart').getContext('2d');
+    // ✅ GRÁFICO DE CATEGORÍAS (DOUGHNUT)
+    const ctxCategorias = canvasCategorias.getContext('2d');
     categoriasChart = new Chart(ctxCategorias, {
         type: 'doughnut',
         data: {
-            labels: @json($categorias_chart['labels'] ?? []),
+            labels: datosCategorias.labels,
             datasets: [{
-                data: @json($categorias_chart['data'] ?? []),
+                data: datosCategorias.data,
                 backgroundColor: [
                     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
                 ],
@@ -893,41 +924,67 @@ function inicializarGraficos() {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    display: false
+                    display: false // La leyenda se muestra manualmente en el HTML
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed * 100) / total).toFixed(1);
+                            return context.label + ': $' + context.parsed.toLocaleString() + ' (' + percentage + '%)';
+                        }
+                    }
                 }
             }
         }
     });
 
-    // Calcular promedios y tendencias
+    console.log('✅ Gráficos inicializados correctamente');
+    
+    // Calcular estadísticas después de crear los gráficos
     calcularEstadisticas();
 }
 
-// Función para calcular estadísticas
+// ✅ CORRECCIÓN 3: Función corregida para calcular estadísticas
 function calcularEstadisticas() {
-    const ingresos = @json($flujo_caja['ingresos'] ?? []);
-    const egresos = @json($flujo_caja['egresos'] ?? []);
+    const ingresos = datosFlujoCaja.ingresos;
+    const egresos = datosFlujoCaja.egresos;
     
     if (ingresos.length > 0) {
         const promedioIngresos = ingresos.reduce((a, b) => a + b, 0) / ingresos.length;
         const promedioEgresos = egresos.reduce((a, b) => a + b, 0) / egresos.length;
         
-        document.getElementById('promedio-ingresos').textContent = ' + promedioIngresos.toLocaleString(undefined, {maximumFractionDigits: 0});
-        document.getElementById('promedio-gastos').textContent = ' + promedioEgresos.toLocaleString(undefined, {maximumFractionDigits: 0});
+        // Actualizar elementos del DOM
+        const elemPromedioIngresos = document.getElementById('promedio-ingresos');
+        const elemPromedioGastos = document.getElementById('promedio-gastos');
+        const elemTendencia = document.getElementById('tendencia');
+        
+        if (elemPromedioIngresos) {
+            elemPromedioIngresos.textContent = '$' + promedioIngresos.toLocaleString(undefined, {maximumFractionDigits: 0});
+        }
+        
+        if (elemPromedioGastos) {
+            elemPromedioGastos.textContent = '$' + promedioEgresos.toLocaleString(undefined, {maximumFractionDigits: 0});
+        }
         
         // Calcular tendencia
-        const tendencia = promedioIngresos > promedioEgresos ? 'Positiva' : 'Negativa';
-        const iconoTendencia = promedioIngresos > promedioEgresos ? 'fa-arrow-up text-green-600' : 'fa-arrow-down text-red-600';
-        
-        document.getElementById('tendencia').innerHTML = `<i class="fas ${iconoTendencia}"></i> ${tendencia}`;
+        if (elemTendencia) {
+            const tendencia = promedioIngresos > promedioEgresos ? 'Positiva' : 'Negativa';
+            const iconoTendencia = promedioIngresos > promedioEgresos ? 'fa-arrow-up text-green-600' : 'fa-arrow-down text-red-600';
+            
+            elemTendencia.innerHTML = `<i class="fas ${iconoTendencia}"></i> ${tendencia}`;
+        }
     }
 }
 
-// Escuchar eventos de Livewire
+// ✅ EVENTOS DE LIVEWIRE
 document.addEventListener('livewire:init', () => {
     Livewire.on('periodo-cambiado', (data) => {
-        // Aquí podrías hacer algo cuando cambie el período
-        console.log('Período cambiado a:', data.periodo);
+        console.log('📅 Período cambiado a:', data.periodo);
+        // Aquí podrías recargar los datos si fuera necesario
+        setTimeout(() => {
+            actualizarGraficos();
+        }, 500);
     });
 });
 
@@ -935,12 +992,26 @@ document.addEventListener('livewire:init', () => {
 setTimeout(function() {
     const notifications = document.querySelectorAll('.fixed.top-4.right-4');
     notifications.forEach(notification => {
-        notification.style.display = 'none';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 300);
     });
 }, 5000);
 
-// Inicializar cuando el DOM esté listo
+// ✅ INICIALIZACIÓN PRINCIPAL
 document.addEventListener('DOMContentLoaded', function() {
-    inicializarGraficos();
+    console.log('🚀 DOM cargado, inicializando gráficos del dashboard...');
+    
+    // Esperar un poco para asegurar que todo esté listo
+    setTimeout(() => {
+        inicializarGraficos();
+    }, 100);
+});
+
+// ✅ REINICIALIZAR SI HAY CAMBIOS DE LIVEWIRE
+document.addEventListener('livewire:navigated', () => {
+    console.log('🔄 Livewire navegated - reinicializando gráficos del dashboard');
+    setTimeout(inicializarGraficos, 300);
 });
 </script>

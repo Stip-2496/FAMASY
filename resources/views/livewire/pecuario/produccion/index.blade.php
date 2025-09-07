@@ -23,7 +23,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 ->when($this->search, function($q) {
                     $q->where(function($query) {
                         $query->whereHas('animal', function($subQuery) {
-                            $subQuery->where('nomAni', 'like', '%' . $this->search . '%')
+                            $subQuery->where('ideAni', 'like', '%' . $this->search . '%')
                                    ->orWhere('espAni', 'like', '%' . $this->search . '%');
                         })
                         ->orWhere('tipProAni', 'like', '%' . $this->search . '%')
@@ -34,8 +34,8 @@ new #[Layout('layouts.auth')] class extends Component {
                 ->orderBy('fecProAni', 'desc')
                 ->paginate(15),
             'animales' => Animal::where('estAni', 'vivo')
-                ->orderBy('nomAni')
-                ->get(['idAni', 'nomAni', 'espAni']),
+                ->orderBy('ideAni')
+                ->get(['idAni', 'ideAni', 'espAni']),
             'tipos' => [
                 'leche bovina' => 'Leche Bovina',
                 'venta en pie bovino' => 'Venta en Pie Bovino',
@@ -291,7 +291,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             @if($prod->animal)
-                                <div class="text-sm font-medium text-gray-900">{{ $prod->animal->nomAni }}</div>
+                                <div class="text-sm font-medium text-gray-900">{{ $prod->animal->ideAni }}</div>
                                 <div class="text-sm text-gray-500">{{ ucfirst($prod->animal->espAni) }}</div>
                             @else
                                 <span class="text-sm text-gray-400 italic">No asignado</span>
@@ -389,7 +389,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     @if($produccion)
                         <div class="space-y-1 text-sm">
                             <p><strong>ID:</strong> {{ $produccion->idProAni }}</p>
-                            <p><strong>Animal:</strong> {{ $produccion->animal->nomAni ?? 'No asignado' }}</p>
+                            <p><strong>Animal:</strong> {{ $produccion->animal->ideAni ?? 'No asignado' }}</p>
                             <p><strong>Tipo:</strong> {{ $this->getTipoProduccionFormateado($produccion->tipProAni) }}</p>
                             <p><strong>Cantidad:</strong> 
                                 {{ $produccion->canProAni ? number_format($produccion->canProAni, 2) : '0' }} 

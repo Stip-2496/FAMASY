@@ -23,5 +23,10 @@ class AppServiceProvider extends ServiceProvider
         Blade::component('layouts.app', 'app-layout');
         Blade::component('layouts.auth', 'auth-layout');
         Blade::component('partials.auth-session-status', 'auth-session-status');
+        // Registrar observer para modelos específicos
+        \App\Models\User::observe(\App\Observers\ModelAuditObserver::class);
+        \App\Models\Animal::observe(\App\Observers\ModelAuditObserver::class);
+        // Agrega otros modelos que necesites auditar
+        // Ejemplo: Herramienta::observe(ModelAuditObserver::class);
     }
 }

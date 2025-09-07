@@ -10,19 +10,21 @@ class Animal extends Model
     protected $primaryKey = 'idAni';
     
     protected $fillable = [
+        'ideAni',
         'espAni',
         'nomAni',
         'razAni',
         'sexAni',
         'fecNacAni',
         'fecComAni',
+        'proAni',
         'pesAni',
         'estAni',
         'estReproAni',
         'estSaludAni',
         'obsAni',
-        'nitAni',          // ✅ Nuevo campo: NIT del animal
-        'fotoAni',         // ✅ Nuevo campo: Foto del animal
-        'ubicacionAni'     // ✅ Nuevo campo: Ubicación
+        'nitAni',          
+        'fotoAni',         
+        'ubicacionAni'     
     ];
 }

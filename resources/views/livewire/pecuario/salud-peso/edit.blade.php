@@ -109,204 +109,383 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Editar Registro Médico')
 
-<div class="container mx-auto px-4 py-6">
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-6xl mx-auto px-4">
         <!-- Header -->
-        <div class="bg-green-700 text-white px-6 py-4 rounded-t-lg flex items-center gap-2">
-            <i class="fas fa-edit"></i>
-            <h5 class="text-lg font-semibold">Editar Registro Médico</h5>
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-edit text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Editar Registro Médico</h1>
+                        <p class="text-gray-600">Modifique la información del registro médico</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-600 text-white">
+                        <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
+                        Editando registro
+                    </span>
+                </div>
+            </div>
         </div>
-        
-        <div class="p-6">
-            <!-- Información del Animal -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">ID del Animal</label>
-                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
-                           value="ID {{ $animal->idAni }}" readonly>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-paw text-gray-600 text-sm"></i>
+                    </div>
+                    <h2 class="text-lg font-semibold text-gray-900">Información del Animal</h2>
+                </div>
+            </div>
+            
+            <div class="p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ID del Animal</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-hashtag text-gray-400"></i>
+                            </div>
+                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
+                                   value="{{ $animal->idAni }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Animal</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-tag text-gray-400"></i>
+                            </div>
+                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
+                                   value="{{ $animal->ideAni ?? 'Sin nombre' }}" readonly>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Especie</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-dove text-gray-400"></i>
+                            </div>
+                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
+                                   value="{{ $animal->espAni }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Raza</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-paw text-gray-400"></i>
+                            </div>
+                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
+                                   value="{{ $animal->razAni ?? 'No especificada' }}" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                @if($historial->tipHisMed == 'control')
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-weight text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-green-800 font-medium">Peso actual del animal: <strong>{{ $animal->pesAni }} kg</strong></p>
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        <form wire:submit="update" class="space-y-8 mt-8">
+            <!-- Sección: Información del Registro -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-medical text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Información del Registro</h2>
+                    </div>
                 </div>
                 
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Nombre del Animal</label>
-                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
-                           value="{{ $animal->nomAni ?? 'Sin nombre' }}" readonly>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Registro</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-tag text-gray-400"></i>
+                                </div>
+                                <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
+                                       value="{{ ucfirst($historial->tipHisMed) }}" readonly>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-calendar text-gray-400"></i>
+                                </div>
+                                <input type="date" wire:model="fecHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" required>
+                            </div>
+                            @error('fecHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Descripción <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3">
+                                <i class="fas fa-align-left text-gray-400"></i>
+                            </div>
+                            <textarea wire:model="desHisMed" rows="3" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none" required></textarea>
+                        </div>
+                        @error('desHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Responsable <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <input type="text" wire:model="responHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" required>
+                        </div>
+                        @error('responHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Especie</label>
-                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
-                           value="{{ $animal->espAni }}" readonly>
+            <!-- Sección: Información del Proveedor -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-truck text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Información del Proveedor</h2>
+                    </div>
                 </div>
                 
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Raza</label>
-                    <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
-                           value="{{ $animal->razAni ?? 'No especificada' }}" readonly>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-user-tie text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model="idProveedor" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                >
+                                    <option value="">Seleccionar proveedor</option>
+                                    @foreach($proveedores as $proveedor)
+                                        <option value="{{ $proveedor->idProve }}">
+                                            {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    @if($proveedorSeleccionado)
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
+                            <h4 class="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-blue-600"></i>
+                                Información del Proveedor
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-700">NIT:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nitProve ?? 'No especificado' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Contacto:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Teléfono:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Dirección:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->dirProve ?? 'No especificado' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
-            @if($historial->tipHisMed == 'control')
-            <div class="bg-green-100 text-green-800 p-3 rounded mb-6 flex items-center gap-2">
-                <i class="fas fa-info-circle"></i> 
-                <span>Peso actual del animal: <strong>{{ $animal->pesAni }} kg</strong></span>
+            <!-- Sección: Información Específica según Tipo -->
+            @if($historial->tipHisMed == 'tratamiento')
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-pills text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Datos del Tratamiento</h2>
+                    </div>
+                </div>
+                
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Medicamento/Insumo</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-pills text-gray-400"></i>
+                                </div>
+                                <select wire:model="idIns" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors">
+                                    <option value="">Seleccionar insumo</option>
+                                    @foreach($insumos as $insumo)
+                                        <option value="{{ $insumo->idIns }}">
+                                            {{ $insumo->nomIns }} ({{ $insumo->preIns ?? 'Sin precio' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Dosis</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-syringe text-gray-400"></i>
+                                </div>
+                                <input type="text" wire:model="dosHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                       placeholder="Ej: 5 ml, 2 tabletas">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Duración</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-clock text-gray-400"></i>
+                                </div>
+                                <input type="text" wire:model="durHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                       placeholder="Ej: 7 días, 2 semanas">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tratamiento aplicado</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3">
+                                <i class="fas fa-prescription text-gray-400"></i>
+                            </div>
+                            <textarea wire:model="traHisMed" rows="2" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
             @endif
 
-            <form wire:submit="update" class="space-y-6">
-                <!-- Selector de Proveedor -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Proveedor</label>
-                        <select 
-                            wire:model="idProveedor" 
-                            class="w-full border border-gray-300 rounded px-3 py-2"
-                        >
-                            <option value="">Seleccionar proveedor</option>
-                            @foreach($proveedores as $proveedor)
-                                <option value="{{ $proveedor->idProve }}">
-                                    {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
-                                </option>
-                            @endforeach
-                        </select>
-                        
-                        @if($proveedorSeleccionado)
-                            <div class="mt-2 p-2 bg-gray-50 rounded text-sm">
-                                <div class="font-medium">Información del proveedor:</div>
-                                <div><strong>NIT:</strong> {{ $proveedorSeleccionado->nitProve ?? 'No especificado' }}</div>
-                                <div><strong>Contacto:</strong> {{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</div>
+            @if($historial->tipHisMed == 'control')
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-weight text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Control de Peso/Salud</h2>
+                    </div>
+                </div>
+                
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Resultado</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-check-circle text-gray-400"></i>
+                                </div>
+                                <input type="text" wire:model="resHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                       placeholder="Ej: Peso normal, Fiebre detectada">
                             </div>
-                        @endif
-                    </div>
-                    
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Tipo de Registro</label>
-                        <input type="text" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed" 
-                               value="{{ ucfirst($historial->tipHisMed) }}" readonly>
-                    </div>
-                </div>
-
-                <!-- Selector de Insumo (para tratamientos) -->
-                @if($historial->tipHisMed == 'tratamiento')
-                <div class="border border-gray-300 rounded p-4 bg-gray-50">
-                    <h6 class="font-semibold mb-2 text-gray-800">Datos de Insumo/Medicamento</h6>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block mb-1 font-medium text-gray-700">Insumo/Medicamento</label>
-                            <select wire:model="idIns" class="w-full border border-gray-300 rounded px-3 py-2">
-                                <option value="">Seleccionar insumo</option>
-                                @foreach($insumos as $insumo)
-                                    <option value="{{ $insumo->idIns }}">
-                                        {{ $insumo->nomIns }} ({{ $insumo->preIns ?? 'Sin precio' }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block mb-1 font-medium text-gray-700">Dosis</label>
-                            <input type="text" wire:model="dosHisMed" class="w-full border border-gray-300 rounded px-3 py-2" 
-                                   placeholder="Ej: 5 ml, 2 tabletas">
-                        </div>
-                        
-                        <div>
-                            <label class="block mb-1 font-medium text-gray-700">Duración</label>
-                            <input type="text" wire:model="durHisMed" class="w-full border border-gray-300 rounded px-3 py-2" 
-                                   placeholder="Ej: 7 días, 2 semanas">
                         </div>
                     </div>
                 </div>
-                @endif
+            </div>
+            @endif
 
-                <!-- Campos específicos según tipo de registro -->
-                @if($historial->tipHisMed == 'vacuna')
-                <div class="border border-gray-300 rounded p-4 bg-gray-50">
-                    <h6 class="font-semibold mb-2 text-gray-800">Datos de Vacunación</h6>
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Descripción <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="desHisMed" class="w-full border border-gray-300 rounded px-3 py-2" required>
-                        @error('desHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            <!-- Sección: Información Adicional -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-sticky-note text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Información Adicional</h2>
                     </div>
                 </div>
-                @endif
+                
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Estado de Recuperación</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-heart text-gray-400"></i>
+                                </div>
+                                <select wire:model="estRecHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors">
+                                    <option value="saludable">Saludable</option>
+                                    <option value="en tratamiento">En tratamiento</option>
+                                    <option value="crónico">Crónico</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-                @if($historial->tipHisMed == 'tratamiento')
-                <div class="border border-gray-300 rounded p-4 bg-gray-50">
-                    <h6 class="font-semibold mb-2 text-gray-800">Datos de Tratamiento</h6>
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Descripción <span class="text-red-500">*</span></label>
-                        <textarea wire:model="desHisMed" rows="3" class="w-full border border-gray-300 rounded px-3 py-2" required></textarea>
-                        @error('desHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3">
+                                <i class="fas fa-eye text-gray-400"></i>
+                            </div>
+                            <textarea wire:model="obsHisMed" rows="2" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"></textarea>
+                        </div>
+                        @error('obsHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                     </div>
-                    
-                    <div class="mt-4">
-                        <label class="block mb-1 font-medium text-gray-700">Tratamiento aplicado</label>
-                        <textarea wire:model="traHisMed" rows="2" class="w-full border border-gray-300 rounded px-3 py-2"></textarea>
-                    </div>
-                </div>
-                @endif
 
-                @if($historial->tipHisMed == 'control')
-                <div class="border border-gray-300 rounded p-4 bg-gray-50">
-                    <h6 class="font-semibold mb-2 text-gray-800">Control de Peso/Salud</h6>
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Descripción <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="desHisMed" class="w-full border border-gray-300 rounded px-3 py-2" required>
-                        @error('desHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div class="mt-4">
-                        <label class="block mb-1 font-medium text-gray-700">Resultado</label>
-                        <input type="text" wire:model="resHisMed" class="w-full border border-gray-300 rounded px-3 py-2" 
-                               placeholder="Ej: Peso normal, Fiebre detectada">
-                    </div>
-                </div>
-                @endif
-
-                <!-- Campos comunes -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Fecha <span class="text-red-500">*</span></label>
-                        <input type="date" wire:model="fecHisMed" class="w-full border border-gray-300 rounded px-3 py-2" required>
-                        @error('fecHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Responsable <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="responHisMed" class="w-full border border-gray-300 rounded px-3 py-2" required>
-                        @error('responHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones Adicionales</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3">
+                                <i class="fas fa-clipboard-list text-gray-400"></i>
+                            </div>
+                            <textarea wire:model="obsHisMed2" rows="2" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"></textarea>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Estado de recuperación -->
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Estado de Recuperación</label>
-                    <select wire:model="estRecHisMed" class="w-full border border-gray-300 rounded px-3 py-2">
-                        <option value="saludable">Saludable</option>
-                        <option value="en tratamiento">En tratamiento</option>
-                        <option value="crónico">Crónico</option>
-                    </select>
-                </div>
-
-                <!-- Observaciones -->
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Observaciones</label>
-                    <textarea wire:model="obsHisMed" rows="2" class="w-full border border-gray-300 rounded px-3 py-2"></textarea>
-                    @error('obsHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                </div>
-
-                <div class="flex justify-between items-center">
-                    <a href="{{ route('pecuario.salud-peso.index') }}" wire:navigate
-                       class="inline-flex items-center gap-2 px-4 py-2 border border-gray-400 rounded text-gray-700 hover:bg-gray-100">
-                        <i class="fas fa-times"></i> Cancelar
-                    </a>
-                    <button type="submit" 
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                        <i class="fas fa-save"></i> Actualizar
-                    </button>
-                </div>
-            </form>
-        </div>
+            <!-- Botones de acción -->
+            <div class="flex justify-between items-center bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <a href="{{ route('pecuario.salud-peso.index') }}" 
+                   wire:navigate
+                   class="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">
+                    <i class="fas fa-arrow-left text-sm"></i>
+                    Volver
+                </a>
+                <button type="submit" 
+                        class="inline-flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all duration-200 shadow-sm hover:shadow-md">
+                    <i class="fas fa-save text-sm"></i>
+                    Actualizar Registro
+                </button>
+            </div>
+        </form>
     </div>
 </div>

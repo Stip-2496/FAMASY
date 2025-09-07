@@ -91,7 +91,7 @@ new #[Layout('layouts.auth')] class extends Component {
             $this->animalesFiltrados = Animal::where('estAni', 'vivo')
                                           ->where('espAni', $this->especieSeleccionada)
                                           ->where('razAni', $value)
-                                          ->orderBy('nomAni')
+                                          ->orderBy('ideAni')
                                           ->get();
         } else {
             $this->animalesFiltrados = [];
@@ -190,247 +190,519 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Nuevo Registro Médico')
 
-<div class="container mx-auto px-4 py-6">
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-6xl mx-auto px-4">
         <!-- Header -->
-        <div class="bg-green-700 text-white px-6 py-4 rounded-t-lg flex items-center gap-2">
-            <i class="fas fa-plus-circle"></i>
-            <h5 class="text-lg font-semibold">Nuevo Registro Médico</h5>
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-plus text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Nuevo Registro Médico</h1>
+                        <p class="text-gray-600">Complete el formulario para agregar un nuevo registro médico</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-600 text-white">
+                        <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
+                        Nuevo registro
+                    </span>
+                </div>
+            </div>
         </div>
-        
-        <div class="p-6">
-            <form wire:submit="save" class="space-y-6">
-                <!-- Selectores jerárquicos para animales -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Selector de Especie -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Especie <span class="text-red-500">*</span></label>
-                        <select 
-                            wire:model="especieSeleccionada" 
-                            wire:change="$refresh"
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200"
-                            required
-                        >
-                            <option value="">Seleccionar especie</option>
-                            @foreach($especies as $especie)
-                                <option value="{{ $especie }}">{{ $especie }}</option>
-                            @endforeach
-                        </select>
-                        @error('especieSeleccionada') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <!-- Selector de Raza -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Raza <span class="text-red-500">*</span></label>
-                        <select 
-                            wire:model="razaSeleccionada" 
-                            wire:change="$refresh"
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200"
-                            @if(!$especieSeleccionada) disabled @endif
-                            required
-                        >
-                            <option value="">Seleccionar raza</option>
-                            @foreach($razas as $raza)
-                                <option value="{{ $raza }}">{{ $raza }}</option>
-                            @endforeach
-                        </select>
-                        @error('razaSeleccionada') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <!-- Selector de Animal -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Animal <span class="text-red-500">*</span></label>
-                        <select 
-                            wire:model="idAniHis" 
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200"
-                            @if(!$razaSeleccionada) disabled @endif
-                            required
-                        >
-                            <option value="">Seleccionar animal</option>
-                            @foreach($animalesFiltrados as $animal)
-                                <option value="{{ $animal->idAni }}">
-                                    @if($animal->nomAni)
-                                        {{ $animal->nomAni }} (ID: {{ $animal->idAni }})
-                                    @else
-                                        Animal #{{ $animal->idAni }}
-                                    @endif
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('idAniHis') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+
+        <form wire:submit="save" class="space-y-8">
+            <!-- Sección 1: Selección de Animal -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-paw text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Seleccionar Animal</h2>
                     </div>
                 </div>
                 
-                <!-- Información del animal seleccionado -->
-                @if($animalSeleccionado)
-                    <div class="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Información del Animal</h4>
-                                <div class="space-y-1 text-sm">
-                                    <div><span class="font-medium">ID:</span> {{ $animalSeleccionado->idAni }}</div>
-                                    <div><span class="font-medium">Nombre:</span> {{ $animalSeleccionado->nomAni ?? 'Sin nombre' }}</div>
-                                    <div><span class="font-medium">Especie:</span> {{ $animalSeleccionado->espAni }}</div>
-                                    <div><span class="font-medium">Raza:</span> {{ $animalSeleccionado->razAni ?? 'No especificada' }}</div>
-                                </div>
+                <div class="p-8">
+                    <!-- Información Básica -->
+                    <div class="mb-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-info-circle text-gray-600 text-sm"></i>
                             </div>
+                            <h3 class="text-lg font-semibold text-gray-900">Información Básica</h3>
+                        </div>
+                        <p class="text-gray-600 mb-6">Datos principales del animal</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Selector de Especie -->
                             <div>
-                                <h4 class="font-semibold text-gray-800 mb-2">Detalles Adicionales</h4>
-                                <div class="space-y-1 text-sm">
-                                    <div><span class="font-medium">Sexo:</span> {{ $animalSeleccionado->sexAni }}</div>
-                                    @if($animalSeleccionado->fecNacAni)
-                                        <div><span class="font-medium">Nacimiento:</span> {{ date('d/m/Y', strtotime($animalSeleccionado->fecNacAni)) }}</div>
-                                    @endif
-                                    <div><span class="font-medium">Estado:</span> {{ ucfirst($animalSeleccionado->estAni) }}</div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Especie <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fas fa-dove text-gray-400"></i>
+                                    </div>
+                                    <select 
+                                        wire:model="especieSeleccionada" 
+                                        wire:change="$refresh"
+                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                        required
+                                    >
+                                        <option value="">Seleccionar especie</option>
+                                        @foreach($especies as $especie)
+                                            <option value="{{ $especie }}">{{ $especie }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
+                                @error('especieSeleccionada') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                            </div>
+                            
+                            <!-- Selector de Raza -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Raza <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fas fa-paw text-gray-400"></i>
+                                    </div>
+                                    <select 
+                                        wire:model="razaSeleccionada" 
+                                        wire:change="$refresh"
+                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        @if(!$especieSeleccionada) disabled @endif
+                                        required
+                                    >
+                                        <option value="">Seleccionar raza</option>
+                                        @foreach($razas as $raza)
+                                            <option value="{{ $raza }}">{{ $raza }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @error('razaSeleccionada') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                            </div>
+                            
+                            <!-- Selector de Animal -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Animal <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fas fa-search text-gray-400"></i>
+                                    </div>
+                                    <select 
+                                        wire:model="idAniHis" 
+                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        @if(!$razaSeleccionada) disabled @endif
+                                        required
+                                    >
+                                        <option value="">Seleccionar animal</option>
+                                        @foreach($animalesFiltrados as $animal)
+                                            <option value="{{ $animal->idAni }}">
+                                                @if($animal->ideAni)
+                                                    {{ $animal->ideAni }} (ID: {{ $animal->idAni }})
+                                                @else
+                                                    Animal #{{ $animal->idAni }}
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @error('idAniHis') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
                     </div>
-                @endif
 
-                <!-- Selector de Proveedor e Insumo -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Proveedor</label>
-                        <select 
-                            wire:model="idProveedor" 
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200"
-                        >
-                            <option value="">Seleccionar proveedor</option>
-                            @foreach($proveedores as $proveedor)
-                                <option value="{{ $proveedor->idProve }}">
-                                    {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('idProveedor') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
+                    <!-- Información del animal seleccionado -->
+                    @if($animalSeleccionado)
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                            <h4 class="font-semibold text-green-900 mb-4 flex items-center gap-2">
+                                <i class="fas fa-paw text-green-600"></i>
+                                Información del Animal Seleccionado
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-700">ID:</span>
+                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->idAni }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Nombre:</span>
+                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->ideAni ?? 'Sin nombre' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Especie:</span>
+                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->espAni }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Raza:</span>
+                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->razAni ?? 'No especificada' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Sexo:</span>
+                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->sexAni }}</span>
+                                </div>
+                                @if($animalSeleccionado->fecNacAni)
+                                    <div>
+                                        <span class="font-medium text-gray-700">Nacimiento:</span>
+                                        <span class="text-gray-900 ml-1">{{ date('d/m/Y', strtotime($animalSeleccionado->fecNacAni)) }}</span>
+                                    </div>
+                                @endif
+                                <div>
+                                    <span class="font-medium text-gray-700">Estado:</span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-1">
+                                        {{ ucfirst($animalSeleccionado->estAni) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
 
-                    <!-- Selector de Insumo/Medicamento -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Medicamento/Insumo</label>
-                        <select 
-                            wire:model="idIns" 
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200"
-                        >
-                            <option value="">Seleccionar medicamento/insumo</option>
-                            @foreach($insumos as $insumo)
-                                <option value="{{ $insumo->idIns }}">
-                                    {{ $insumo->nomIns }} 
-                                    @if($insumo->marIns) - {{ $insumo->marIns }} @endif
-                                    ({{ $insumo->canIns ?? '0' }} {{ $insumo->uniIns }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('idIns') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            <!-- Sección 2: Información del Proveedor -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-truck text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Información del Proveedor</h2>
                     </div>
                 </div>
+                
+                <div class="p-8">
+                    <p class="text-gray-600 mb-6">Proveedor que suministra este animal</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Selector de Proveedor -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Procedencia/Proveedor</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-user-tie text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model="idProveedor" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                >
+                                    <option value="">Seleccionar proveedor</option>
+                                    @foreach($proveedores as $proveedor)
+                                        <option value="{{ $proveedor->idProve }}">
+                                            {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @error('idProveedor') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <!-- Campos del formulario principales -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Tipo de Registro <span class="text-red-500">*</span></label>
-                        <select wire:model="tipHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" required>
-                            <option value="">Seleccionar tipo</option>
-                            <option value="vacuna">Vacuna</option>
-                            <option value="tratamiento">Tratamiento</option>
-                            <option value="control">Control de Peso</option>
-                        </select>
-                        @error('tipHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        <!-- Selector de Insumo/Medicamento -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Medicamento/Insumo</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-pills text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model="idIns" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                >
+                                    <option value="">Seleccionar medicamento/insumo</option>
+                                    @foreach($insumos as $insumo)
+                                        <option value="{{ $insumo->idIns }}">
+                                            {{ $insumo->nomIns }} 
+                                            @if($insumo->marIns) - {{ $insumo->marIns }} @endif
+                                            ({{ $insumo->canIns ?? '0' }} {{ $insumo->uniIns }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @error('idIns') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
                     </div>
                     
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Fecha <span class="text-red-500">*</span></label>
-                        <input type="date" wire:model="fecHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" required>
-                        @error('fecHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-
-                    <!-- Estado de Recuperación -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Estado de Recuperación <span class="text-red-500">*</span></label>
-                        <select wire:model="estRecHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" required>
-                            <option value="saludable">Saludable</option>
-                            <option value="en tratamiento">En Tratamiento</option>
-                            <option value="crónico">Crónico</option>
-                        </select>
-                        @error('estRecHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
+                    <!-- Información del proveedor seleccionado -->
+                    @if($proveedorSeleccionado)
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
+                            <h4 class="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-blue-600"></i>
+                                Información del Proveedor
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-700">Nombre:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nomProve }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Tipo:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->tipSumProve ?? 'No especificado' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Contacto:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Teléfono:</span>
+                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
+            </div>
 
-                <!-- Campos de dosis y duración -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Dosis -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Dosis</label>
-                        <input type="text" wire:model="dosHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" 
-                               placeholder="Ej: 5ml, 2 pastillas, etc.">
-                        @error('dosHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-
-                    <!-- Duración -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Duración</label>
-                        <input type="text" wire:model="durHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" 
-                               placeholder="Ej: 7 días, 2 semanas, etc.">
-                        @error('durHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Responsable <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="responHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" required>
-                        @error('responHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            <!-- Sección 3: Fechas Importantes -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Fechas Importantes</h2>
                     </div>
                 </div>
+                
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Registro <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-tag text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model="tipHisMed" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                    required
+                                >
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="vacuna">Vacuna</option>
+                                    <option value="tratamiento">Tratamiento</option>
+                                    <option value="control">Control de Peso</option>
+                                </select>
+                            </div>
+                            @error('tipHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha del Procedimiento <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-calendar text-gray-400"></i>
+                                </div>
+                                <input 
+                                    type="date" 
+                                    wire:model="fecHisMed" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                    required
+                                >
+                            </div>
+                            @error('fecHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <!-- Resultado -->
-                <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Resultado</label>
-                        <input type="text" wire:model="resHisMed" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" 
-                               placeholder="Resultado del tratamiento o procedimiento">
-                        @error('resHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Responsable <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-user text-gray-400"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    wire:model="responHisMed" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                    required
+                                >
+                            </div>
+                            @error('responHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Descripción <span class="text-red-500">*</span></label>
-                    <textarea wire:model="desHisMed" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" required></textarea>
-                    @error('desHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            <!-- Sección 4: Estados del Animal -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-heartbeat text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Estados del Animal</h2>
+                    </div>
                 </div>
+                
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Estado de Salud <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-heart text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model="estRecHisMed" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                    required
+                                >
+                                    <option value="saludable">Saludable</option>
+                                    <option value="en tratamiento">En Tratamiento</option>
+                                    <option value="crónico">Crónico</option>
+                                </select>
+                            </div>
+                            @error('estRecHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <!-- Tratamiento -->
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Tratamiento</label>
-                    <textarea wire:model="traHisMed" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" 
-                              placeholder="Descripción detallada del tratamiento aplicado"></textarea>
-                    @error('traHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Dosis</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-syringe text-gray-400"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    wire:model="dosHisMed" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                    placeholder="Ej: 5ml, 2 pastillas, etc."
+                                >
+                            </div>
+                            @error('dosHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Observaciones</label>
-                    <textarea wire:model="obsHisMed" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200"></textarea>
-                    @error('obsHisMed') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Duración</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-clock text-gray-400"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    wire:model="durHisMed" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                    placeholder="Ej: 7 días, 2 semanas, etc."
+                                >
+                            </div>
+                            @error('durHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
 
-                <!-- Observaciones Adicionales -->
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Observaciones Adicionales</label>
-                    <textarea wire:model="obsHisMed2" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 focus:border-green-500 focus:ring focus:ring-green-200" 
-                              placeholder="Información complementaria o notas adicionales"></textarea>
-                    @error('obsHisMed2') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    <!-- Resultado -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Resultado</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-check-circle text-gray-400"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                wire:model="resHisMed" 
+                                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
+                                placeholder="Resultado del tratamiento o procedimiento"
+                            >
+                        </div>
+                        @error('resHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                    </div>
                 </div>
+            </div>
 
-                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                    <a href="{{ route('pecuario.salud-peso.index') }}" wire:navigate
-                       class="inline-flex items-center gap-2 px-4 py-2 border border-green-600 rounded text-green-700 hover:bg-green-100 transition-colors">
-                        <i class="fas fa-times"></i> Cancelar
-                    </a>
-                    <button type="submit" 
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                        <i class="fas fa-save"></i> Guardar
-                    </button>
+            <!-- Sección 5: Información Adicional -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-sticky-note text-gray-600 text-sm"></i>
+                        </div>
+                        <h2 class="text-lg font-semibold text-gray-900">Información Adicional</h2>
+                    </div>
                 </div>
-            </form>
-        </div>
+                
+                <div class="p-8">
+                    <p class="text-gray-600 mb-6">Observaciones especiales, características específicas, cuidados requeridos, etc.</p>
+                    
+                    <div class="space-y-6">
+                        <!-- Descripción -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute top-3 left-3">
+                                    <i class="fas fa-align-left text-gray-400"></i>
+                                </div>
+                                <textarea 
+                                    wire:model="desHisMed" 
+                                    rows="4" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
+                                    placeholder="Descripción detallada del procedimiento o tratamiento"
+                                    required
+                                ></textarea>
+                            </div>
+                            @error('desHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Tratamiento -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tratamiento</label>
+                            <div class="relative">
+                                <div class="absolute top-3 left-3">
+                                    <i class="fas fa-prescription text-gray-400"></i>
+                                </div>
+                                <textarea 
+                                    wire:model="traHisMed" 
+                                    rows="4" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none" 
+                                    placeholder="Descripción detallada del tratamiento aplicado"
+                                ></textarea>
+                            </div>
+                            @error('traHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
+                            <div class="relative">
+                                <div class="absolute top-3 left-3">
+                                    <i class="fas fa-eye text-gray-400"></i>
+                                </div>
+                                <textarea 
+                                    wire:model="obsHisMed" 
+                                    rows="3" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
+                                    placeholder="Escribe aquí cualquier observación importante sobre el animal..."
+                                ></textarea>
+                            </div>
+                            @error('obsHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Observaciones Adicionales -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones Adicionales</label>
+                            <div class="relative">
+                                <div class="absolute top-3 left-3">
+                                    <i class="fas fa-clipboard-list text-gray-400"></i>
+                                </div>
+                                <textarea 
+                                    wire:model="obsHisMed2" 
+                                    rows="3" 
+                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none" 
+                                    placeholder="Información complementaria o notas adicionales"
+                                ></textarea>
+                            </div>
+                            @error('obsHisMed2') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="flex justify-between items-center bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <a href="{{ route('pecuario.salud-peso.index') }}" 
+                   wire:navigate
+                   class="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">
+                    <i class="fas fa-arrow-left text-sm"></i>
+                    Volver
+                </a>
+                <button type="submit" 
+                        class="inline-flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all duration-200 shadow-sm hover:shadow-md">
+                    <i class="fas fa-save text-sm"></i>
+                    Guardar Registro
+                </button>
+            </div>
+        </form>
     </div>
 </div>
