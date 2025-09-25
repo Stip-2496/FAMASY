@@ -9,7 +9,15 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
 // 2° Parámetro: Ubicación de la vista (archivo .blade.php)
 // 3° "Parámetro" (método): Alias de la ruta (para generar URLs dinámicamente)
 */
-
+    // Rutas de Recuperación de Contraseña (agregar después del login)
+    Route::middleware('guest')->group(function () {
+        // Solicitar enlace de recuperación
+        Volt::route('olvide-mi-contraseña', 'auth.forgot-password')->name('password.request');
+    
+        // Resetear contraseña con token
+        Volt::route('restablecer-contraseña/{token}', 'auth.reset-password')->name('password.reset');
+    });
+    
     Route::get('/', function () {return view('welcome');})->name('welcome'); // Rutas Públicas (accesibles sin autenticación)
     Route::view('/login', 'login')->name('login'); // Muestra la vista de inicio de sesión |No he podido cambiarle el nombre a la URL|
 

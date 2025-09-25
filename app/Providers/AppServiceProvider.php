@@ -45,5 +45,9 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Proveedor::observe(\App\Observers\ModelAuditObserver::class);
         // Agrega otros modelos que necesites auditar
         // Ejemplo: Herramienta::observe(ModelAuditObserver::class);
+        // Forzar HTTPS en desarrollo y producción
+        if (config('app.env') !== 'local' || config('app.force_https')) {
+            URL::forceScheme('https');
+        }
     }
 }
