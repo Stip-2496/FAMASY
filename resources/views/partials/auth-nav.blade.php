@@ -3,7 +3,7 @@
     <!-- Barra del logo y nombre del proyecto - ahora con el mismo ancho que el sidebar -->
     <div class="flex w-[180px] h-10 items-center px-2 bg-white">
         <!-- Logo - ahora con el mismo tamaño que los íconos del sidebar -->
-        <img src="/assets/images/logo-sena.jpg" alt="Logo del SENA" class="w-6 h-6" />
+        <img src="/assets/images/FAMASY-logo.jpg" alt="Logo del SENA" class="w-6 h-6" />
         <!-- Línea divisoria - alineada con la línea del sidebar -->
         <div class="h-6 w-px bg-black mx-2"></div>
         <!-- Nombre del proyecto -->
@@ -44,16 +44,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
         </a>
-
-        <!-- Ícono de dashboard general -->
-        @can('admin')
-        <a href="{{ route('dashboard') }}" wire:navigate class="p-1 text-gray-500 hover:bg-gray-100 rounded-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
-            </svg>
-        </a>
-        @endcan
 
         <!-- Ícono de notificaciones 
         <a href="#notifications" class="p-1 text-gray-500 hover:bg-gray-100 rounded-lg">
@@ -129,30 +119,6 @@
             @endcan
 
             @can('admin')
-            <!-- Módulo Contabilidad -->
-            <div class="mb-1">
-                <button class="module-button flex items-center justify-between w-full px-2 py-1 text-xs hover:bg-gray-100 cursor-pointer">
-                    <div class="flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1 text-gray-500">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z"/>
-                        </svg>
-                        <span class="text-gray-700">Contabilidad</span>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-gray-500 arrow-icon">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                </button>
-                <div class="submenu pl-6">
-                    <a href="{{ route('contabilidad.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Dashboard</a>
-                    <a href="{{ route('contabilidad.movimientos.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Movimientos</a>
-                    <a href="{{ route('contabilidad.facturas.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Facturas</a>
-                    <a href="{{ route('contabilidad.gastos.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Gastos</a>
-                    <a href="{{ route('contabilidad.pagos.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Pagos</a>
-                    <a href="{{ route('contabilidad.cuentas-pendientes.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Pendientes</a>
-                    <a href="{{ route('contabilidad.reportes.index') }}" wire:navigate class="block px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100">Reportes</a>
-                </div>
-            </div>
-
             <!-- Módulo Inventario -->
             <div class="mb-1">
                 <button class="module-button flex items-center justify-between w-full px-2 py-1 text-xs hover:bg-gray-100 cursor-pointer">
