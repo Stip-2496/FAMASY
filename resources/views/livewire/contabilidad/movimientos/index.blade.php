@@ -1,7 +1,8 @@
 <?php
 // resources/views/livewire/contabilidad/movimientos/index.blade.php
 
-use Illuminate\Support\Facades\DB; // Agregar esta importación
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -21,13 +22,16 @@ new #[Layout('layouts.auth')] class extends Component {
     public $monto_max = '';
     public $per_page = 50;
 
-    // Propiedades para el modal de nuevo movimiento
+    // Propiedades para el modal de nuevo/editar movimiento
     public $modalAbierto = false;
+    public $modalEdicion = false;
+    public $movimientoId = null;
     public $tipoMovimiento = '';
     public $descripcion = '';
     public $monto = '';
     public $categoria_id = '';
     public $fecha = '';
+    public $observaciones = '';
 
     // Propiedades calculadas
     public $totalesFiltrados = [];
@@ -46,52 +50,13 @@ new #[Layout('layouts.auth')] class extends Component {
 
         $this->fecha = date('Y-m-d');
         $this->cargarCategorias();
-
         $this->calcularTotalesIniciales();
     }
-
-    private function calcularTotalesIniciales()
-{
-    try {
-        // Calcular totales de TODOS los movimientos (sin filtros)
-        $totalIngresos = DB::table('movimientoscontables')
-            ->where('tipoMovCont', 'ingreso')
-            ->sum('montoMovCont') ?? 0;
-            
-        $totalEgresos = DB::table('movimientoscontables')
-            ->where('tipoMovCont', 'egreso')
-            ->sum('montoMovCont') ?? 0;
-            
-        $cantidadRegistros = DB::table('movimientoscontables')->count();
-
-        $this->totalesFiltrados = [
-            'total_ingresos' => $totalIngresos,
-            'total_egresos' => $totalEgresos,
-            'balance' => $totalIngresos - $totalEgresos,
-            'cantidad_registros' => $cantidadRegistros,
-            'total_ingresos_formateado' => number_format($totalIngresos, 2),
-            'total_egresos_formateado' => number_format($totalEgresos, 2),
-            'balance_formateado' => number_format($totalIngresos - $totalEgresos, 2)
-        ];
-
-    } catch (\Exception $e) {
-        Log::error('Error calculando totales iniciales: ' . $e->getMessage());
-        $this->totalesFiltrados = [
-            'total_ingresos' => 0,
-            'total_egresos' => 0,
-            'balance' => 0,
-            'cantidad_registros' => 0,
-            'total_ingresos_formateado' => '0.00',
-            'total_egresos_formateado' => '0.00',
-            'balance_formateado' => '0.00'
-        ];
-    }
-}
 
     public function cargarCategorias()
     {
         try {
-            // Usar DB directamente con el nombre correcto de la tabla
+            // Cargar categorías de movimientos existentes (método simple y funcional)
             $this->categorias = DB::table('movimientoscontables')
                 ->select('catMovCont')
                 ->whereNotNull('catMovCont')
@@ -99,29 +64,93 @@ new #[Layout('layouts.auth')] class extends Component {
                 ->distinct()
                 ->pluck('catMovCont')
                 ->toArray();
+                
+            // Si no hay categorías, agregar algunas por defecto
+            if (empty($this->categorias)) {
+                $this->categorias = [
+                    'Ventas',
+                    'Servicios', 
+                    'Materiales',
+                    'Marketing',
+                    'Oficina',
+                    'Otros'
+                ];
+            }
         } catch (\Exception $e) {
             Log::error('Error cargando categorías: ' . $e->getMessage());
-            $this->categorias = [];
+            $this->categorias = ['Sin categoría'];
+        }
+    }
+
+    private function calcularTotalesIniciales()
+    {
+        try {
+            $totales = DB::table('movimientoscontables')
+                ->selectRaw('
+                    SUM(CASE WHEN tipoMovCont = "ingreso" THEN montoMovCont ELSE 0 END) as total_ingresos,
+                    SUM(CASE WHEN tipoMovCont = "egreso" THEN montoMovCont ELSE 0 END) as total_egresos,
+                    COUNT(*) as cantidad_registros
+                ')
+                ->first();
+
+            $this->totalesFiltrados = [
+                'total_ingresos' => $totales->total_ingresos ?? 0,
+                'total_egresos' => $totales->total_egresos ?? 0,
+                'balance' => ($totales->total_ingresos ?? 0) - ($totales->total_egresos ?? 0),
+                'cantidad_registros' => $totales->cantidad_registros ?? 0,
+                'total_ingresos_formateado' => number_format($totales->total_ingresos ?? 0, 2),
+                'total_egresos_formateado' => number_format($totales->total_egresos ?? 0, 2),
+                'balance_formateado' => number_format(($totales->total_ingresos ?? 0) - ($totales->total_egresos ?? 0), 2)
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error calculando totales iniciales: ' . $e->getMessage());
+            $this->totalesFiltrados = [
+                'total_ingresos' => 0,
+                'total_egresos' => 0,
+                'balance' => 0,
+                'cantidad_registros' => 0,
+                'total_ingresos_formateado' => '0.00',
+                'total_egresos_formateado' => '0.00',
+                'balance_formateado' => '0.00'
+            ];
         }
     }
 
     public function getMovimientosProperty()
 {
     try {
-        // Usar DB directamente con el nombre correcto de la tabla
         $query = DB::table('movimientoscontables');
 
+        // AGREGAR ESTAS LÍNEAS AQUÍ
+        Log::info('Ejecutando filtros:', [
+            'fecha_desde' => $this->fecha_desde,
+            'fecha_hasta' => $this->fecha_hasta,
+        ]);
+        
         // Aplicar filtros
         if ($this->tipo) {
             $query->where('tipoMovCont', $this->tipo);
         }
 
         if ($this->fecha_desde) {
-            $query->where('fecMovCont', '>=', Carbon::parse($this->fecha_desde)->format('Y-m-d'));
+            try {
+                $fechaDesde = Carbon::parse($this->fecha_desde)->format('Y-m-d');
+                $query->where('fecMovCont', '>=', $fechaDesde);
+                Log::info('Aplicado fecha_desde: ' . $fechaDesde . ' - Registros: ' . $query->count());
+            } catch (\Exception $e) {
+                Log::error('Error parsing fecha_desde: ' . $e->getMessage());
+            }
         }
 
         if ($this->fecha_hasta) {
-            $query->where('fecMovCont', '<=', Carbon::parse($this->fecha_hasta)->format('Y-m-d'));
+            try {
+                $fechaHasta = Carbon::parse($this->fecha_hasta)->format('Y-m-d');
+                $query->where('fecMovCont', '<=', $fechaHasta);
+                Log::info('Aplicado fecha_hasta: ' . $fechaHasta . ' - Registros: ' . $query->count());
+            } catch (\Exception $e) {
+                Log::error('Error parsing fecha_hasta: ' . $e->getMessage());
+            }
         }
 
         if ($this->categoria) {
@@ -140,12 +169,11 @@ new #[Layout('layouts.auth')] class extends Component {
             $query->where('montoMovCont', '<=', $this->monto_max);
         }
 
-        // Solo calcular totales si hay filtros activos
+        // Calcular totales si hay filtros activos
         if ($this->hayFiltrosActivos()) {
             $this->calcularTotales($query);
         }
 
-        // Usar paginación nativa de Laravel en lugar de manual
         return $query->orderBy('fecMovCont', 'desc')
                     ->paginate($this->per_page);
 
@@ -155,43 +183,44 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }
 
-private function hayFiltrosActivos()
+public function validarRangoFechas()
 {
-    return !empty($this->tipo) || 
-           !empty($this->fecha_desde) || 
-           !empty($this->fecha_hasta) || 
-           !empty($this->categoria) || 
-           !empty($this->buscar) || 
-           !empty($this->monto_min) || 
-           !empty($this->monto_max);
+    if ($this->fecha_desde && $this->fecha_hasta) {
+        try {
+            $desde = Carbon::parse($this->fecha_desde);
+            $hasta = Carbon::parse($this->fecha_hasta);
+            
+            if ($desde->gt($hasta)) {
+                session()->flash('error', 'La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+                return false;
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Formato de fecha inválido');
+            return false;
+        }
+    }
+    return true;
 }
 
     private function calcularTotales($query)
     {
         try {
-            // Clonar la consulta para no afectar la original
             $baseQuery = clone $query;
             
-            // Calcular ingresos
-            $queryIngresos = clone $baseQuery;
-            $totalIngresos = $queryIngresos->where('tipoMovCont', 'ingreso')->sum('montoMovCont') ?? 0;
-            
-            // Calcular egresos
-            $queryEgresos = clone $baseQuery;
-            $totalEgresos = $queryEgresos->where('tipoMovCont', 'egreso')->sum('montoMovCont') ?? 0;
-            
-            // Contar registros
-            $queryCount = clone $baseQuery;
-            $cantidadRegistros = $queryCount->count();
+            $totales = $baseQuery->selectRaw('
+                SUM(CASE WHEN tipoMovCont = "ingreso" THEN montoMovCont ELSE 0 END) as total_ingresos,
+                SUM(CASE WHEN tipoMovCont = "egreso" THEN montoMovCont ELSE 0 END) as total_egresos,
+                COUNT(*) as cantidad_registros
+            ')->first();
 
             $this->totalesFiltrados = [
-                'total_ingresos' => $totalIngresos,
-                'total_egresos' => $totalEgresos,
-                'balance' => $totalIngresos - $totalEgresos,
-                'cantidad_registros' => $cantidadRegistros,
-                'total_ingresos_formateado' => number_format($totalIngresos, 2),
-                'total_egresos_formateado' => number_format($totalEgresos, 2),
-                'balance_formateado' => number_format($totalIngresos - $totalEgresos, 2)
+                'total_ingresos' => $totales->total_ingresos ?? 0,
+                'total_egresos' => $totales->total_egresos ?? 0,
+                'balance' => ($totales->total_ingresos ?? 0) - ($totales->total_egresos ?? 0),
+                'cantidad_registros' => $totales->cantidad_registros ?? 0,
+                'total_ingresos_formateado' => number_format($totales->total_ingresos ?? 0, 2),
+                'total_egresos_formateado' => number_format($totales->total_egresos ?? 0, 2),
+                'balance_formateado' => number_format(($totales->total_ingresos ?? 0) - ($totales->total_egresos ?? 0), 2)
             ];
 
         } catch (\Exception $e) {
@@ -208,10 +237,20 @@ private function hayFiltrosActivos()
         }
     }
 
+    private function hayFiltrosActivos()
+{
+    return !empty($this->tipo) || 
+           !empty($this->fecha_desde) || 
+           !empty($this->fecha_hasta) || 
+           !empty($this->categoria) || 
+           !empty($this->buscar) || 
+           (!empty($this->monto_min) && $this->monto_min > 0) || 
+           (!empty($this->monto_max) && $this->monto_max > 0);
+}
+
     public function aplicarFiltros()
     {
         $this->resetPage();
-        // Los filtros se aplican automáticamente por la computed property
     }
 
     public function limpiarFiltros()
@@ -223,10 +262,37 @@ private function hayFiltrosActivos()
     public function abrirModal()
     {
         $this->modalAbierto = true;
-        $this->reset(['tipoMovimiento', 'descripcion', 'monto', 'categoria_id']);
+        $this->modalEdicion = false;
+        $this->reset(['tipoMovimiento', 'descripcion', 'monto', 'categoria_id', 'observaciones', 'movimientoId']);
         $this->fecha = date('Y-m-d');
+    }
 
-    
+    public function editarMovimiento($idMovimiento)
+    {
+        try {
+            $movimiento = DB::table('movimientoscontables')
+                ->where('idMovCont', $idMovimiento)
+                ->first();
+
+            if (!$movimiento) {
+                session()->flash('error', 'Movimiento no encontrado');
+                return;
+            }
+
+            $this->modalAbierto = true;
+            $this->modalEdicion = true;
+            $this->movimientoId = $movimiento->idMovCont;
+            $this->tipoMovimiento = $movimiento->tipoMovCont;
+            $this->descripcion = $movimiento->conceptoMovCont;
+            $this->monto = $movimiento->montoMovCont;
+            $this->categoria_id = $movimiento->catMovCont;
+            $this->fecha = $movimiento->fecMovCont;
+            $this->observaciones = $movimiento->obsMovCont ?? '';
+
+        } catch (\Exception $e) {
+            Log::error('Error al cargar movimiento para edición: ' . $e->getMessage());
+            session()->flash('error', 'Error al cargar el movimiento');
+        }
     }
 
     public function cerrarModal()
@@ -239,73 +305,140 @@ private function hayFiltrosActivos()
     {
         return [
             'tipoMovimiento' => 'required|in:ingreso,egreso',
-            'descripcion' => 'required|string|max:255',
-            'monto' => 'required|numeric|min:0.01',
-            'fecha' => 'required|date'
+            'descripcion' => 'required|string|max:200',
+            'monto' => 'required|numeric|min:0.01|max:999999999.99',
+            'fecha' => 'required|date|before_or_equal:today',
+            'categoria_id' => 'nullable|string|max:100',
+            'observaciones' => 'nullable|string|max:500'
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'tipoMovimiento.required' => 'El tipo de movimiento es obligatorio',
+            'tipoMovimiento.in' => 'El tipo de movimiento debe ser ingreso o egreso',
+            'descripcion.required' => 'La descripción es obligatoria',
+            'descripcion.max' => 'La descripción no puede exceder 200 caracteres',
+            'monto.required' => 'El monto es obligatorio',
+            'monto.numeric' => 'El monto debe ser un valor numérico',
+            'monto.min' => 'El monto debe ser mayor a 0',
+            'monto.max' => 'El monto no puede exceder 999,999,999.99',
+            'fecha.required' => 'La fecha es obligatoria',
+            'fecha.date' => 'La fecha debe tener un formato válido',
+            'fecha.before_or_equal' => 'La fecha no puede ser futura',
         ];
     }
 
     public function guardarMovimiento()
-{
-    $validated = $this->validate();
+    {
+        $validated = $this->validate();
 
-    try {
-        // Usar DB directamente para insertar
-        DB::table('movimientoscontables')->insert([
-            'fecMovCont' => $this->fecha,
-            'tipoMovCont' => $this->tipoMovimiento,
-            'catMovCont' => $this->categoria_id ?: 'Sin categoría',
-            'conceptoMovCont' => $this->descripcion,
-            'montoMovCont' => $this->monto,
-            'obsMovCont' => null,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
+        DB::beginTransaction();
+        try {
+            $datos = [
+                'fecMovCont' => $this->fecha,
+                'tipoMovCont' => $this->tipoMovimiento,
+                'catMovCont' => $this->categoria_id ?: 'Sin categoría',
+                'conceptoMovCont' => $this->descripcion,
+                'montoMovCont' => $this->monto,
+                'obsMovCont' => $this->observaciones,
+                'updated_at' => now()
+            ];
 
-        $this->cerrarModal();
-        session()->flash('success', 'Movimiento registrado exitosamente');
-        
-        // Recargar categorías por si se agregó una nueva
-        $this->cargarCategorias();
-        
-        // AGREGAR ESTA LÍNEA - Recalcular totales después de guardar
-        $this->calcularTotalesIniciales();
-        
-    } catch (\Exception $e) {
-        Log::error('Error al guardar movimiento: ' . $e->getMessage());
-        session()->flash('error', 'Error al registrar el movimiento: ' . $e->getMessage());
+            if ($this->modalEdicion && $this->movimientoId) {
+                DB::table('movimientoscontables')
+                    ->where('idMovCont', $this->movimientoId)
+                    ->update($datos);
+
+                session()->flash('success', 'Movimiento actualizado exitosamente');
+            } else {
+                $datos['created_at'] = now();
+                DB::table('movimientoscontables')->insert($datos);
+                session()->flash('success', 'Movimiento registrado exitosamente');
+            }
+
+            DB::commit();
+            $this->cerrarModal();
+            $this->cargarCategorias();
+            $this->calcularTotalesIniciales();
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error al guardar movimiento: ' . $e->getMessage());
+            session()->flash('error', 'Error al guardar el movimiento: ' . $e->getMessage());
+        }
     }
-}
 
     public function eliminarMovimiento($idMovimiento)
-{
-    try {
-        $deleted = DB::table('movimientoscontables')
-            ->where('idMovCont', $idMovimiento)
-            ->delete();
+    {
+        DB::beginTransaction();
+        try {
+            $movimiento = DB::table('movimientoscontables')
+                ->where('idMovCont', $idMovimiento)
+                ->first();
+
+            if (!$movimiento) {
+                session()->flash('error', 'Movimiento no encontrado');
+                return;
+            }
+
+            $deleted = DB::table('movimientoscontables')
+                ->where('idMovCont', $idMovimiento)
+                ->delete();
+
+            if ($deleted) {
+                session()->flash('success', 'Movimiento eliminado correctamente');
+                $this->calcularTotalesIniciales();
+            } else {
+                session()->flash('error', 'No se pudo eliminar el movimiento');
+            }
+
+            DB::commit();
             
-        if ($deleted) {
-            session()->flash('success', 'Movimiento eliminado correctamente');
-            // AGREGAR ESTA LÍNEA - Recalcular totales después de eliminar
-            $this->calcularTotalesIniciales();
-        } else {
-            session()->flash('error', 'No se pudo encontrar el movimiento');
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error al eliminar movimiento: ' . $e->getMessage());
+            session()->flash('error', 'Error al eliminar el movimiento');
         }
-    } catch (\Exception $e) {
-        Log::error('Error al eliminar movimiento: ' . $e->getMessage());
-        session()->flash('error', 'Error al eliminar el movimiento');
     }
-}
+
+    public function duplicarMovimiento($idMovimiento)
+    {
+        try {
+            $movimiento = DB::table('movimientoscontables')
+                ->where('idMovCont', $idMovimiento)
+                ->first();
+
+            if (!$movimiento) {
+                session()->flash('error', 'Movimiento no encontrado');
+                return;
+            }
+
+            $this->modalAbierto = true;
+            $this->modalEdicion = false;
+            $this->movimientoId = null;
+            $this->tipoMovimiento = $movimiento->tipoMovCont;
+            $this->descripcion = $movimiento->conceptoMovCont . ' (Copia)';
+            $this->monto = $movimiento->montoMovCont;
+            $this->categoria_id = $movimiento->catMovCont;
+            $this->fecha = date('Y-m-d');
+            $this->observaciones = $movimiento->obsMovCont ?? '';
+
+        } catch (\Exception $e) {
+            Log::error('Error al duplicar movimiento: ' . $e->getMessage());
+            session()->flash('error', 'Error al duplicar el movimiento');
+        }
+    }
 
     public function exportarMovimientos()
     {
-        // Por ahora solo mostramos un mensaje, después implementaremos la exportación real
         session()->flash('info', 'Función de exportación en desarrollo');
     }
 }; ?>
 
 @section('title', 'Movimientos Contables')
-
+<div>
 <div class="w-full px-6 py-6 mx-auto">
     <!-- Header -->
     <div class="flex flex-wrap -mx-3 mb-6">
@@ -548,10 +681,10 @@ private function hayFiltrosActivos()
                             @forelse($this->movimientos as $movimiento)
                             <tr class="hover:bg-gray-50 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ date('d/m/Y', strtotime($movimiento->fecMovCont)) }}
+                                    {{ \Carbon\Carbon::parse($movimiento->fecMovCont)->format('d/m/Y') }}
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
-                                    {{ $movimiento->conceptoMovCont }}
+                                    {{ $movimiento->conceptoMovCont ?? 'Sin descripción' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -567,12 +700,17 @@ private function hayFiltrosActivos()
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium 
                                         {{ $movimiento->tipoMovCont == 'ingreso' ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $movimiento->tipoMovCont == 'ingreso' ? '+' : '-' }}${{ number_format($movimiento->montoMovCont, 2) }}
+                                    {{ $movimiento->tipoMovCont == 'ingreso' ? '+' : '-' }}${{ number_format($movimiento->montoMovCont ?? 0, 2) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
-                                        <button class="text-blue-600 hover:text-blue-900" title="Editar">
+                                        <button wire:click="editarMovimiento({{ $movimiento->idMovCont }})" 
+                                                class="text-blue-600 hover:text-blue-900" title="Editar">
                                             <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button wire:click="duplicarMovimiento({{ $movimiento->idMovCont }})" 
+                                                class="text-green-600 hover:text-green-900" title="Duplicar">
+                                            <i class="fas fa-copy"></i>
                                         </button>
                                         <button wire:click="eliminarMovimiento({{ $movimiento->idMovCont }})" 
                                                 wire:confirm="¿Estás seguro de eliminar este movimiento?"
@@ -612,13 +750,15 @@ private function hayFiltrosActivos()
     </div>
 </div>
 
-<!-- Modal Nuevo Movimiento -->
+<!-- Modal Nuevo/Editar Movimiento -->
 @if($modalAbierto)
 <div wire:ignore.self class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-lg bg-white">
         <div class="mt-3">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Nuevo Movimiento Contable</h3>
+                <h3 class="text-lg font-semibold text-gray-900">
+                    {{ $modalEdicion ? 'Editar' : 'Nuevo' }} Movimiento Contable
+                </h3>
                 <button wire:click="cerrarModal" type="button" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times text-xl"></i>
                 </button>
@@ -633,12 +773,14 @@ private function hayFiltrosActivos()
                     </select>
                     @error('tipoMovimiento') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
                     <input type="text" wire:model="descripcion" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
                            placeholder="Ej: Venta de producto, pago de servicios..." required>
                     @error('descripcion') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Monto</label>
                     <div class="relative">
@@ -648,22 +790,31 @@ private function hayFiltrosActivos()
                     </div>
                     @error('monto') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
                     <select wire:model="categoria_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Sin categoría</option>
-                        <option value="servicios">Servicios</option>
-                        <option value="materiales">Materiales</option>
-                        <option value="marketing">Marketing</option>
-                        <option value="oficina">Oficina</option>
-                        <option value="otros">Otros</option>
+                        @foreach($categorias as $categoria)
+                        <option value="{{ $categoria }}">{{ $categoria }}</option>
+                        @endforeach
                     </select>
+                    @error('categoria_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
+                    <textarea wire:model="observaciones" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Observaciones adicionales (opcional)"></textarea>
+                    @error('observaciones') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
                     <input type="date" wire:model="fecha" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     @error('fecha') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
+                
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" wire:click="cerrarModal" 
                             class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition duration-200">
@@ -671,7 +822,8 @@ private function hayFiltrosActivos()
                     </button>
                     <button type="submit" 
                             class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                        <i class="fas fa-save mr-2"></i> Guardar Movimiento
+                        <i class="fas fa-save mr-2"></i> 
+                        {{ $modalEdicion ? 'Actualizar' : 'Guardar' }} Movimiento
                     </button>
                 </div>
             </form>
@@ -682,7 +834,7 @@ private function hayFiltrosActivos()
 
 <!-- Notificaciones Flash -->
 @if(session('success'))
-<div class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+<div class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
     <div class="flex items-center">
         <i class="fas fa-check-circle mr-2"></i>
         {{ session('success') }}
@@ -691,7 +843,7 @@ private function hayFiltrosActivos()
 @endif
 
 @if(session('error'))
-<div class="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+<div class="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
     <div class="flex items-center">
         <i class="fas fa-exclamation-circle mr-2"></i>
         {{ session('error') }}
@@ -700,7 +852,7 @@ private function hayFiltrosActivos()
 @endif
 
 @if(session('info'))
-<div class="fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+<div class="fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
     <div class="flex items-center">
         <i class="fas fa-info-circle mr-2"></i>
         {{ session('info') }}
@@ -709,23 +861,27 @@ private function hayFiltrosActivos()
 @endif
 
 <script>
-// Auto-cerrar notificaciones
+// Auto-cerrar notificaciones después de 5 segundos
 setTimeout(function() {
     const notifications = document.querySelectorAll('.fixed.top-4.right-4');
     notifications.forEach(notification => {
-        notification.style.display = 'none';
+        notification.style.transition = 'opacity 0.5s ease-out';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 500);
     });
 }, 5000);
 
 // Validación de fechas en tiempo real
 document.addEventListener('DOMContentLoaded', function() {
-    const fechaDesde = document.querySelector('input[name="fecha_desde"]');
-    const fechaHasta = document.querySelector('input[name="fecha_hasta"]');
+    const fechaDesde = document.querySelector('input[wire\\:model\\.live="fecha_desde"]');
+    const fechaHasta = document.querySelector('input[wire\\:model\\.live="fecha_hasta"]');
     
     if (fechaDesde && fechaHasta) {
         fechaDesde.addEventListener('change', function() {
             if (fechaHasta.value && this.value > fechaHasta.value) {
-                this.style.borderColor = '#e74c3c';
+                this.style.borderColor = '#ef4444';
                 this.title = 'La fecha "Desde" no puede ser mayor que la fecha "Hasta"';
             } else {
                 this.style.borderColor = '#d1d5db';
@@ -735,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fechaHasta.addEventListener('change', function() {
             if (fechaDesde.value && this.value < fechaDesde.value) {
-                this.style.borderColor = '#e74c3c';
+                this.style.borderColor = '#ef4444';
                 this.title = 'La fecha "Hasta" no puede ser menor que la fecha "Desde"';
             } else {
                 this.style.borderColor = '#d1d5db';
@@ -744,4 +900,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Confirmación antes de eliminar
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('[wire\\:confirm]')) {
+            const message = e.target.closest('[wire\\:confirm]').getAttribute('wire:confirm');
+            if (!confirm(message)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    });
+});
+
+// Validación de montos en tiempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const montoInput = document.querySelector('input[wire\\:model="monto"]');
+    if (montoInput) {
+        montoInput.addEventListener('input', function() {
+            const valor = parseFloat(this.value);
+            if (valor < 0.01) {
+                this.style.borderColor = '#ef4444';
+            } else {
+                this.style.borderColor = '#d1d5db';
+            }
+        });
+    }
+});
 </script>
+</div>

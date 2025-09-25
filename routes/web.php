@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route; // Route: Facade para definir rutas de Laravel
-use Livewire\Volt\Volt; // Volt: Componente de Livewire para rutas simplificadas
-use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar archivos (Storage::exists(), Storage::download(), etc.)
+use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 /* Explicación de la estructura de las rutas:
 // 1° Parámetro: URL pública (lo que el usuario ve en el navegador). Usar - cuando el nombre es largo. No me lo invento, lo dicen las buenas prácticas 
@@ -10,16 +12,17 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
 // 3° "Parámetro" (método): Alias de la ruta (para generar URLs dinámicamente)
 */
 
-    Route::get('/', function () {return view('welcome');})->name('welcome'); // Rutas Públicas (accesibles sin autenticación)
-    Route::view('/login', 'login')->name('login'); // Muestra la vista de inicio de sesión |No he podido cambiarle el nombre a la URL|
+Route::get('/', function () {return view('welcome');})->name('welcome'); // Rutas Públicas (accesibles sin autenticación)
+Route::view('/login', 'login')->name('login'); // Muestra la vista de inicio de sesión |No he podido cambiarle el nombre a la URL|
 
-    Route::middleware(['auth'])->group(function () { // Rutas solo accedidas por usuarios autenticados 'auth'
+Route::middleware(['auth'])->group(function () { // Rutas solo accedidas por usuarios autenticados 'auth'
     // Ruta de logout silencioso
     Route::post('/logout-silent', function() {
         auth()->logout();
         session()->invalidate(); // Destruye la sesión completamente
         return response()->noContent();
     })->name('logout.silent');
+    
     Route::redirect('settings', 'settings/profile'); 
     Route::view('Inicio', 'auth.home')->middleware(['verified'])->name('dashboard');
     Volt::route('Perfil', 'settings.profile')->name('settings.profile');
@@ -40,68 +43,253 @@ use Illuminate\Support\Facades\Storage; // Proporciona métodos para manejar arc
         return Storage::download("backups/{$filename}");
     })->name('download.backup');
 
-
     // Rutas para el módulo de Proveedores
     Volt::route('proveedores', 'proveedores.index')->name('proveedores.index');
     Volt::route('proveedores/crear', 'proveedores.create')->name('proveedores.create');
     Volt::route('proveedores/{proveedor}/editar', 'proveedores.edit')->name('proveedores.edit');
     Volt::route('proveedores/{proveedor}', 'proveedores.show')->name('proveedores.show');
     
-   // Rutas del módulo contabilidad 
-Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
-    
-    // Dashboard principal - Volt Component
-    Volt::route('/', 'contabilidad.index')->name('index');
-    
-    // Movimientos - Volt Component
-    Route::prefix('movimientos')->name('movimientos.')->group(function () {
-        Volt::route('/', 'contabilidad.movimientos.index')->name('index');
-    });
-    
-    // Reportes - Volt Component  
-    Route::prefix('reportes')->name('reportes.')->group(function () {
-        Volt::route('/', 'contabilidad.reportes.index')->name('index');
-    });
-    
-    // Facturas - Volt Component
+    // Rutas del módulo contabilidad 
+    Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
+        
+        // Dashboard principal - Volt Component
+        Volt::route('/', 'contabilidad.index')->name('index');
+
+        // FACTURAS
     Route::prefix('facturas')->name('facturas.')->group(function () {
         Volt::route('/', 'contabilidad.facturas.index')->name('index');
-        Volt::route('/crear', 'contabilidad.facturas.create')->name('create');
-        Volt::route('/{factura}', 'contabilidad.facturas.show')->name('show');
-        Volt::route('/{factura}/editar', 'contabilidad.facturas.edit')->name('edit');
-    });
-    
-    // Gastos - Volt Component
-    Route::prefix('gastos')->name('gastos.')->group(function () {
-        Volt::route('/', 'contabilidad.gastos.index')->name('index');
-        Volt::route('/crear', 'contabilidad.gastos.create')->name('create');
-        Volt::route('/{gasto}', 'contabilidad.gastos.show')->name('show');
-        Volt::route('/{gasto}/editar', 'contabilidad.gastos.edit')->name('edit');
-    });
-    
-    // Pagos - Volt Component
-    Route::prefix('pagos')->name('pagos.')->group(function () {
-        Volt::route('/', 'contabilidad.pagos.index')->name('index');
-        Volt::route('/crear', 'contabilidad.pagos.create')->name('create');
-        Volt::route('/{pago}', 'contabilidad.pagos.show')->name('show');
-        Volt::route('/{pago}/editar', 'contabilidad.pagos.edit')->name('edit');
-    });
-    
-    // Cuentas Pendientes - Volt Component
-    Route::prefix('cuentas-pendientes')->name('cuentas-pendientes.')->group(function () {
-        Volt::route('/', 'contabilidad.cuentas-pendientes.index')->name('index');
-        Volt::route('/crear', 'contabilidad.cuentas-pendientes.create')->name('create');
-        Volt::route('/{cuenta}', 'contabilidad.cuentas-pendientes.show')->name('show');
-        Volt::route('/{cuenta}/editar', 'contabilidad.cuentas-pendientes.edit')->name('edit');
-    });
-    
-    // Configuración - Volt Component
-     Route::prefix('configuracion')->name('configuracion.')->group(function () {
-        Volt::route('/', 'contabilidad.configuracion.index')->name('index');
-    });
-    
-});
+        Route::get('/{id}/pdf', function($id) {
+            $factura = DB::table('facturas as f')
+                ->leftJoin('clientes as c', 'f.idCliFac', '=', 'c.idCli')
+                ->where('f.idFac', $id)
+                ->select('f.*', 'c.nomCli', 'c.dirCli')
+                ->first();
 
+            if (!$factura) {
+                abort(404, 'Factura no encontrada');
+            }
+
+            $detalles = DB::table('facturadetalles')->where('idFacDet', $id)->get();
+            $pdf = PDF::loadView('pdf.factura', compact('factura', 'detalles'));
+            return $pdf->download('Factura-' . $id . '.pdf');
+        })->name('pdf');
+    });
+
+    // COMPRAS
+    Route::prefix('compras')->name('compras.')->group(function () {
+        Volt::route('/', 'contabilidad.compras.index')->name('index');
+        Route::get('/{id}/pdf', function($id) {
+            $compra = DB::table('comprasgastos as cg')
+                ->leftJoin('proveedores as p', 'cg.idProve', '=', 'p.idProve')
+                ->where('cg.idComGas', $id)
+                ->select('cg.*', 'p.nomProve', 'p.dirProve')
+                ->first();
+
+            if (!$compra) {
+                abort(404, 'Compra no encontrada');
+            }
+
+            $pdf = PDF::loadView('pdf.compra-gasto', compact('compra'));
+            return $pdf->download('Compra-' . $id . '.pdf');
+        })->name('pdf');
+    });
+        
+        // Movimientos - Volt Component
+        Route::prefix('movimientos')->name('movimientos.')->group(function () {
+            Volt::route('/', 'contabilidad.movimientos.index')->name('index');
+        });
+        
+        // Reportes - Volt Component  
+        Route::prefix('reportes')->name('reportes.')->group(function () {
+            Volt::route('/', 'contabilidad.reportes.index')->name('index');
+        });
+        
+        // Facturas - Volt Component
+        Route::prefix('facturas')->name('facturas.')->group(function () {
+            Volt::route('/', 'contabilidad.facturas.index')->name('index');
+            Volt::route('/crear', 'contabilidad.facturas.create')->name('create');
+            Volt::route('/{factura}', 'contabilidad.facturas.show')->name('show');
+            Volt::route('/{factura}/editar', 'contabilidad.facturas.edit')->name('edit');
+        });
+        
+
+        
+        // Pagos - Volt Component
+        Route::prefix('pagos')->name('pagos.')->group(function () {
+            Volt::route('/', 'contabilidad.pagos.index')->name('index');
+            Volt::route('/crear', 'contabilidad.pagos.create')->name('create');
+            Volt::route('/{pago}', 'contabilidad.pagos.show')->name('show');
+            Volt::route('/{pago}/editar', 'contabilidad.pagos.edit')->name('edit');
+            
+            // Ruta para descargar PDF de pagos
+                Route::get('/{id}/pdf', function($id) {
+    $pago = DB::table('comprasgastos as cg')
+        ->leftJoin('cuentaspendientes as cp', 'cg.idComGas', '=', 'cp.idComGasCuePen')
+        ->select('cg.*', 'cp.estCuePen as estado_cuenta')
+        ->where('cg.idComGas', $id)
+        ->first();
+
+    if (!$pago) {
+        abort(404, 'Pago no encontrado');
+    }
+
+    $pdf = PDF::loadView('pdf.comprobante-pago', ['pago' => $pago]);
+    $pdf->setPaper('A4', 'portrait');
+    
+    $nombreArchivo = 'comprobante-pago-' . str_pad($pago->idComGas, 6, '0', STR_PAD_LEFT) . '.pdf';
+    
+    return $pdf->download($nombreArchivo);
+})->name('pdf');
+            });
+        
+
+        Route::prefix('gastos')->name('gastos.')->group(function () {
+    Volt::route('/', 'contabilidad.gastos.index')->name('index');
+    Volt::route('/crear', 'contabilidad.gastos.create')->name('create');
+    Volt::route('/{gasto}', 'contabilidad.gastos.show')->name('show');
+    Volt::route('/{gasto}/editar', 'contabilidad.gastos.edit')->name('edit');
+    
+    // Agregar esta ruta para PDF
+    Route::get('/{id}/pdf', function($id) {
+        $gasto = DB::table('comprasgastos as cg')
+            ->leftJoin('proveedores as p', 'cg.idProve', '=', 'p.idProve')
+            ->select('cg.*', 'p.nomProve', 'p.nitProve', 'p.telProve', 'p.emailProve', 'p.dirProve')
+            ->where('cg.idComGas', $id)
+            ->where('cg.tipComGas', 'gasto')
+            ->first();
+
+        if (!$gasto) {
+            abort(404, 'Gasto no encontrado');
+        }
+
+        $datosGranja = [
+            'nombre' => 'FAMASY',
+            'nombre_completo' => 'Finca Agropecuaria Familiar Sostenible',
+            'nit' => '900.123.456-7',
+            'direccion' => 'Vereda La Esperanza, Pitalito, Huila, Colombia',
+            'telefono' => '+57 318 123 4567',
+            'email' => 'contacto@famasy.com'
+        ];
+
+        $pdf = PDF::loadView('pdf.comprobante-gasto', compact('gasto', 'datosGranja'));
+        $pdf->setPaper('A4', 'portrait');
+        
+        $nombreArchivo = 'comprobante-gasto-' . str_pad($gasto->idComGas, 6, '0', STR_PAD_LEFT) . '.pdf';
+        
+        return $pdf->download($nombreArchivo);
+    })->name('pdf');
+    });
+
+// Cuentas Pendientes - Volt Component
+Route::prefix('cuentas-pendientes')->name('cuentas-pendientes.')->group(function () {
+    Volt::route('/', 'contabilidad.cuentas-pendientes.index')->name('index');
+    Volt::route('/crear', 'contabilidad.cuentas-pendientes.create')->name('create');
+    Volt::route('/{cuenta}', 'contabilidad.cuentas-pendientes.show')->name('show');
+    Volt::route('/{cuenta}/editar', 'contabilidad.cuentas-pendientes.edit')->name('edit');
+    
+    // Ruta para PDF de cuentas pendientes
+    Route::get('/{id}/pdf', function($id) {
+        try {
+            // Obtener datos completos de la cuenta pendiente
+            $cuenta = DB::table('cuentaspendientes as cp')
+                ->leftJoin('clientes as c', 'cp.idCliCuePen', '=', 'c.idCli')
+                ->leftJoin('proveedores as p', 'cp.idProveCuePen', '=', 'p.idProve')
+                ->leftJoin('facturas as f', 'cp.idFacCuePen', '=', 'f.idFac')
+                ->leftJoin('comprasgastos as cg', 'cp.idComGasCuePen', '=', 'cg.idComGas')
+                ->select(
+                    'cp.*',
+                    // Datos del cliente
+                    'c.nomCli as cliente_nombre',
+                    'c.docCli as cliente_documento', 
+                    'c.telCli as cliente_telefono',
+                    'c.emailCli as cliente_email',
+                    'c.dirCli as cliente_direccion',
+                    'c.tipDocCli as cliente_tipo_documento',
+                    // Datos del proveedor
+                    'p.nomProve as proveedor_nombre',
+                    'p.nitProve as proveedor_documento',
+                    'p.telProve as proveedor_telefono', 
+                    'p.emailProve as proveedor_email',
+                    'p.dirProve as proveedor_direccion',
+                    'p.conProve as proveedor_contacto',
+                    // Datos de factura
+                    'f.idFac as factura_numero',
+                    'f.totFac as factura_total',
+                    'f.fecFac as factura_fecha',
+                    // Datos de compra/gasto
+                    'cg.desComGas as compra_descripcion',
+                    'cg.catComGas as compra_categoria',
+                    'cg.provComGas as compra_proveedor'
+                )
+                ->where('cp.idCuePen', $id)
+                ->first();
+
+            if (!$cuenta) {
+                abort(404, 'Cuenta pendiente no encontrada');
+            }
+
+            // Calcular información adicional
+            $diasVencimiento = [
+                'tipo' => 'normal',
+                'dias' => 0,
+                'texto' => 'Al día'
+            ];
+            
+            if ($cuenta->fecVencimiento) {
+                $vencimiento = \Carbon\Carbon::parse($cuenta->fecVencimiento);
+                $hoy = \Carbon\Carbon::now();
+                
+                if ($vencimiento->isPast()) {
+                    $diasVencidos = $hoy->diffInDays($vencimiento);
+                    $diasVencimiento = [
+                        'tipo' => 'vencido',
+                        'dias' => $diasVencidos,
+                        'texto' => $diasVencidos . ' días vencido'
+                    ];
+                } elseif ($vencimiento->diffInDays($hoy) <= 7) {
+                    $diasRestantes = $vencimiento->diffInDays($hoy);
+                    $diasVencimiento = [
+                        'tipo' => 'proximo',
+                        'dias' => $diasRestantes,
+                        'texto' => 'Vence en ' . $diasRestantes . ' días'
+                    ];
+                } else {
+                    $diasRestantes = $vencimiento->diffInDays($hoy);
+                    $diasVencimiento = [
+                        'tipo' => 'normal',
+                        'dias' => $diasRestantes,
+                        'texto' => 'Vence en ' . $diasRestantes . ' días'
+                    ];
+                }
+            }
+
+            $porcentajePago = 0;
+            if ($cuenta->montoOriginal > 0) {
+                $porcentajePago = round(($cuenta->montoPagado / $cuenta->montoOriginal) * 100, 1);
+            }
+
+            // IMPORTANTE: Cambiar pdfs por pdf
+            $pdf = PDF::loadView('pdf.comprobante-cuenta-pendiente', compact('cuenta', 'diasVencimiento', 'porcentajePago'));
+            $pdf->setPaper('A4', 'portrait');
+
+            $tipoCorto = $cuenta->tipCuePen === 'por_cobrar' ? 'CxC' : 'CxP';
+            $nombreArchivo = "FAMASY_{$tipoCorto}_{$cuenta->idCuePen}_" . date('Ymd') . ".pdf";
+
+            return $pdf->download($nombreArchivo);
+            
+        } catch (\Exception $e) {
+            // Log del error para debugging
+            \Log::error('Error generando PDF cuenta pendiente: ' . $e->getMessage());
+            abort(500, 'Error al generar PDF: ' . $e->getMessage());
+        }
+    })->name('pdf');
+});
+        
+        // Configuración - Volt Component
+        Route::prefix('configuracion')->name('configuracion.')->group(function () {
+            Volt::route('/', 'contabilidad.configuracion.index')->name('index');
+        });
+    });
     
     // Módulo Pecuario (Animales, Producción, Salud y Peso)
     Route::prefix('pecuario')->name('pecuario.')->group(function () {
@@ -161,9 +349,11 @@ Route::prefix('contabilidad')->name('contabilidad.')->group(function () {
         Volt::route('mantenimientos/{mantenimiento}', 'inventario.mantenimientos.show')->name('mantenimientos.show');
         Volt::route('mantenimientos/{mantenimiento}/editar', 'inventario.mantenimientos.edit')->name('mantenimientos.edit');
         Volt::route('mantenimientos/{mantenimiento}/completar', 'inventario.mantenimientos.completar')->name('mantenimientos.completar');
-        Route::delete('mantenimientos/{mantenimiento}', function(Mantenimiento $mantenimiento) {abort(404);})->name('mantenimientos.destroy');
-    });
-
+        Route::delete('mantenimientos/{mantenimiento}', function() {abort(404);})->name('mantenimientos.destroy');
+    });   
+    
 });
 
 require __DIR__.'/auth.php'; //  Importación de Rutas de Autenticación que vienen con Laravel Breeze/Jetstream (ej. Registro, Login, Verificación de email y Recuperación de contraseña)
+
+

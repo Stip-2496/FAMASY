@@ -1,3 +1,4 @@
+
 <?php
 // resources/views/livewire/proveedores/show.blade.php
 
@@ -38,6 +39,15 @@ new #[Layout('layouts.auth')] class extends Component {
             ]);
         }
     }
+    
+
+    // Rutas para el módulo de Proveedores
+    Volt::route('proveedores', 'proveedores.index')->name('proveedores.index');
+    Volt::route('proveedores/crear', 'proveedores.create')->name('proveedores.create');
+    Volt::route('proveedores/{proveedor}/editar', 'proveedores.edit')->name('proveedores.edit');
+    Volt::route('proveedores/{proveedor}', 'proveedores.show')->name('proveedores.show');
+
+    
 }; ?>
 
 @section('title', 'Detalles de proveedor')

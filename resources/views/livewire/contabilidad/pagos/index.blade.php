@@ -10,6 +10,8 @@ use Livewire\WithPagination;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Illuminate\Support\Facades\Route;
 
 new #[Layout('layouts.auth')] class extends Component {
     use WithPagination;
@@ -20,6 +22,8 @@ new #[Layout('layouts.auth')] class extends Component {
     public $proveedor_buscar = '';
     public $fecha = '';
     public $per_page = 15;
+    public $modalDetalles = false;
+    public $pagoSeleccionado = null;
 
     // Propiedades para el modal de nuevo pago
     public $modalAbierto = false;
@@ -338,6 +342,15 @@ new #[Layout('layouts.auth')] class extends Component {
     try {
         DB::beginTransaction();
         
+        // Verificar si el pago existe
+        $pago = DB::table('comprasgastos')->where('idComGas', $pagoId)->first();
+        if (!$pago) {
+            throw new \Exception('Pago no encontrado');
+        }
+        
+        // Eliminar movimientos contables relacionados
+        DB::table('movimientoscontables')->where('idComGasMovCont', $pagoId)->delete();
+        
         // Eliminar de cuentaspendientes si existe
         DB::table('cuentaspendientes')->where('idComGasCuePen', $pagoId)->delete();
         
@@ -351,7 +364,7 @@ new #[Layout('layouts.auth')] class extends Component {
     } catch (\Exception $e) {
         DB::rollback();
         Log::error('Error al eliminar pago: ' . $e->getMessage());
-        session()->flash('error', 'Error al eliminar el pago');
+        session()->flash('error', 'Error al eliminar el pago: ' . $e->getMessage());
     }
 }
 
@@ -378,10 +391,49 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }
 
+public function verDetalles($pagoId)
+{
+    try {
+        $this->pagoSeleccionado = DB::table('comprasgastos as cg')
+            ->leftJoin('cuentaspendientes as cp', 'cg.idComGas', '=', 'cp.idComGasCuePen')
+            ->leftJoin('movimientoscontables as mc', 'cg.idComGas', '=', 'mc.idComGasMovCont')
+            ->select(
+                'cg.*',
+                'cp.estCuePen as estado_cuenta',
+                'cp.fecVencimiento',
+                'cp.montoSaldo',
+                'cp.montoPagado as monto_pagado_cuenta',
+                'mc.idMovCont',
+                'mc.fecMovCont as fecha_movimiento'
+            )
+            ->where('cg.idComGas', $pagoId)
+            ->first();
+        
+        if ($this->pagoSeleccionado) {
+            $this->modalDetalles = true;
+        }
+    } catch (\Exception $e) {
+        Log::error('Error al ver detalles del pago: ' . $e->getMessage());
+        session()->flash('error', 'Error al cargar los detalles del pago');
+    }
+}
+
+public function cerrarDetalles()
+{
+    $this->modalDetalles = false;
+    $this->pagoSeleccionado = null;
+}
+
+public function descargarPDF($pagoId)
+{
+    return $this->redirect(route('contabilidad.pagos.pdf', $pagoId));
+}
+
     public function exportarPagos()
     {
         session()->flash('info', 'Función de exportación en desarrollo');
     }
+
 }; ?>
 
 @section('title', 'Pagos')
@@ -638,31 +690,32 @@ new #[Layout('layouts.auth')] class extends Component {
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex space-x-2">
-                                            <button class="text-blue-600 hover:text-blue-900" title="Ver detalles">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="text-green-600 hover:text-green-900" title="Descargar comprobante">
-                                                <i class="fas fa-download"></i>
-                                            </button>
-                                            @if($estado == 'pendiente')
-                                            <button wire:click="cambiarEstadoPago({{ $pago->idComGas }}, 'completado')"
-                                                class="text-yellow-600 hover:text-yellow-900" title="Procesar">
-                                                <i class="fas fa-play"></i>
-                                            </button>
-                                            @endif
-                                            <button wire:click="duplicarPago({{ $pago->idComGas }})"
-                                                class="text-purple-600 hover:text-purple-900" title="Duplicar">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
-                                            <button wire:click="eliminarPago({{ $pago->idComGas }})"
-                                                wire:confirm="¿Estás seguro de eliminar este pago?"
-                                                class="text-red-600 hover:text-red-900" title="Eliminar">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+    <div class="flex space-x-2">
+        <button wire:click="verDetalles({{ $pago->idComGas }})" 
+                class="text-blue-600 hover:text-blue-900" title="Ver detalles">
+            <i class="fas fa-eye"></i>
+        </button>
+        <button wire:click="descargarPDF({{ $pago->idComGas }})" 
+                class="text-green-600 hover:text-green-900" title="Descargar comprobante">
+            <i class="fas fa-download"></i>
+        </button>
+        @if($estado == 'pendiente')
+        <button wire:click="cambiarEstadoPago({{ $pago->idComGas }}, 'completado')"
+            class="text-yellow-600 hover:text-yellow-900" title="Procesar">
+            <i class="fas fa-play"></i>
+        </button>
+        @endif
+        <button wire:click="duplicarPago({{ $pago->idComGas }})"
+            class="text-purple-600 hover:text-purple-900" title="Duplicar">
+            <i class="fas fa-copy"></i>
+        </button>
+        <button wire:click="eliminarPago({{ $pago->idComGas }})"
+            wire:confirm="¿Estás seguro de eliminar este pago? Esta acción no se puede deshacer."
+            class="text-red-600 hover:text-red-900" title="Eliminar">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+</td>
                                 @empty
                                 <tr>
                                     <td colspan="8" class="px-6 py-4 text-center text-gray-500">
@@ -805,6 +858,155 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
     </div>
     @endif
+
+    <!-- Modal Detalles del Pago -->
+@if($modalDetalles && $pagoSeleccionado)
+<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-lg bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    Detalles del Pago #{{ str_pad($pagoSeleccionado->idComGas, 6, '0', STR_PAD_LEFT) }}
+                </h3>
+                <button wire:click="cerrarDetalles" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Información Principal -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                        Información Principal
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Proveedor:</label>
+                            <p class="text-gray-900">{{ $pagoSeleccionado->provComGas ?? 'Sin proveedor' }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Concepto:</label>
+                            <p class="text-gray-900">{{ $pagoSeleccionado->desComGas ?? 'Sin descripción' }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Categoría:</label>
+                            <p class="text-gray-900">{{ $pagoSeleccionado->catComGas ?? 'Sin categoría' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información Financiera -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-dollar-sign text-green-600 mr-2"></i>
+                        Información Financiera
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Monto:</label>
+                            <p class="text-lg font-semibold text-green-600">
+                                ${{ number_format($pagoSeleccionado->monComGas, 2) }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Método de Pago:</label>
+                            <p class="text-gray-900">{{ ucfirst($pagoSeleccionado->metPagComGas ?? 'N/A') }}</p>
+                        </div>
+                        @if($pagoSeleccionado->montoSaldo)
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Saldo Pendiente:</label>
+                            <p class="text-red-600 font-semibold">
+                                ${{ number_format($pagoSeleccionado->montoSaldo, 2) }}
+                            </p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Fechas -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar text-purple-600 mr-2"></i>
+                        Fechas
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Fecha de Pago:</label>
+                            <p class="text-gray-900">{{ date('d/m/Y', strtotime($pagoSeleccionado->fecComGas)) }}</p>
+                        </div>
+                        @if($pagoSeleccionado->fecVencimiento)
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Fecha de Vencimiento:</label>
+                            <p class="text-gray-900">{{ date('d/m/Y', strtotime($pagoSeleccionado->fecVencimiento)) }}</p>
+                        </div>
+                        @endif
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Registrado:</label>
+                            <p class="text-gray-900">{{ date('d/m/Y H:i', strtotime($pagoSeleccionado->created_at)) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado y Documentos -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-file-alt text-orange-600 mr-2"></i>
+                        Estado y Documentos
+                    </h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Estado:</label>
+                            @php
+                                $estado = $pagoSeleccionado->estado_cuenta ?? 'completado';
+                                if (is_null($pagoSeleccionado->estado_cuenta)) $estado = 'completado';
+                            @endphp
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                @switch($estado)
+                                    @case('pagado') bg-green-100 text-green-800 @break
+                                    @case('pendiente') bg-yellow-100 text-yellow-800 @break
+                                    @case('parcial') bg-blue-100 text-blue-800 @break
+                                    @case('vencido') bg-red-100 text-red-800 @break
+                                    @case('completado') bg-green-100 text-green-800 @break
+                                    @default bg-gray-100 text-gray-800
+                                @endswitch">
+                                {{ ucfirst($estado) }}
+                            </span>
+                        </div>
+                        @if($pagoSeleccionado->docComGas)
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Documento/Referencia:</label>
+                            <p class="text-gray-900">{{ $pagoSeleccionado->docComGas }}</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            @if($pagoSeleccionado->obsComGas)
+            <div class="mt-6 bg-yellow-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-800 mb-2 flex items-center">
+                    <i class="fas fa-sticky-note text-yellow-600 mr-2"></i>
+                    Observaciones
+                </h4>
+                <p class="text-gray-700">{{ $pagoSeleccionado->obsComGas }}</p>
+            </div>
+            @endif
+
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button wire:click="descargarPDF({{ $pagoSeleccionado->idComGas }})"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                    <i class="fas fa-download mr-2"></i> Descargar PDF
+                </button>
+                <button wire:click="cerrarDetalles"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition duration-200">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
     <!-- Loading Overlay -->
     <div wire:loading.flex wire:target="guardarPago"

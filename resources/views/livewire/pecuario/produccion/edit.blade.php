@@ -35,6 +35,8 @@ new #[Layout('layouts.auth')] class extends Component {
         ];
     }
 
+    
+
     public function update()
     {
         $validated = $this->validate();
