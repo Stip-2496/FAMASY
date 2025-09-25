@@ -1,0 +1,83 @@
+/* Active States */
+.quick-access a.active {
+    background-color: #f3f4f6;
+    color: #1e40af;
+}
+
+/* Module button when active or has active child */
+.module-button.active {
+    background-color: #f3f4f6;
+    font-weight: 500;
+}
+
+/* Special state for parent module with active child */
+.module-button.active.has-active-child {
+    background-color: #e5e7eb; /* igual que submenu activo */
+    color: #1e40af !important;
+    font-weight: 500;
+}
+
+/* Default state for module button */
+.module-button:not(.active) {
+    color: inherit;
+}
+
+/* Active submodule */
+.submenu a.active {
+    background-color: #e5e7eb;
+    color: #1e40af;
+    font-weight: 500;
+}
+
+/* Submenu animations */
+.submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    display: block !important;
+}
+
+.submenu.open {
+    max-height: 1000px;
+}
+
+/* Arrow icon rotation */
+.module-button .arrow-icon {
+    transition: transform 0.3s ease;
+}
+
+.module-button.active .arrow-icon,
+.submenu.open + .module-button .arrow-icon {
+    transform: rotate(90deg);
+}
+
+/* Hover states */
+.quick-access a:hover,
+.module-button:hover,
+.submenu a:hover {
+    background-color: #f3f4f6;
+}
+
+/* Additional styling for better visual hierarchy */
+.module-button {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.submenu a {
+    transition: all 0.2s ease;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.submenu a::before {
+    content: "";
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    background-color: currentColor;
+    border-radius: 50%;
+}
