@@ -355,197 +355,320 @@ new #[Layout('layouts.auth')] class extends Component {
 };
 ?>
 
-<!-- VISTA -->
 <div class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Header simplificado -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-plus-circle text-green-600"></i>
+                Nuevo Registro de Producción
+            </h1>
+            <p class="text-sm text-gray-600 mt-1">Complete la información requerida</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{{ route('pecuario.produccion.index') }}" wire:navigate
+                class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition duration-200">
+                <i class="fas fa-arrow-left mr-2"></i>Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Información Actual -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-medium text-gray-900">
+                <i class="fas fa-info-circle text-blue-500 mr-2"></i>Información Actual
+            </h2>
+            <div class="text-sm text-gray-500">
+                Fecha: {{ now()->format('d/m/Y') }}
+            </div>
+        </div>
+
+        @if($animalSeleccionado)
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm text-gray-500">ID Animal</p>
+                <p class="font-medium">#{{ $animalSeleccionado->idAni }}</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm text-gray-500">Especie</p>
+                <p class="font-medium">{{ $animalSeleccionado->espAni }}</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm text-gray-500">Raza</p>
+                <p class="font-medium">{{ $animalSeleccionado->razAni ?? 'No especificada' }}</p>
+            </div>
+        </div>
+        @else
+        <div class="bg-blue-50 p-4 rounded border border-blue-200">
+            <p class="text-blue-700 flex items-center">
+                <i class="fas fa-info-circle mr-2"></i>
+                Seleccione un animal para ver su información
+            </p>
+        </div>
+        @endif
+    </div>
+
     <div class="bg-white shadow-md rounded-lg overflow-hidden">
         <div class="bg-green-600 text-white px-6 py-4">
             <h2 class="text-lg font-semibold">
-                <i class="fas fa-plus-circle mr-2"></i> Nuevo Registro de Producción
+                <i class="fas fa-edit mr-2"></i> Actualizar Información
             </h2>
         </div>
 
         <div class="px-6 py-4">
             <form wire:submit="save">
-                <!-- Selectores jerárquicos para animales -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <!-- Selector de Especie -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Especie <span class="text-red-500">*</span></label>
-                        <select 
-                            wire:model.live="especieSeleccionada" 
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                            required
-                        >
-                            <option value="">Seleccionar especie</option>
-                            @foreach($especies as $especie)
-                                <option value="{{ $especie }}">{{ ucfirst($especie) }}</option>
-                            @endforeach
-                        </select>
-                        <div wire:loading wire:target="especieSeleccionada" class="text-sm text-blue-500 mt-1">
-                            <i class="fas fa-spinner fa-spin"></i> Cargando razas...
+                <!-- Información Básica -->
+                <div class="mb-6">
+                    <h3 class="text-md font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        <i class="fas fa-info-circle text-blue-500 mr-2"></i>Información Básica
+                    </h3>
+                    
+                    <!-- Selectores jerárquicos para animales -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Selector de Especie -->
+                        <div>
+                            <label class="block mb-1 font-medium text-gray-700">Especie <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-paw text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model.live="especieSeleccionada" 
+                                    class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    required
+                                >
+                                    <option value="">Seleccionar especie</option>
+                                    @foreach($especies as $especie)
+                                        <option value="{{ $especie }}">{{ ucfirst($especie) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div wire:loading wire:target="especieSeleccionada" class="text-sm text-blue-500 mt-1">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando razas...
+                            </div>
+                        </div>
+                        
+                        <!-- Selector de Raza -->
+                        <div>
+                            <label class="block mb-1 font-medium text-gray-700">Raza (opcional)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-dna text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model.live="razaSeleccionada" 
+                                    class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    @if(!$especieSeleccionada) disabled @endif
+                                >
+                                    <option value="">Todas las razas</option>
+                                    @if(is_array($razas))
+                                        @foreach($razas as $raza)
+                                            <option value="{{ $raza }}">{{ ucfirst($raza) }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            @if(!$especieSeleccionada)
+                                <p class="text-sm text-gray-500 mt-1">Seleccione una especie primero</p>
+                            @elseif(empty($razas))
+                                <p class="text-sm text-gray-500 mt-1">Sin razas específicas para esta especie</p>
+                            @endif
+                            <div wire:loading wire:target="razaSeleccionada" class="text-sm text-blue-500 mt-1">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando animales...
+                            </div>
+                        </div>
+                        
+                        <!-- Selector de Animal -->
+                        <div>
+                            <label class="block mb-1 font-medium text-gray-700">Animal <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-cow text-gray-400"></i>
+                                </div>
+                                <select 
+                                    wire:model.live="idAniPro" 
+                                    class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    @if(!$especieSeleccionada) disabled @endif
+                                    required
+                                >
+                                    <option value="">Seleccionar animal</option>
+                                    @if(is_array($animalesFiltrados))
+                                        @foreach($animalesFiltrados as $animal)
+                                            <option value="{{ $animal['idAni'] }}">
+                                                @if($animal['ideAni'])
+                                                    {{ $animal['ideAni'] }} (ID: {{ $animal['idAni'] }})
+                                                @else
+                                                    Animal #{{ $animal['idAni'] }}
+                                                @endif
+                                                @if($animal['razAni'])
+                                                    - {{ $animal['razAni'] }}
+                                                @endif
+                                                @if($animal['sexAni'])
+                                                    - {{ $animal['sexAni'] }}
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            @if(!$especieSeleccionada)
+                                <p class="text-sm text-gray-500 mt-1">Seleccione una especie primero</p>
+                            @elseif(empty($animalesFiltrados))
+                                <p class="text-sm text-gray-500 mt-1">No hay animales disponibles</p>
+                            @endif
+                            <div wire:loading wire:target="idAniPro" class="text-sm text-blue-500 mt-1">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando información...
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Selector de Raza -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Raza (opcional)</label>
-                        <select 
-                            wire:model.live="razaSeleccionada" 
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                            @if(!$especieSeleccionada) disabled @endif
-                        >
-                            <option value="">Todas las razas</option>
-                            @if(is_array($razas))
-                                @foreach($razas as $raza)
-                                    <option value="{{ $raza }}">{{ ucfirst($raza) }}</option>
+                    <!-- Categoría de Producción -->
+                    <div class="mb-6">
+                        <label class="block mb-1 font-medium text-gray-700">Tipo de Producción <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-list text-gray-400"></i>
+                            </div>
+                            <select 
+                                wire:model.live="categoriaProduccion" 
+                                class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                required
+                            >
+                                <option value="">Seleccione una categoría</option>
+                                @foreach($opcionesCategoria as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
                                 @endforeach
-                            @endif
-                        </select>
-                        @if(!$especieSeleccionada)
-                            <p class="text-sm text-gray-500 mt-1">Seleccione una especie primero</p>
-                        @elseif(empty($razas))
-                            <p class="text-sm text-gray-500 mt-1">Sin razas específicas para esta especie</p>
-                        @endif
-                        <div wire:loading wire:target="razaSeleccionada" class="text-sm text-blue-500 mt-1">
-                            <i class="fas fa-spinner fa-spin"></i> Cargando animales...
+                            </select>
                         </div>
-                    </div>
-                    
-                    <!-- Selector de Animal -->
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Animal <span class="text-red-500">*</span></label>
-                        <select 
-                            wire:model.live="idAniPro" 
-                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                            @if(!$especieSeleccionada) disabled @endif
-                            required
-                        >
-                            <option value="">Seleccionar animal</option>
-                            @if(is_array($animalesFiltrados))
-                                @foreach($animalesFiltrados as $animal)
-                                    <option value="{{ $animal['idAni'] }}">
-                                        @if($animal['ideAni'])
-                                            {{ $animal['ideAni'] }} (ID: {{ $animal['idAni'] }})
-                                        @else
-                                            Animal #{{ $animal['idAni'] }}
-                                        @endif
-                                        @if($animal['razAni'])
-                                            - {{ $animal['razAni'] }}
-                                        @endif
-                                        @if($animal['sexAni'])
-                                            - {{ $animal['sexAni'] }}
-                                        @endif
-                                    </option>
-                                @endforeach
-                            @endif
-                        </select>
-                        @if(!$especieSeleccionada)
-                            <p class="text-sm text-gray-500 mt-1">Seleccione una especie primero</p>
-                        @elseif(empty($animalesFiltrados))
-                            <p class="text-sm text-gray-500 mt-1">No hay animales disponibles</p>
-                        @endif
-                        <div wire:loading wire:target="idAniPro" class="text-sm text-blue-500 mt-1">
-                            <i class="fas fa-spinner fa-spin"></i> Cargando información...
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Categoría de Producción -->
-                <div class="mb-6">
-                    <label class="block mb-1 font-medium text-gray-700">Tipo de Producción <span class="text-red-500">*</span></label>
-                    <select 
-                        wire:model.live="categoriaProduccion" 
-                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        required
-                    >
-                        <option value="">Seleccione una categoría</option>
-                        @foreach($opcionesCategoria as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('categoriaProduccion')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Subcategoría (solo para ciertas producciones como huevos) -->
-                @if($mostrarSubcategoria)
-                <div class="mb-6">
-                    <label class="block mb-1 font-medium text-gray-700">Tipo específico <span class="text-red-500">*</span></label>
-                    <select 
-                        wire:model="subcategoriaProduccion" 
-                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        required
-                    >
-                        <option value="">Seleccione un tipo</option>
-                        @foreach($opcionesSubcategoria as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('subcategoriaProduccion')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                @endif
-
-                <!-- Cantidad y Unidad -->
-                <div class="grid md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Cantidad <span class="text-red-500">*</span></label>
-                        <input type="number" step="0.01" wire:model="canProAni"
-                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                               min="0.01" max="9999.99" required>
-                        @error('canProAni')
+                        @error('categoriaProduccion')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
+
+                    <!-- Subcategoría (solo para ciertas producciones como huevos) -->
+                    @if($mostrarSubcategoria)
+                    <div class="mb-6">
+                        <label class="block mb-1 font-medium text-gray-700">Tipo específico <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-egg text-gray-400"></i>
+                            </div>
+                            <select 
+                                wire:model="subcategoriaProduccion" 
+                                class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                required
+                            >
+                                <option value="">Seleccione un tipo</option>
+                                @foreach($opcionesSubcategoria as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @error('subcategoriaProduccion')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Control de Producción -->
+                <div class="mb-6">
+                    <h3 class="text-md font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        <i class="fas fa-calculator text-orange-500 mr-2"></i>Control de Producción
+                    </h3>
                     
-                    <div>
-                        <label class="block mb-1 font-medium text-gray-700">Unidad</label>
-                        <input type="text" wire:model="uniProAni"
-                               class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50 focus:outline-none"
-                               placeholder="Unidad de medida" readonly>
-                        @error('uniProAni')
+                    <!-- Cantidad y Unidad -->
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block mb-1 font-medium text-gray-700">Cantidad <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-weight text-gray-400"></i>
+                                </div>
+                                <input type="number" step="0.01" wire:model="canProAni"
+                                       class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       min="0.01" max="9999.99" required>
+                            </div>
+                            @error('canProAni')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-1 font-medium text-gray-700">Unidad</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-balance-scale text-gray-400"></i>
+                                </div>
+                                <input type="text" wire:model="uniProAni"
+                                       class="w-full border border-gray-300 rounded px-3 py-2 pl-10 bg-gray-50 focus:outline-none"
+                                       placeholder="Unidad de medida" readonly>
+                            </div>
+                            @error('uniProAni')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Cantidad Total -->
+                    <div class="mb-6">
+                        <label class="block mb-1 font-medium text-gray-700">Cantidad Total (opcional)</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-boxes text-gray-400"></i>
+                            </div>
+                            <input type="number" step="0.01" wire:model="canTotProAni"
+                                   class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="Cantidad acumulada">
+                        </div>
+                        @error('canTotProAni')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Fecha -->
+                    <div class="mb-6">
+                        <label class="block mb-1 font-medium text-gray-700">Fecha <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-calendar text-gray-400"></i>
+                            </div>
+                            <input type="date" wire:model="fecProAni"
+                                   class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   max="{{ now()->format('Y-m-d') }}" required>
+                        </div>
+                        @error('fecProAni')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
 
-                <!-- Cantidad Total -->
+                <!-- Información Adicional -->
                 <div class="mb-6">
-                    <label class="block mb-1 font-medium text-gray-700">Cantidad Total (opcional)</label>
-                    <input type="number" step="0.01" wire:model="canTotProAni"
-                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                           placeholder="Cantidad acumulada">
-                    @error('canTotProAni')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Fecha -->
-                <div class="mb-6">
-                    <label class="block mb-1 font-medium text-gray-700">Fecha <span class="text-red-500">*</span></label>
-                    <input type="date" wire:model="fecProAni"
-                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                           max="{{ now()->format('Y-m-d') }}" required>
-                    @error('fecProAni')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Observaciones -->
-                <div class="mb-6">
-                    <label class="block mb-1 font-medium text-gray-700">Observaciones</label>
-                    <textarea wire:model="obsProAni" rows="3"
-                              class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                              placeholder="Observaciones adicionales..."></textarea>
-                    @error('obsProAni')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
+                    <h3 class="text-md font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        <i class="fas fa-sticky-note text-yellow-500 mr-2"></i>Información Adicional
+                    </h3>
+                    
+                    <!-- Observaciones -->
+                    <div>
+                        <label class="block mb-1 font-medium text-gray-700">Observaciones</label>
+                        <div class="relative">
+                            <div class="absolute top-3 left-3">
+                                <i class="fas fa-comment text-gray-400"></i>
+                            </div>
+                            <textarea wire:model="obsProAni" rows="3"
+                                      class="w-full border border-gray-300 rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                      placeholder="Observaciones adicionales..."></textarea>
+                        </div>
+                        @error('obsProAni')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
                 <!-- Botones -->
-                <div class="flex justify-between mt-6">
+                <div class="flex justify-between mt-6 pt-6 border-t border-gray-200">
                     <a href="{{ route('pecuario.produccion.index') }}" wire:navigate
                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded shadow transition duration-200">
                         <i class="fas fa-times mr-2"></i> Cancelar

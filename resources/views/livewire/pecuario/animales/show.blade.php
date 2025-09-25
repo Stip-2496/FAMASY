@@ -40,178 +40,185 @@ new #[Layout('layouts.auth')] class extends Component {
 @section('title', 'Detalles del Animal')
 
 <div class="container mx-auto px-4 py-6">
-    <!-- Header -->
+    <!-- Header simplificado -->
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
-            <i class="fas fa-paw text-green-600"></i>
-            {{ $animal->ideAni ?? 'Animal #' . $animal->idAni }}
-        </h1>
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-paw text-green-600"></i>
+                {{ $animal->ideAni ?? 'Animal #' . $animal->idAni }}
+            </h1>
+            <p class="text-sm text-gray-600 mt-1">ID #{{ $animal->idAni }}</p>
+        </div>
         <div class="flex space-x-2">
             <a href="{{ route('pecuario.animales.edit', $animal->idAni) }}" wire:navigate
-                class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded transition duration-200">
                 <i class="fas fa-edit mr-2"></i>Editar
             </a>
             <a href="{{ route('pecuario.animales.index') }}" wire:navigate
-                class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition duration-200">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
         </div>
     </div>
 
-    <!-- Información del Animal -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="px-6 py-4 bg-green-600 text-white">
-            <h2 class="text-xl font-semibold">{{ $animal->ideAni ?? 'Animal #' . $animal->idAni }}</h2>
-            <p class="text-sm opacity-90">ID: {{ $animal->idAni }}</p>
+    <!-- Información Actual -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-medium text-gray-900">
+                <i class="fas fa-info-circle text-blue-500 mr-2"></i>Información Actual
+            </h2>
+            <div class="text-sm text-gray-500">
+                Última actualización: {{ $animal->updated_at->format('d/m/Y H:i') }}
+            </div>
         </div>
 
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Información Básica -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
-                        <i class="fas fa-info-circle text-blue-500 mr-2"></i>Información Básica
-                    </h3>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">NIT del Animal:</label>
-                        <p class="text-gray-900">{{ $animal->nitAni ?? 'No registrado' }}</p>
-                    </div>
-
-                    @if($animal->fotoAni)
-                        <div>
-                            <label class="text-sm font-medium text-gray-500">Foto:</label>
-                            <div class="mt-1">
-                                <img src="{{ asset('storage/' . $animal->fotoAni) }}" alt="Foto del animal" 
-                                     class="w-32 h-32 object-cover rounded-lg border border-gray-200 shadow-sm">
-                            </div>
-                        </div>
-                    @else
-                        <div>
-                            <label class="text-sm font-medium text-gray-500">Foto:</label>
-                            <p class="text-gray-900">No registrada</p>
-                        </div>
-                    @endif
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Ubicación:</label>
-                        <p class="text-gray-900">{{ $animal->ubicacionAni ?? 'No registrada' }}</p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Especie:</label>
-                        <p class="text-gray-900">{{ $animal->espAni }}</p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Raza:</label>
-                        <p class="text-gray-900">{{ $animal->razAni ?? 'No especificada' }}</p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Sexo:</label>
-                        <p class="text-gray-900">
-                            @if($animal->sexAni === 'Hembra')
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
-                                    <i class="fas fa-venus mr-1"></i>Hembra
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    <i class="fas fa-mars mr-1"></i>Macho
-                                </span>
-                            @endif
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Peso:</label>
-                        <p class="text-gray-900">{{ $animal->pesAni ? $animal->pesAni.' kg' : 'No registrado' }}</p>
-                    </div>
-                </div>
-
-                <!-- Fechas y Estados -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
-                        <i class="fas fa-calendar-alt text-orange-500 mr-2"></i>Fechas y Estados
-                    </h3>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Fecha de Nacimiento:</label>
-                        <p class="text-gray-900">
-                            @if($animal->fecNacAni)
-                                {{ \Carbon\Carbon::parse($animal->fecNacAni)->format('d/m/Y') }}
-                                <span class="text-xs text-gray-500">({{ \Carbon\Carbon::parse($animal->fecNacAni)->age }} años)</span>
-                            @else
-                                No registrada
-                            @endif
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Fecha de Compra/Ingreso:</label>
-                        <p class="text-gray-900">
-                            @if($animal->fecComAni)
-                                {{ \Carbon\Carbon::parse($animal->fecComAni)->format('d/m/Y') }}
-                            @else
-                                No registrada
-                            @endif
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Estado General:</label>
-                        <p class="text-gray-900">
-                            @switch($animal->estAni)
-                                @case('vivo')
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        <i class="fas fa-heart mr-1"></i>Vivo
-                                    </span>
-                                    @break
-                                @case('muerto')
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        <i class="fas fa-skull mr-1"></i>Muerto
-                                    </span>
-                                    @break
-                                @default
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        <i class="fas fa-hand-holding-usd mr-1"></i>Vendido
-                                    </span>
-                            @endswitch
-                        </p>
-                    </div>
-                </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm text-gray-500">ID</p>
+                <p class="font-medium">#{{ $animal->idAni }}</p>
             </div>
+            <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm text-gray-500">Estado General</p>
+                <p class="font-medium">
+                    @switch($animal->estAni)
+                        @case('vivo')
+                            <span class="text-green-600">
+                                <i class="fas fa-heart mr-1"></i>Vivo
+                            </span>
+                            @break
+                        @case('muerto')
+                            <span class="text-red-600">
+                                <i class="fas fa-skull mr-1"></i>Muerto
+                            </span>
+                            @break
+                        @default
+                            <span class="text-yellow-600">
+                                <i class="fas fa-hand-holding-usd mr-1"></i>Vendido
+                            </span>
+                    @endswitch
+                </p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded">
+                <p class="text-sm text-gray-500">Especie</p>
+                <p class="font-medium">{{ $animal->espAni }}</p>
+            </div>
+        </div>
+    </div>
 
-            <!-- Estados de Salud y Reproducción -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
-                        <i class="fas fa-heartbeat text-red-500 mr-2"></i>Estado de Salud
-                    </h3>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Información Básica -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                <i class="fas fa-info-circle text-blue-500 mr-2"></i>Información Básica
+            </h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">NIT del Animal</label>
+                    <p class="text-gray-900">{{ $animal->nitAni ?? 'No registrado' }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Identificación</label>
+                    <p class="text-gray-900">{{ $animal->ideAni ?? 'No registrado' }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Ubicación</label>
+                    <p class="text-gray-900">{{ $animal->ubicacionAni ?? 'No registrada' }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Raza</label>
+                    <p class="text-gray-900">{{ $animal->razAni ?? 'No especificada' }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Sexo</label>
+                    <p class="text-gray-900">
+                        @if($animal->sexAni === 'Hembra')
+                            <span class="text-pink-600">
+                                <i class="fas fa-venus mr-1"></i>Hembra
+                            </span>
+                        @else
+                            <span class="text-blue-600">
+                                <i class="fas fa-mars mr-1"></i>Macho
+                            </span>
+                        @endif
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Peso</label>
+                    <p class="text-gray-900">{{ $animal->pesAni ? $animal->pesAni.' kg' : 'No registrado' }}</p>
+                </div>
+
+                @if($animal->fotoAni)
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Foto</label>
+                    <div class="mt-1">
+                        <img src="{{ asset('storage/' . $animal->fotoAni) }}" alt="Foto del animal" 
+                             class="w-32 h-32 object-cover rounded-lg border border-gray-200 shadow-sm">
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Fechas y Estados -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                <i class="fas fa-calendar-alt text-orange-500 mr-2"></i>Fechas y Estados
+            </h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Fecha de Nacimiento</label>
+                    <p class="text-gray-900">
+                        @if($animal->fecNacAni)
+                            {{ \Carbon\Carbon::parse($animal->fecNacAni)->format('d/m/Y') }}
+                            <span class="text-xs text-gray-500">({{ \Carbon\Carbon::parse($animal->fecNacAni)->age }} años)</span>
+                        @else
+                            No registrada
+                        @endif
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Fecha de Compra/Ingreso</label>
+                    <p class="text-gray-900">
+                        @if($animal->fecComAni)
+                            {{ \Carbon\Carbon::parse($animal->fecComAni)->format('d/m/Y') }}
+                        @else
+                            No registrada
+                        @endif
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Estado de Salud</label>
                     <p class="text-gray-900">
                         @switch($animal->estSaludAni)
                             @case('saludable')
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <span class="text-green-600">
                                     <i class="fas fa-check-circle mr-1"></i>Saludable
                                 </span>
                                 @break
                             @case('enfermo')
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <span class="text-red-600">
                                     <i class="fas fa-exclamation-triangle mr-1"></i>Enfermo
                                 </span>
                                 @break
                             @default
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <span class="text-yellow-600">
                                     <i class="fas fa-medkit mr-1"></i>En tratamiento
                                 </span>
                         @endswitch
                     </p>
                 </div>
 
-                <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
-                        <i class="fas fa-baby text-purple-500 mr-2"></i>Estado Reproductivo
-                    </h3>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">Estado Reproductivo</label>
                     <p class="text-gray-900">
                         @php
                             $estadosRepro = [
@@ -223,43 +230,42 @@ new #[Layout('layouts.auth')] class extends Component {
                             ];
                             $estadoActual = $estadosRepro[$animal->estReproAni] ?? $estadosRepro['no_aplica'];
                         @endphp
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-{{ $estadoActual['color'] }}-100 text-{{ $estadoActual['color'] }}-800">
+                        <span class="text-{{ $estadoActual['color'] }}-600">
                             <i class="{{ $estadoActual['icon'] }} mr-1"></i>{{ $estadoActual['label'] }}
                         </span>
                     </p>
                 </div>
             </div>
-
-            <!-- Observaciones -->
-            @if($animal->obsAni)
-            <div class="mt-6 pt-6 border-t border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900 mb-2">
-                    <i class="fas fa-comment-alt text-yellow-500 mr-2"></i>Observaciones
-                </h3>
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                    <p class="text-gray-700 whitespace-pre-line">{{ $animal->obsAni }}</p>
-                </div>
-            </div>
-            @endif
         </div>
+    </div>
 
-        <!-- Footer con acciones -->
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-            <div class="text-sm text-gray-500">
-                Registrado: {{ $animal->created_at->format('d/m/Y H:i') }} | 
-                Última actualización: {{ $animal->updated_at->format('d/m/Y H:i') }}
-            </div>
-            <div class="flex space-x-2">
-                <a href="{{ route('pecuario.animales.edit', $animal->idAni) }}" wire:navigate
-                    class="text-yellow-600 hover:text-yellow-800 font-medium">
-                    <i class="fas fa-edit mr-1"></i>Editar información
-                </a>
-                <span class="text-gray-300">|</span>
-                <button wire:click="confirmDelete"
-                    class="text-red-600 hover:text-red-800 font-medium">
-                    <i class="fas fa-trash mr-1"></i>Eliminar animal
-                </button>
-            </div>
+    <!-- Observaciones -->
+    @if($animal->obsAni)
+    <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2">
+            <i class="fas fa-comment-alt text-yellow-500 mr-2"></i>Observaciones
+        </h2>
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+            <p class="text-gray-700 whitespace-pre-line">{{ $animal->obsAni }}</p>
+        </div>
+    </div>
+    @endif
+
+    <!-- Footer con acciones -->
+    <div class="mt-6 flex justify-between items-center">
+        <div class="text-sm text-gray-500">
+            Registrado el: {{ $animal->created_at->format('d/m/Y H:i') }}
+        </div>
+        <div class="flex space-x-2">
+            <a href="{{ route('pecuario.animales.edit', $animal->idAni) }}" wire:navigate
+                class="text-yellow-600 hover:text-yellow-800 font-medium">
+                <i class="fas fa-edit mr-1"></i>Editar información
+            </a>
+            <span class="text-gray-300">|</span>
+            <button wire:click="confirmDelete"
+                class="text-red-600 hover:text-red-800 font-medium">
+                <i class="fas fa-trash mr-1"></i>Eliminar animal
+            </button>
         </div>
     </div>
 

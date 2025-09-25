@@ -82,20 +82,38 @@ new #[Layout('layouts.auth')] class extends Component {
 }; ?>
 
 <div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Información Actual -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden mb-6">
+        <div class="bg-green-600 text-white px-6 py-4">
+            <h2 class="text-lg font-semibold flex items-center">
+                <i class="fas fa-info-circle mr-2"></i> Información Actual
+            </h2>
+        </div>
+        <div class="px-6 py-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600">ID #{{ $produccion->idProAni }}</p>
+                    <p class="text-sm text-gray-600">Última Actualización: {{ $produccion->updated_at->format('d/m/Y H:i') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalles de Producción -->
     <div class="bg-white shadow-md rounded-lg overflow-hidden">
         <div class="bg-green-600 text-white px-6 py-4">
             <div class="flex justify-between items-center">
-                <h2 class="text-lg font-semibold">
+                <h2 class="text-lg font-semibold flex items-center">
                     <i class="fas fa-clipboard-list mr-2"></i> Detalles de Producción #{{ $produccion->idProAni }}
                 </h2>
                 <div class="flex gap-2">
                     <a href="{{ route('pecuario.produccion.edit', $produccion->idProAni) }}" wire:navigate
-                       class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm font-medium">
+                       class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm font-medium flex items-center">
                         <i class="fas fa-edit mr-1"></i> Editar
                     </a>
                     <button wire:click="delete" 
                             onclick="return confirm('¿Eliminar este registro?')"
-                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium">
+                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium flex items-center">
                         <i class="fas fa-trash mr-1"></i> Eliminar
                     </button>
                 </div>
@@ -103,15 +121,18 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
 
         <div class="px-6 py-4">
-            <!-- Datos principales -->
-            <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-6 mb-6">
-                <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-900 border-b border-green-200 pb-2">
-                        <i class="fas fa-info-circle text-green-500 mr-2"></i>Información Básica
-                    </h3>
-                    
+            <!-- Información Básica -->
+            <div class="mb-6">
+                <h3 class="text-md font-medium text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-tools mr-2"></i> Información Básica
+                </h3>
+                
+                <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                    <!-- Animal -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Animal</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-cow mr-1 text-gray-500"></i> Animal
+                        </label>
                         <p class="text-gray-900">
                             @if($produccion->animal)
                                 <span class="font-medium">{{ $produccion->animal->ideAni }}</span>
@@ -122,8 +143,11 @@ new #[Layout('layouts.auth')] class extends Component {
                         </p>
                     </div>
                     
+                    <!-- Tipo de Producción -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Tipo de Producción</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-list-alt mr-1 text-gray-500"></i> Tipo de Producción
+                        </label>
                         <p class="text-gray-900">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $this->getColorTipo($produccion->tipProAni) }}">
                                 {{ $this->getTipoProduccionFormateado($produccion->tipProAni) }}
@@ -131,8 +155,11 @@ new #[Layout('layouts.auth')] class extends Component {
                         </p>
                     </div>
                     
+                    <!-- Fecha de Producción -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Fecha de Producción</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="far fa-calendar-alt mr-1 text-gray-500"></i> Fecha de Producción
+                        </label>
                         <p class="text-gray-900">
                             @if($produccion->fecProAni)
                                 <i class="fas fa-calendar-alt text-green-500 mr-1"></i>
@@ -146,14 +173,18 @@ new #[Layout('layouts.auth')] class extends Component {
                         </p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Control de Producción -->
+            <div class="mb-6">
+                <h3 class="text-md font-medium text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-calculator mr-2"></i> Control de Producción
+                </h3>
                 
-                <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-900 border-b border-green-200 pb-2">
-                        <i class="fas fa-chart-bar text-green-500 mr-2"></i>Cantidades
-                    </h3>
-                    
+                <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                    <!-- Cantidad -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Cantidad</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
                         <p class="text-gray-900">
                             @if($produccion->canProAni)
                                 <span class="text-lg font-semibold text-green-600">{{ number_format($produccion->canProAni, 2) }}</span>
@@ -164,21 +195,25 @@ new #[Layout('layouts.auth')] class extends Component {
                         </p>
                     </div>
                     
+                    <!-- Cantidad Total -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Cantidad Total</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad Total</label>
                         <p class="text-gray-900">
                             @if($produccion->canTotProAni)
                                 <span class="text-lg font-semibold text-blue-600">{{ number_format($produccion->canTotProAni, 2) }}</span>
                                 <span class="text-gray-600 ml-1">{{ $produccion->uniProAni ?: 'unidades' }}</span>
-                                <span class="text-xs text-gray-500 block">Total acumulado</span>
+                                <span class="text-xs text-gray-500 block flex items-center">
+                                    <i class="fas fa-info-circle mr-1"></i> Total acumulado
+                                </span>
                             @else
                                 <span class="text-gray-400 italic">No especificada</span>
                             @endif
                         </p>
                     </div>
                     
+                    <!-- Unidad de Medida -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Unidad de Medida</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unidad de Medida</label>
                         <p class="text-gray-900">
                             @if($produccion->uniProAni)
                                 <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
@@ -190,22 +225,31 @@ new #[Layout('layouts.auth')] class extends Component {
                         </p>
                     </div>
                 </div>
+            </div>
 
-                <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-900 border-b border-green-200 pb-2">
-                        <i class="fas fa-clock text-green-500 mr-2"></i>Información de Registro
-                    </h3>
-                    
+            <!-- Información de Registro -->
+            <div class="mb-6">
+                <h3 class="text-md font-medium text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-clock mr-2"></i> Información de Registro
+                </h3>
+                
+                <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                    <!-- Registrado por -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Registrado por</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-user mr-1 text-gray-500"></i> Registrado por
+                        </label>
                         <p class="text-gray-900">
                             <i class="fas fa-user text-green-500 mr-1"></i>
                             {{ $produccion->user->name ?? 'Sistema' }}
                         </p>
                     </div>
                     
+                    <!-- Fecha de Registro -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Fecha de Registro</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-plus-circle mr-1 text-gray-500"></i> Fecha de Registro
+                        </label>
                         <p class="text-gray-900">
                             <i class="fas fa-plus-circle text-green-500 mr-1"></i>
                             {{ $produccion->created_at->format('d/m/Y H:i') }}
@@ -215,8 +259,11 @@ new #[Layout('layouts.auth')] class extends Component {
                         </p>
                     </div>
                     
+                    <!-- Última Actualización -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-500">Última Actualización</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            <i class="fas fa-edit mr-1 text-gray-500"></i> Última Actualización
+                        </label>
                         <p class="text-gray-900">
                             <i class="fas fa-edit text-green-500 mr-1"></i>
                             {{ $produccion->updated_at->format('d/m/Y H:i') }}
@@ -231,16 +278,22 @@ new #[Layout('layouts.auth')] class extends Component {
             <!-- Observaciones -->
             @if($produccion->obsProAni)
             <div class="mb-6">
-                <h3 class="text-md font-medium text-gray-900 border-b border-green-200 pb-2 mb-4">
-                    <i class="fas fa-comment-dots text-green-500 mr-2"></i>Observaciones
+                <h3 class="text-md font-medium text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-clipboard-list mr-2"></i> Información Adicional
                 </h3>
-                <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-sticky-note text-green-500"></i>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-gray-700 whitespace-pre-line">{{ $produccion->obsProAni }}</p>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="fas fa-comment-dots mr-1 text-gray-500"></i> Observaciones
+                    </label>
+                    <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-sticky-note text-green-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-gray-700 whitespace-pre-line">{{ $produccion->obsProAni }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -249,10 +302,10 @@ new #[Layout('layouts.auth')] class extends Component {
 
             <!-- Historial relacionado -->
             @if($produccion->idAniPro)
-            <div class="mt-6">
-                <h3 class="text-md font-medium text-gray-900 border-b border-green-200 pb-2 mb-4">
-                    <i class="fas fa-history text-green-500 mr-2"></i>Historial Reciente del Animal
-                    <span class="text-sm font-normal text-gray-500">
+            <div class="mb-6">
+                <h3 class="text-md font-medium text-gray-700 mb-4 flex items-center">
+                    <i class="fas fa-history mr-2"></i> Historial Reciente del Animal
+                    <span class="text-sm font-normal text-gray-500 ml-2">
                         ({{ $produccion->animal->ideAni ?? 'Animal' }})
                     </span>
                 </h3>
@@ -304,7 +357,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="text-center pt-4">
                         <a href="{{ route('pecuario.produccion.index', ['animal' => $produccion->idAniPro]) }}" 
                            wire:navigate
-                           class="text-green-600 hover:text-green-700 text-sm font-medium">
+                           class="text-green-600 hover:text-green-700 text-sm font-medium flex items-center justify-center">
                             <i class="fas fa-eye mr-1"></i>
                             Ver historial completo
                         </a>
@@ -313,7 +366,7 @@ new #[Layout('layouts.auth')] class extends Component {
                 </div>
             </div>
             @else
-            <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div class="text-center text-gray-500">
                     <i class="fas fa-info-circle text-2xl mb-2"></i>
                     <p>Este registro no está asociado a un animal específico</p>
