@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('contacto', function (Blueprint $table) {
-            $table->id('idCon');
-            $table->string('celCon', 15);
+        Schema::create('rol', function (Blueprint $table) {
+            $table->id('idRol');
+            $table->string('nomRol', 50);
+            $table->text('desRol')->nullable();
+            $table->enum('estRol', ['activo', 'inactivo'])->default('activo');
+            $table->timestamps();
         });
     }
 
@@ -22,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('contacto');
+        Schema::dropIfExists('rol');
     }
 };

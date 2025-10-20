@@ -17,7 +17,7 @@
 <body>
     @include('partials.nav')
 
-    <main class="bg-gray-100 grid min-h-dvh grid-rows-[auto_1fr_auto]">
+    <main class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 grid min-h-dvh grid-rows-[auto_1fr_auto]">
         {{ $slot }}
     </main>
 

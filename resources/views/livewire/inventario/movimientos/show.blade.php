@@ -37,68 +37,82 @@ new #[Layout('layouts.auth')] class extends Component {
     }
 }; ?>
 
-@section('title', 'Detalles de movimiento')
+@section('title', 'Detalles de Movimiento')
 
-<div class="min-h-screen bg-gray-50 py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                        @php
-                            $iconoColor = match($movimiento->tipMovInv) {
-                                'entrada', 'compra', 'donacion', 'apertura' => 'text-green-600',
-                                'salida', 'consumo', 'aplicacion', 'venta' => 'text-red-600',
-                                'perdida', 'vencimiento' => 'text-gray-600',
-                                default => 'text-blue-600'
-                            };
-                        @endphp
-                        <svg class="w-8 h-8 {{ $iconoColor }} mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+<div class="flex items-center justify-center min-h-screen py-3">
+    <div class="w-full max-w-7xl mx-auto bg-white/80 backdrop-blur-xl shadow rounded-3xl p-3 relative border border-white/20">
+        <!-- Encabezado -->
+        <div class="text-center mb-3">
+            <div class="flex justify-center mb-1">
+                <div class="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <div class="w-4 h-4 text-white flex items-center justify-center">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
-                        Movimiento #{{ $movimiento->idInv }}
-                    </h1>
-                    <p class="mt-1 text-sm text-gray-600">Detalles completos del movimiento de inventario</p>
-                </div>
-                <div class="mt-4 sm:mt-0 flex space-x-3">
-                    <a href="{{ route('inventario.movimientos.index') }}" wire:navigate
-                       class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                        </svg>
-                        Volver
-                    </a>
-                    <a href="{{ route('inventario.movimientos.edit', $movimiento->idInv) }}" wire:navigate
-                       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        Editar
-                    </a>
+                    </div>
                 </div>
             </div>
+            <h1 class="text-base font-black bg-gradient-to-r from-gray-900 via-gray-800 to-blue-800 bg-clip-text text-transparent mb-1">
+                Detalles de Movimiento
+            </h1>
+            <p class="text-gray-600 text-xs">Información completa del movimiento de inventario</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Información Principal -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Datos del Movimiento -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-blue-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            Información del Movimiento
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Tipo de Movimiento -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Movimiento</label>
-                                <div class="flex items-center">
+        <!-- Botones -->
+        <div class="absolute top-2 right-2 flex space-x-2">
+            <a href="{{ route('inventario.movimientos.edit', $movimiento->idInv) }}" wire:navigate
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Editar</span>
+            </a>
+            <a href="{{ route('inventario.movimientos.index') }}" wire:navigate
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Volver</span>
+            </a>
+        </div>
+
+        <!-- Tarjeta de información principal -->
+        <div class="border border-gray-300 rounded-3xl overflow-hidden bg-gradient-to-br from-white to-gray-50">
+            <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#0066CC]"></div>
+            
+            <div class="p-2">
+                <!-- Grid de información -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                    <!-- Información del Movimiento -->
+                    <div class="bg-white rounded-2xl p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xs font-bold text-gray-900">Información del Movimiento</h3>
+                        </div>
+                        <div class="bg-blue-50/50 border border-blue-200 rounded-xl p-2">
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between py-1 border-b border-blue-100">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <span class="text-xs text-black font-medium">ID</span>
+                                    </div>
+                                    <p class="text-xs text-black font-semibold">{{ $movimiento->idInv }}</p>
+                                </div>
+                                <div class="flex items-center justify-between py-1 border-b border-blue-100">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <span class="text-xs text-black font-medium">Tipo</span>
+                                    </div>
                                     @php
                                         $tipoColors = [
                                             'apertura' => 'bg-green-100 text-green-800',
@@ -115,250 +129,258 @@ new #[Layout('layouts.auth')] class extends Component {
                                         ];
                                         $colorClass = $tipoColors[$movimiento->tipMovInv] ?? 'bg-gray-100 text-gray-800';
                                     @endphp
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $colorClass }}">
+                                    <span class="inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full {{ $colorClass }}">
                                         {{ ucfirst(str_replace('_', ' ', $movimiento->tipMovInv)) }}
                                     </span>
                                 </div>
-                            </div>
-
-                            <!-- Fecha del Movimiento -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha del Movimiento</label>
-                                <div class="flex items-center text-gray-900">
-                                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    {{ $movimiento->fecMovInv ? $movimiento->fecMovInv->format('d/m/Y H:i') : 'No especificada' }}
+                                <div class="flex items-center justify-between py-1 border-b border-blue-100">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <span class="text-xs text-black font-medium">Fecha</span>
+                                    </div>
+                                    <p class="text-xs text-black font-semibold">{{ $movimiento->fecMovInv ? $movimiento->fecMovInv->format('d/m/Y H:i') : 'No especificada' }}</p>
                                 </div>
-                            </div>
-
-                            <!-- Item -->
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Item</label>
-                                <div class="flex items-center">
+                                <div class="flex items-center justify-between py-1 border-b border-blue-100">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                        </svg>
+                                        <span class="text-xs text-black font-medium">Item</span>
+                                    </div>
                                     @if($movimiento->insumo)
                                         <div class="flex items-center">
-                                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 mr-3">
+                                            <span class="inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 mr-2">
                                                 Insumo
                                             </span>
                                             <div>
-                                                <p class="font-medium text-gray-900">{{ $movimiento->insumo->nomIns }}</p>
-                                                <p class="text-sm text-gray-500">{{ $movimiento->insumo->tipIns ?? '' }} - {{ $movimiento->insumo->marIns ?? '' }}</p>
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->insumo->nomIns }}</p>
+                                                <p class="text-[10px] text-gray-500">{{ $movimiento->insumo->tipIns ?? '' }} - {{ $movimiento->insumo->marIns ?? '' }}</p>
                                             </div>
                                         </div>
                                     @elseif($movimiento->herramienta)
                                         <div class="flex items-center">
-                                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-3">
+                                            <span class="inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 mr-2">
                                                 Herramienta
                                             </span>
                                             <div>
-                                                <p class="font-medium text-gray-900">{{ $movimiento->herramienta->nomHer }}</p>
-                                                <p class="text-sm text-gray-500">{{ $movimiento->herramienta->catHer ?? '' }}</p>
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->herramienta->nomHer }}</p>
+                                                <p class="text-[10px] text-gray-500">{{ $movimiento->herramienta->catHer ?? '' }}</p>
                                             </div>
                                         </div>
                                     @else
-                                        <p class="text-gray-500">Item no especificado</p>
+                                        <p class="text-xs text-gray-500">Item no especificado</p>
                                     @endif
                                 </div>
-                            </div>
-
-                            <!-- Cantidad y Unidad -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
-                                <div class="flex items-center text-gray-900">
-                                    <span class="text-2xl font-bold text-blue-600">{{ number_format($movimiento->cantMovInv, 2) }}</span>
-                                    <span class="ml-2 text-gray-500">{{ $movimiento->uniMovInv }}</span>
+                                <div class="flex items-center justify-between py-1 border-b border-blue-100">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                        </svg>
+                                        <span class="text-xs text-black font-medium">Cantidad</span>
+                                    </div>
+                                    <p class="text-xs text-black font-semibold">{{ number_format($movimiento->cantMovInv, 2) }} {{ $movimiento->uniMovInv }}</p>
                                 </div>
+                                @if($movimiento->costoTotInv)
+                                    <div class="flex items-center justify-between py-1 border-b border-blue-100">
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <span class="text-xs text-black font-medium">Costo Total</span>
+                                        </div>
+                                        <p class="text-xs text-green-600 font-semibold">${{ number_format($movimiento->costoTotInv, 2) }}
+                                            @if($movimiento->costoUnitInv)
+                                                <span class="text-[10px] text-gray-500">(${{ number_format($movimiento->costoUnitInv, 2) }}/{{ $movimiento->uniMovInv }})</span>
+                                            @endif
+                                        </p>
+                                    </div>
+                                @endif
                             </div>
-
-                            <!-- Costo Total -->
-                            @if($movimiento->costoTotInv)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Costo Total</label>
-                                <div class="flex items-center text-gray-900">
-                                    <span class="text-2xl font-bold text-green-600">${{ number_format($movimiento->costoTotInv, 2) }}</span>
-                                    @if($movimiento->costoUnitInv)
-                                        <span class="ml-2 text-sm text-gray-500">(${{ number_format($movimiento->costoUnitInv, 2) }}/{{ $movimiento->uniMovInv }})</span>
-                                    @endif
-                                </div>
-                            </div>
-                            @endif
                         </div>
                     </div>
-                </div>
 
-                <!-- Información Adicional -->
-                @if($movimiento->loteInv || $movimiento->fecVenceInv || $movimiento->obsInv)
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-gray-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Información Adicional
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            @if($movimiento->loteInv)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Lote/Serie</label>
-                                <p class="text-gray-900">{{ $movimiento->loteInv }}</p>
-                            </div>
-                            @endif
-
-                            @if($movimiento->fecVenceInv)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Vencimiento</label>
-                                <div class="flex items-center">
-                                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <!-- Información Adicional -->
+                    @if($movimiento->loteInv || $movimiento->fecVenceInv || $movimiento->obsInv)
+                        <div class="bg-white rounded-2xl p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="p-1.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md">
+                                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
                                     </svg>
-                                    <span class="text-gray-900">{{ $movimiento->fecVenceInv->format('d/m/Y') }}</span>
-                                    @php
-                                        $diasParaVencer = $movimiento->fecVenceInv->diffInDays(now(), false);
-                                    @endphp
-                                    @if($diasParaVencer > 0)
-                                        <span class="ml-2 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
-                                            Vencido hace {{ $diasParaVencer }} días
-                                        </span>
-                                    @elseif($diasParaVencer > -30)
-                                        <span class="ml-2 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            Vence en {{ abs($diasParaVencer) }} días
-                                        </span>
+                                </div>
+                                <h3 class="text-xs font-bold text-gray-900">Información Adicional</h3>
+                            </div>
+                            <div class="bg-purple-50/50 border border-purple-200 rounded-xl p-2">
+                                <div class="space-y-2">
+                                    @if($movimiento->loteInv)
+                                        <div class="flex items-center justify-between py-1 border-b border-purple-100">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                </svg>
+                                                <span class="text-xs text-black font-medium">Lote/Serie</span>
+                                            </div>
+                                            <p class="text-xs text-black font-semibold">{{ $movimiento->loteInv }}</p>
+                                        </div>
+                                    @endif
+                                    @if($movimiento->fecVenceInv)
+                                        <div class="flex items-center justify-between py-1 border-b border-purple-100">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span class="text-xs text-black font-medium">Fecha de Vencimiento</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->fecVenceInv->format('d/m/Y') }}</p>
+                                                @php
+                                                    $diasParaVencer = $movimiento->fecVenceInv->diffInDays(now(), false);
+                                                @endphp
+                                                @if($diasParaVencer > 0)
+                                                    <span class="ml-2 inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                        Vencido hace {{ $diasParaVencer }} días
+                                                    </span>
+                                                @elseif($diasParaVencer > -30)
+                                                    <span class="ml-2 inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                        Vence en {{ abs($diasParaVencer) }} días
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
+                                    @if($movimiento->obsInv)
+                                        <div class="py-1">
+                                            <div class="flex items-center space-x-2 mb-1">
+                                                <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                                </svg>
+                                                <span class="text-xs text-black font-medium">Observaciones</span>
+                                            </div>
+                                            <p class="text-xs text-black">{{ $movimiento->obsInv }}</p>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
-                            @endif
                         </div>
+                    @endif
+                </div>
 
-                        @if($movimiento->obsInv)
-                        <div class="mt-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-gray-900">{{ $movimiento->obsInv }}</p>
+                <!-- Proveedor y Registro -->
+                <div class="bg-white rounded-2xl p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <!-- Proveedor -->
+                        @if($movimiento->proveedor)
+                            <div class="bg-white rounded-xl p-2 border border-gray-200">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-md">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-xs font-bold text-gray-900">Proveedor</h3>
+                                </div>
+                                <div class="bg-orange-50/50 border border-orange-200 rounded-xl p-2">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between py-1 border-b border-orange-100">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                </svg>
+                                                <span class="text-xs text-black font-medium">Empresa</span>
+                                            </div>
+                                            <p class="text-xs text-black font-semibold">{{ $movimiento->proveedor->nomProve ?? '' }}</p>
+                                        </div>
+                                        @if($movimiento->proveedor->conProve)
+                                            <div class="flex items-center justify-between py-1 border-b border-orange-100">
+                                                <div class="flex items-center space-x-2">
+                                                    <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                    </svg>
+                                                    <span class="text-xs text-black font-medium">Contacto</span>
+                                                </div>
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->proveedor->conProve }}</p>
+                                            </div>
+                                        @endif
+                                        @if($movimiento->proveedor->telProve)
+                                            <div class="flex items-center justify-between py-1 border-b border-orange-100">
+                                                <div class="flex items-center space-x-2">
+                                                    <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                                    </svg>
+                                                    <span class="text-xs text-black font-medium">Teléfono</span>
+                                                </div>
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->proveedor->telProve }}</p>
+                                            </div>
+                                        @endif
+                                        @if($movimiento->proveedor->tipSumProve)
+                                            <div class="flex items-center justify-between py-1">
+                                                <div class="flex items-center space-x-2">
+                                                    <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                                    </svg>
+                                                    <span class="text-xs text-black font-medium">Tipo de Suministro</span>
+                                                </div>
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->proveedor->tipSumProve }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
-                        </div>
                         @endif
-                    </div>
-                </div>
-                @endif
-            </div>
 
-            <!-- Panel Lateral -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Registro del Movimiento -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-yellow-500 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                            Registro
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Registrado por</label>
-                            @if($movimiento->usuario)
-                                <p class="text-gray-900">{{ $movimiento->usuario->nomUsu ?? '' }} {{ $movimiento->usuario->apeUsu ?? '' }}</p>
-                                <p class="text-sm text-gray-500">{{ $movimiento->usuario->email ?? '' }}</p>
-                            @else
-                                <p class="text-gray-500">Usuario no disponible</p>
-                            @endif
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Creación</label>
-                            <p class="text-gray-900">{{ $movimiento->created_at ? $movimiento->created_at->format('d/m/Y H:i:s') : 'No disponible' }}</p>
-                        </div>
-
-                        @if($movimiento->updated_at && $movimiento->updated_at != $movimiento->created_at)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Última Modificación</label>
-                            <p class="text-gray-900">{{ $movimiento->updated_at->format('d/m/Y H:i:s') }}</p>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Proveedor -->
-                @if($movimiento->proveedor)
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-purple-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                            </svg>
-                            Proveedor
-                        </h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
-                                <p class="text-gray-900 font-medium">{{ $movimiento->proveedor->nomProve ?? '' }}</p>
+                        <!-- Registro -->
+                        <div class="bg-white rounded-xl p-2 border border-gray-200">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="p-1.5 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-md">
+                                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xs font-bold text-gray-900">Registro</h3>
                             </div>
-                            
-                            @if($movimiento->proveedor->conProve)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
-                                <p class="text-gray-900">{{ $movimiento->proveedor->conProve }}</p>
+                            <div class="bg-yellow-50/50 border border-yellow-200 rounded-xl p-2">
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between py-1 border-b border-yellow-100">
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                            </svg>
+                                            <span class="text-xs text-black font-medium">Registrado por</span>
+                                        </div>
+                                        @if($movimiento->usuario)
+                                            <div>
+                                                <p class="text-xs text-black font-semibold">{{ $movimiento->usuario->nomUsu ?? '' }} {{ $movimiento->usuario->apeUsu ?? '' }}</p>
+                                                <p class="text-[10px] text-gray-500">{{ $movimiento->usuario->email ?? '' }}</p>
+                                            </div>
+                                        @else
+                                            <p class="text-xs text-gray-500">Usuario no disponible</p>
+                                        @endif
+                                    </div>
+                                    <div class="flex items-center justify-between py-1 border-b border-yellow-100">
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="text-xs text-black font-medium">Fecha de Creación</span>
+                                        </div>
+                                        <p class="text-xs text-black font-semibold">{{ $movimiento->created_at ? $movimiento->created_at->format('d/m/Y H:i') : 'No disponible' }}</p>
+                                    </div>
+                                    @if($movimiento->updated_at && $movimiento->updated_at != $movimiento->created_at)
+                                        <div class="flex items-center justify-between py-1">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                </svg>
+                                                <span class="text-xs text-black font-medium">Última Modificación</span>
+                                            </div>
+                                            <p class="text-xs text-black font-semibold">{{ $movimiento->updated_at->format('d/m/Y H:i') }}</p>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                            @endif
-
-                            @if($movimiento->proveedor->telProve)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                <p class="text-gray-900">{{ $movimiento->proveedor->telProve }}</p>
-                            </div>
-                            @endif
-
-                            @if($movimiento->proveedor->tipSumProve)
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Suministro</label>
-                                <p class="text-gray-900">{{ $movimiento->proveedor->tipSumProve }}</p>
-                            </div>
-                            @endif
                         </div>
-                    </div>
-                </div>
-                @endif
-
-                <!-- Acciones Rápidas -->
-                <div class="bg-white shadow rounded-lg">
-                    <div class="px-6 py-4 bg-indigo-600 rounded-t-lg">
-                        <h3 class="text-lg font-medium text-white flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                            Acciones
-                        </h3>
-                    </div>
-                    <div class="p-6 space-y-3">
-                        <a href="{{ route('inventario.movimientos.edit', $movimiento->idInv) }}" wire:navigate
-                           class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                            </svg>
-                            Editar Movimiento
-                        </a>
-
-                        <button wire:click="confirmDelete"
-                              class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                            Eliminar Movimiento
-                        </button>
-
-                        <a href="{{ route('inventario.movimientos.create') }}" wire:navigate
-                           class="w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Nuevo Movimiento
-                        </a>
                     </div>
                 </div>
             </div>
@@ -369,24 +391,28 @@ new #[Layout('layouts.auth')] class extends Component {
 <!-- Modal Eliminar Movimiento -->
 @if($showDeleteModal)
     <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg max-w-sm w-full">
-            <h2 class="text-xl font-semibold mb-4">Confirmar eliminación</h2>
-            <p class="mb-4 text-sm text-gray-600">
+        <div class="bg-white p-3 rounded-2xl max-w-sm w-full border border-gray-200 shadow-xl">
+            <h2 class="text-base font-semibold mb-2">Confirmar eliminación</h2>
+            <p class="mb-2 text-xs text-gray-600">
                 ¿Está seguro que desea eliminar este movimiento? Esta acción no se puede deshacer.
             </p>
             
-            <div class="mb-4">
+            <div class="mb-2 bg-gray-50 rounded-xl p-2 text-xs">
                 <p><strong>Tipo:</strong> {{ ucfirst(str_replace('_', ' ', $movimiento->tipMovInv)) }}</p>
-                <p><strong>Item:</strong> {{ $movimiento->insumo ? $movimiento->insumo->nomIns : $movimiento->herramienta->nomHer }}</p>
+                <p><strong>Item:</strong> {{ $movimiento->insumo ? $movimiento->insumo->nomIns : ($movimiento->herramienta ? $movimiento->herramienta->nomHer : 'No especificado') }}</p>
                 <p><strong>Cantidad:</strong> {{ $movimiento->cantMovInv }} {{ $movimiento->uniMovInv }}</p>
                 <p><strong>ID:</strong> {{ $movimiento->idInv }}</p>
             </div>
             
-            <div class="flex justify-end gap-3">
+            <div class="flex justify-end gap-2">
                 <button wire:click="$set('showDeleteModal', false)"
-                        class="cursor-pointer px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">Cancelar</button>
+                        class="cursor-pointer px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 text-xs">
+                    Cancelar
+                </button>
                 <button wire:click="deleteMovimiento"
-                        class="cursor-pointer px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar Eliminación</button>
+                        class="cursor-pointer px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 text-xs">
+                    Confirmar Eliminación
+                </button>
             </div>
         </div>
     </div>

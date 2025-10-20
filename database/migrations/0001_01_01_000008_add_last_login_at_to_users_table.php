@@ -9,19 +9,19 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-       Schema::table('mantenimientos', function (Blueprint $table) {
-        $table->unsignedBigInteger('idHerMan')->nullable()->change();
-    });
-    }
+        Schema::table('users', function (Blueprint $table) {
+            $table->timestamp('last_login_at')->nullable()->after('remember_token');
+        });
+    }   
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::table('mantenimientos', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table) {
             //
         });
     }

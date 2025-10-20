@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory; // importante agregarlo
+
 use Illuminate\Database\Eloquent\Model;
 
 class Direccion extends Model
 {
+    use HasFactory; // importante agregarlo
     protected $table = 'direccion';
     protected $primaryKey = 'idDir';
     public $timestamps = false;

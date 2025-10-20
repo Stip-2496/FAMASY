@@ -37,7 +37,6 @@ new #[Layout('layouts.auth')] class extends Component {
     public $durHisMed;
     public $estRecHisMed = 'en tratamiento';
     public $resHisMed;
-    public $obsHisMed2;
 
     public function mount()
     {
@@ -63,7 +62,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public function updatedEspecieSeleccionada($value)
     {
         // Resetear selecciones dependientes
-        $this->reset(['razaSeleccionada', 'idAniHis', 'animalSeleccionado']);
+        $this->reset(['razaSeleccionada', 'idAniHis', 'animalSeleccionado', 'animalesFiltrados']);
         
         // Cargar razas para la especie seleccionada
         if ($value) {
@@ -91,7 +90,7 @@ new #[Layout('layouts.auth')] class extends Component {
             $this->animalesFiltrados = Animal::where('estAni', 'vivo')
                                           ->where('espAni', $this->especieSeleccionada)
                                           ->where('razAni', $value)
-                                          ->orderBy('ideAni')
+                                          ->orderBy('nitAni')
                                           ->get();
         } else {
             $this->animalesFiltrados = [];
@@ -100,17 +99,29 @@ new #[Layout('layouts.auth')] class extends Component {
 
     public function updatedIdAniHis($value)
     {
-        $this->animalSeleccionado = $value ? Animal::find($value) : null;
+        if ($value) {
+            $this->animalSeleccionado = Animal::find($value);
+        } else {
+            $this->animalSeleccionado = null;
+        }
     }
 
     public function updatedIdProveedor($value)
     {
-        $this->proveedorSeleccionado = $value ? Proveedor::find($value) : null;
+        if ($value) {
+            $this->proveedorSeleccionado = Proveedor::find($value);
+        } else {
+            $this->proveedorSeleccionado = null;
+        }
     }
 
     public function updatedIdIns($value)
     {
-        $this->insumoSeleccionado = $value ? Insumo::find($value) : null;
+        if ($value) {
+            $this->insumoSeleccionado = Insumo::find($value);
+        } else {
+            $this->insumoSeleccionado = null;
+        }
     }
 
     public function rules()
@@ -128,19 +139,50 @@ new #[Layout('layouts.auth')] class extends Component {
             'responHisMed' => 'required|string|max:100',
             'estRecHisMed' => 'required|in:saludable,en tratamiento,crónico',
             'resHisMed' => 'nullable|string|max:100',
-            'obsHisMed' => 'nullable|string|max:65535',
-            'obsHisMed2' => 'nullable|string|max:65535'
+            'obsHisMed' => 'nullable|string|max:65535'
         ];
+    }
+
+    public function limpiarFormulario(): void
+    {
+        $this->reset([
+            'especieSeleccionada', 
+            'razaSeleccionada', 
+            'idAniHis', 
+            'idProveedor', 
+            'idIns', 
+            'animalSeleccionado', 
+            'proveedorSeleccionado', 
+            'insumoSeleccionado',
+            'tipHisMed', 
+            'desHisMed', 
+            'traHisMed', 
+            'dosHisMed', 
+            'durHisMed', 
+            'resHisMed', 
+            'obsHisMed'
+        ]);
+        $this->estRecHisMed = 'en tratamiento';
+        $this->fecHisMed = date('Y-m-d');
+        $this->responHisMed = auth()->user()->name;
+        $this->resetErrorBag();
+        $this->dispatch('registro-cancelado');
+    }
+
+    public function cancelarRegistro(): void
+    {
+        $this->limpiarFormulario();
     }
 
     public function save()
     {
+        // Validar antes de proceder
         $this->validate();
         
         try {
             // Preparar los datos para crear el registro
             $data = [
-                'idAni' => $this->idAniHis, // Mapear correctamente el ID del animal
+                'idAni' => $this->idAniHis,
                 'fecHisMed' => $this->fecHisMed,
                 'desHisMed' => $this->desHisMed,
                 'traHisMed' => $this->traHisMed,
@@ -152,21 +194,16 @@ new #[Layout('layouts.auth')] class extends Component {
                 'durHisMed' => $this->durHisMed,
                 'estRecHisMed' => $this->estRecHisMed,
                 'resHisMed' => $this->resHisMed,
-                'obsHisMed2' => $this->obsHisMed2,
-                'idProve' => $this->idProveedor, // Si necesitas guardar el proveedor también
+                'idProve' => $this->idProveedor,
             ];
 
-            // Filtrar valores nulos/vacíos para campos opcionales pero mantener idAni
+            // Filtrar valores nulos/vacíos para campos opcionales pero mantener campos requeridos
             $filteredData = array_filter($data, function($value, $key) {
-                // Siempre mantener idAni, tipHisMed, fecHisMed, desHisMed, responHisMed, estRecHisMed
                 if (in_array($key, ['idAni', 'tipHisMed', 'fecHisMed', 'desHisMed', 'responHisMed', 'estRecHisMed'])) {
                     return true;
                 }
                 return $value !== null && $value !== '';
             }, ARRAY_FILTER_USE_BOTH);
-
-            // Debug - opcional, remover en producción
-            \Log::info('Datos a guardar:', $filteredData);
 
             HistorialMedico::create($filteredData);
             
@@ -175,7 +212,9 @@ new #[Layout('layouts.auth')] class extends Component {
                 'message' => 'Registro médico creado exitosamente'
             ]);
             
-            return redirect()->route('pecuario.salud-peso.index');
+            // Limpiar formulario después del registro exitoso
+            $this->limpiarFormulario();
+            $this->dispatch('registro-exitoso');
             
         } catch (\Exception $e) {
             \Log::error('Error creando historial médico: ' . $e->getMessage());
@@ -190,64 +229,80 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Nuevo Registro Médico')
 
-<div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-6xl mx-auto px-4">
-        <!-- Header -->
-        <div class="mb-8">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-plus text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Nuevo Registro Médico</h1>
-                        <p class="text-gray-600">Complete el formulario para agregar un nuevo registro médico</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-600 text-white">
-                        <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
-                        Nuevo registro
-                    </span>
-                </div>
-            </div>
+<div class="flex items-center justify-center min-h-screen py-3">
+    <div class="w-full max-w-7xl mx-auto bg-white/80 backdrop-blur-xl shadow rounded-3xl p-3 relative border border-white/20">
+        <!-- Botón Volver -->
+        <div class="absolute top-2 right-2">
+            <a href="{{ route('pecuario.salud-peso.index') }}" wire:navigate
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Volver</span>
+            </a>
         </div>
 
-        <form wire:submit="save" class="space-y-8">
-            <!-- Sección 1: Selección de Animal -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-paw text-gray-600 text-sm"></i>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Seleccionar Animal</h2>
+        <!-- Encabezado -->
+        <div class="text-center mb-3"
+             x-data="{ showSuccess: false, showCancel: false }"
+             x-on:registro-exitoso.window="showSuccess = true; showCancel = false; setTimeout(() => showSuccess = false, 3000)"
+             x-on:registro-cancelado.window="showCancel = true; showSuccess = false; setTimeout(() => showCancel = false, 3000)">
+            <div class="flex justify-center mb-1">
+                <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <div class="w-4 h-4 text-white flex items-center justify-center">
+                        <i class="fas fa-heartbeat text-base"></i>
                     </div>
                 </div>
-                
-                <div class="p-8">
-                    <!-- Información Básica -->
-                    <div class="mb-8">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-info-circle text-gray-600 text-sm"></i>
+            </div>
+            <h1 class="text-base font-black bg-gradient-to-r from-gray-900 via-gray-800 to-green-800 bg-clip-text text-transparent mb-1">
+                Nuevo Registro Médico
+            </h1>
+            
+            <template x-if="showSuccess">
+                <div class="rounded bg-green-100 px-2 py-1 text-green-800 border border-green-400 text-xs mb-1 font-semibold">
+                    ¡Registro médico creado exitosamente!
+                </div>
+            </template>
+
+            <template x-if="showCancel">
+                <div class="rounded bg-yellow-100 px-2 py-1 text-yellow-800 border border-yellow-400 text-xs mb-1 font-semibold">
+                    Formulario limpiado. Puede registrar un nuevo historial médico.
+                </div>
+            </template>
+
+            <template x-if="!showSuccess && !showCancel">
+                <p class="text-gray-600 text-xs">Complete los datos del nuevo registro médico</p>
+            </template>
+        </div>
+
+        <form wire:submit.prevent="save" class="space-y-2">
+            <!-- Sección 1: Selección de Animal e Información del Proveedor -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <!-- Selección de Animal -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Información Básica</h3>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Seleccionar Animal</h2>
+                                <p class="text-gray-600 text-[10px]">Datos principales del animal</p>
+                            </div>
                         </div>
-                        <p class="text-gray-600 mb-6">Datos principales del animal</p>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <!-- Selector de Especie -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Especie <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <i class="fas fa-dove text-gray-400"></i>
-                                    </div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Especie <span class="text-red-500">*</span></label>
+                                <div class="relative group">
                                     <select 
-                                        wire:model="especieSeleccionada" 
-                                        wire:change="$refresh"
-                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                        wire:model.live="especieSeleccionada" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('especieSeleccionada') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
                                         required
                                     >
                                         <option value="">Seleccionar especie</option>
@@ -255,21 +310,30 @@ new #[Layout('layouts.auth')] class extends Component {
                                             <option value="{{ $especie }}">{{ $especie }}</option>
                                         @endforeach
                                     </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                                @error('especieSeleccionada') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                                @error('especieSeleccionada')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                             
                             <!-- Selector de Raza -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Raza <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <i class="fas fa-paw text-gray-400"></i>
-                                    </div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Raza <span class="text-red-500">*</span></label>
+                                <div class="relative group">
                                     <select 
-                                        wire:model="razaSeleccionada" 
-                                        wire:change="$refresh"
-                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        wire:model.live="razaSeleccionada" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs disabled:bg-gray-100 disabled:cursor-not-allowed @error('razaSeleccionada') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
                                         @if(!$especieSeleccionada) disabled @endif
                                         required
                                     >
@@ -278,431 +342,577 @@ new #[Layout('layouts.auth')] class extends Component {
                                             <option value="{{ $raza }}">{{ $raza }}</option>
                                         @endforeach
                                     </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                                @error('razaSeleccionada') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                                @error('razaSeleccionada')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                             
                             <!-- Selector de Animal -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Animal <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <i class="fas fa-search text-gray-400"></i>
-                                    </div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Animal <span class="text-red-500">*</span></label>
+                                <div class="relative group">
                                     <select 
-                                        wire:model="idAniHis" 
-                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        wire:model.live="idAniHis" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs disabled:bg-gray-100 disabled:cursor-not-allowed @error('idAniHis') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
                                         @if(!$razaSeleccionada) disabled @endif
                                         required
                                     >
                                         <option value="">Seleccionar animal</option>
                                         @foreach($animalesFiltrados as $animal)
                                             <option value="{{ $animal->idAni }}">
-                                                @if($animal->ideAni)
-                                                    {{ $animal->ideAni }} (ID: {{ $animal->idAni }})
+                                                @if($animal->nitAni)
+                                                    {{ $animal->nitAni }}
                                                 @else
                                                     Animal #{{ $animal->idAni }}
                                                 @endif
                                             </option>
                                         @endforeach
                                     </select>
-                                </div>
-                                @error('idAniHis') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Información del animal seleccionado -->
-                    @if($animalSeleccionado)
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-6">
-                            <h4 class="font-semibold text-green-900 mb-4 flex items-center gap-2">
-                                <i class="fas fa-paw text-green-600"></i>
-                                Información del Animal Seleccionado
-                            </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                                <div>
-                                    <span class="font-medium text-gray-700">ID:</span>
-                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->idAni }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Nombre:</span>
-                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->ideAni ?? 'Sin nombre' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Especie:</span>
-                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->espAni }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Raza:</span>
-                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->razAni ?? 'No especificada' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Sexo:</span>
-                                    <span class="text-gray-900 ml-1">{{ $animalSeleccionado->sexAni }}</span>
-                                </div>
-                                @if($animalSeleccionado->fecNacAni)
-                                    <div>
-                                        <span class="font-medium text-gray-700">Nacimiento:</span>
-                                        <span class="text-gray-900 ml-1">{{ date('d/m/Y', strtotime($animalSeleccionado->fecNacAni)) }}</span>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
                                     </div>
-                                @endif
-                                <div>
-                                    <span class="font-medium text-gray-700">Estado:</span>
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 ml-1">
-                                        {{ ucfirst($animalSeleccionado->estAni) }}
-                                    </span>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
+                                @error('idAniHis')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Sección 2: Información del Proveedor -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-truck text-gray-600 text-sm"></i>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Información del Proveedor</h2>
-                    </div>
-                </div>
-                
-                <div class="p-8">
-                    <p class="text-gray-600 mb-6">Proveedor que suministra este animal</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Selector de Proveedor -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Procedencia/Proveedor</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-user-tie text-gray-400"></i>
-                                </div>
-                                <select 
-                                    wire:model="idProveedor" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                                >
-                                    <option value="">Seleccionar proveedor</option>
-                                    @foreach($proveedores as $proveedor)
-                                        <option value="{{ $proveedor->idProve }}">
-                                            {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            @error('idProveedor') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                         </div>
 
-                        <!-- Selector de Insumo/Medicamento -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Medicamento/Insumo</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-pills text-gray-400"></i>
+                        <!-- Información del animal seleccionado -->
+                        @if($animalSeleccionado)
+                            <div class="bg-green-50/50 border border-green-200 rounded-2xl p-2 mt-2">
+                                <h4 class="text-[10px] font-bold text-green-900 mb-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Información del Animal Seleccionado
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1 text-[10px]">
+                                    <div>
+                                        <span class="font-medium text-gray-700">Nombre:</span>
+                                        <span class="text-gray-900">{{ $animalSeleccionado->nitAni ?? 'Sin nombre' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Especie:</span>
+                                        <span class="text-gray-900">{{ $animalSeleccionado->espAni }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Raza:</span>
+                                        <span class="text-gray-900">{{ $animalSeleccionado->razAni ?? 'No especificada' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Sexo:</span>
+                                        <span class="text-gray-900">{{ $animalSeleccionado->sexAni }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Peso:</span>
+                                        <span class="text-gray-900">{{ $animalSeleccionado->pesAni }}</span>
+                                    </div>
+                                    @if($animalSeleccionado->fecNacAni)
+                                        <div>
+                                            <span class="font-medium text-gray-700">Nacimiento:</span>
+                                            <span class="text-gray-900">{{ date('d/m/Y', strtotime($animalSeleccionado->fecNacAni)) }}</span>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <span class="font-medium text-gray-700">Estado:</span>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">
+                                            {{ ucfirst($animalSeleccionado->estAni) }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Estado Reproductivo:</span>
+                                        <span class="text-gray-900">{{ $animalSeleccionado->estReproAni }}</span>
+                                    </div>
                                 </div>
-                                <select 
-                                    wire:model="idIns" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                                >
-                                    <option value="">Seleccionar medicamento/insumo</option>
-                                    @foreach($insumos as $insumo)
-                                        <option value="{{ $insumo->idIns }}">
-                                            {{ $insumo->nomIns }} 
-                                            @if($insumo->marIns) - {{ $insumo->marIns }} @endif
-                                            ({{ $insumo->canIns ?? '0' }} {{ $insumo->uniIns }})
-                                        </option>
-                                    @endforeach
-                                </select>
                             </div>
-                            @error('idIns') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
+                        @endif
                     </div>
-                    
-                    <!-- Información del proveedor seleccionado -->
-                    @if($proveedorSeleccionado)
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-                            <h4 class="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                                <i class="fas fa-info-circle text-blue-600"></i>
-                                Información del Proveedor
-                            </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <span class="font-medium text-gray-700">Nombre:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nomProve }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Tipo:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->tipSumProve ?? 'No especificado' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Contacto:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Teléfono:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
                 </div>
-            </div>
 
-            <!-- Sección 3: Fechas Importantes -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-calendar-alt text-gray-600 text-sm"></i>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Fechas Importantes</h2>
-                    </div>
-                </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Registro <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-tag text-gray-400"></i>
-                                </div>
-                                <select 
-                                    wire:model="tipHisMed" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                    required
-                                >
-                                    <option value="">Seleccionar tipo</option>
-                                    <option value="vacuna">Vacuna</option>
-                                    <option value="tratamiento">Tratamiento</option>
-                                    <option value="control">Control de Peso</option>
-                                </select>
+                <!-- Información del Proveedor -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
                             </div>
-                            @error('tipHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información del Proveedor</h2>
+                                <p class="text-gray-600 text-[10px]">Proveedor y medicamento/insumo</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <!-- Selector de Proveedor -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Procedencia/Proveedor</label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="idProveedor" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('idProveedor') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                    >
+                                        <option value="">Seleccionar proveedor</option>
+                                        @foreach($proveedores as $proveedor)
+                                            <option value="{{ $proveedor->idProve }}">
+                                                {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('idProveedor')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <!-- Selector de Insumo/Medicamento -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Medicamento/Insumo</label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="idIns" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('idIns') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                    >
+                                        <option value="">Seleccionar medicamento/insumo</option>
+                                        @foreach($insumos as $insumo)
+                                            <option value="{{ $insumo->idIns }}">
+                                                {{ $insumo->nomIns }} 
+                                                @if($insumo->marIns) - {{ $insumo->marIns }} @endif
+                                                ({{ $insumo->canIns ?? '0' }} {{ $insumo->uniIns }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('idIns')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha del Procedimiento <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-calendar text-gray-400"></i>
+                        <!-- Información del proveedor seleccionado -->
+                        @if($proveedorSeleccionado)
+                            <div class="bg-blue-50/50 border border-blue-200 rounded-2xl p-2 mt-2">
+                                <h4 class="text-[10px] font-bold text-blue-900 mb-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Información del Proveedor
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
+                                    <div>
+                                        <span class="font-medium text-gray-700">Nombre:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nomProve }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Tipo:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->tipSumProve ?? 'No especificado' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Contacto:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Teléfono:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
+                                    </div>
                                 </div>
-                                <input 
-                                    type="date" 
-                                    wire:model="fecHisMed" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                    required
-                                >
                             </div>
-                            @error('fecHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Responsable <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-user text-gray-400"></i>
-                                </div>
-                                <input 
-                                    type="text" 
-                                    wire:model="responHisMed" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                    required
-                                >
-                            </div>
-                            @error('responHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
 
-            <!-- Sección 4: Estados del Animal -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-heartbeat text-gray-600 text-sm"></i>
+            <!-- Sección 2: Fechas Importantes y Estados del Animal -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <!-- Fechas Importantes -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Fechas Importantes</h2>
+                                <p class="text-gray-600 text-[10px]">Fechas clave del procedimiento</p>
+                            </div>
                         </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Estados del Animal</h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Tipo de Registro <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="tipHisMed" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('tipHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                        <option value="">Seleccionar tipo</option>
+                                        <option value="vacuna">Vacuna</option>
+                                        <option value="tratamiento">Tratamiento</option>
+                                        <option value="control">Control de Peso</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('tipHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Fecha del Procedimiento <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <input 
+                                        type="date" 
+                                        wire:model.live="fecHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('fecHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('fecHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Responsable <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <input 
+                                        type="text" 
+                                        wire:model.live="responHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('responHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('responHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Estado de Salud <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-heart text-gray-400"></i>
-                                </div>
-                                <select 
-                                    wire:model="estRecHisMed" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                    required
-                                >
-                                    <option value="saludable">Saludable</option>
-                                    <option value="en tratamiento">En Tratamiento</option>
-                                    <option value="crónico">Crónico</option>
-                                </select>
+
+                <!-- Estados del Animal -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2M9 19"></path>
+                                </svg>
                             </div>
-                            @error('estRecHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Estados del Animal</h2>
+                                <p class="text-gray-600 text-[10px]">Estado actual del animal</p>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Dosis</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-syringe text-gray-400"></i>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Estado de Salud <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="estRecHisMed" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('estRecHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                        <option value="saludable">Saludable</option>
+                                        <option value="en tratamiento">En Tratamiento</option>
+                                        <option value="crónico">Crónico</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
+                                @error('estRecHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Dosis</label>
+                                <div class="relative group">
+                                    <input 
+                                        type="text" 
+                                        wire:model.live="dosHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('dosHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Ej: 5ml, 2 pastillas, etc."
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('dosHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Duración</label>
+                                <div class="relative group">
+                                    <input 
+                                        type="text" 
+                                        wire:model.live="durHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('durHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Ej: 7 días, 2 semanas, etc."
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('durHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="mt-2">
+                            <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Resultado</label>
+                            <div class="relative group">
                                 <input 
                                     type="text" 
-                                    wire:model="dosHisMed" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                    placeholder="Ej: 5ml, 2 pastillas, etc."
+                                    wire:model.live="resHisMed" 
+                                    class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('resHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                    placeholder="Resultado del tratamiento o procedimiento"
                                 >
+                                <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                             </div>
-                            @error('dosHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Duración</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-clock text-gray-400"></i>
-                                </div>
-                                <input 
-                                    type="text" 
-                                    wire:model="durHisMed" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                    placeholder="Ej: 7 días, 2 semanas, etc."
-                                >
+                            @error('resHisMed')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
-                            @error('durHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-
-                    <!-- Resultado -->
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Resultado</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-check-circle text-gray-400"></i>
-                            </div>
-                            <input 
-                                type="text" 
-                                wire:model="resHisMed" 
-                                class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                placeholder="Resultado del tratamiento o procedimiento"
-                            >
-                        </div>
-                        @error('resHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                     </div>
                 </div>
             </div>
 
-            <!-- Sección 5: Información Adicional -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-sticky-note text-gray-600 text-sm"></i>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Información Adicional</h2>
-                    </div>
+            <!-- Sección 3: Información Médica -->
+<div class="flex flex-col md:flex-row gap-2">
+    <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+        <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+        <div class="p-2">
+            <div class="flex items-center space-x-2 mb-2">
+                <div class="p-1.5 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl shadow-lg">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                    </svg>
                 </div>
-                
-                <div class="p-8">
-                    <p class="text-gray-600 mb-6">Observaciones especiales, características específicas, cuidados requeridos, etc.</p>
-                    
-                    <div class="space-y-6">
-                        <!-- Descripción -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <div class="absolute top-3 left-3">
-                                    <i class="fas fa-align-left text-gray-400"></i>
-                                </div>
-                                <textarea 
-                                    wire:model="desHisMed" 
-                                    rows="4" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
-                                    placeholder="Descripción detallada del procedimiento o tratamiento"
-                                    required
-                                ></textarea>
-                            </div>
-                            @error('desHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        <!-- Tratamiento -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Tratamiento</label>
-                            <div class="relative">
-                                <div class="absolute top-3 left-3">
-                                    <i class="fas fa-prescription text-gray-400"></i>
-                                </div>
-                                <textarea 
-                                    wire:model="traHisMed" 
-                                    rows="4" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none" 
-                                    placeholder="Descripción detallada del tratamiento aplicado"
-                                ></textarea>
-                            </div>
-                            @error('traHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        <!-- Observaciones -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
-                            <div class="relative">
-                                <div class="absolute top-3 left-3">
-                                    <i class="fas fa-eye text-gray-400"></i>
-                                </div>
-                                <textarea 
-                                    wire:model="obsHisMed" 
-                                    rows="3" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"
-                                    placeholder="Escribe aquí cualquier observación importante sobre el animal..."
-                                ></textarea>
-                            </div>
-                            @error('obsHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        <!-- Observaciones Adicionales -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones Adicionales</label>
-                            <div class="relative">
-                                <div class="absolute top-3 left-3">
-                                    <i class="fas fa-clipboard-list text-gray-400"></i>
-                                </div>
-                                <textarea 
-                                    wire:model="obsHisMed2" 
-                                    rows="3" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none" 
-                                    placeholder="Información complementaria o notas adicionales"
-                                ></textarea>
-                            </div>
-                            @error('obsHisMed2') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
+                <div>
+                    <h2 class="text-xs font-bold text-gray-900">Información Médica</h2>
+                    <p class="text-gray-600 text-[10px]">Detalles del padecimiento y tratamiento aplicado</p>
                 </div>
             </div>
 
-            <!-- Botones de acción -->
-            <div class="flex justify-between items-center bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <a href="{{ route('pecuario.salud-peso.index') }}" 
-                   wire:navigate
-                   class="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">
-                    <i class="fas fa-arrow-left text-sm"></i>
-                    Volver
-                </a>
-                <button type="submit" 
-                        class="inline-flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all duration-200 shadow-sm hover:shadow-md">
-                    <i class="fas fa-save text-sm"></i>
-                    Guardar Registro
+            <!-- Tres columnas para los campos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <!-- Columna 1: Padecimiento -->
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                        Padecimiento <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative group">
+                        <textarea 
+                            wire:model.live="desHisMed" 
+                            rows="6" 
+                            class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('desHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                            placeholder="Describa los síntomas, padecimiento o problema de salud del animal..."
+                            required
+                        ></textarea>
+                        <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                    </div>
+                    @error('desHisMed')
+                        <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                            <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <!-- Columna 2: Tratamiento -->
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                        Tratamiento
+                    </label>
+                    <div class="relative group">
+                        <textarea 
+                            wire:model.live="traHisMed" 
+                            rows="6" 
+                            class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('traHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                            placeholder="Describa el tratamiento, procedimiento o medicación aplicada..."
+                        ></textarea>
+                        <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                    </div>
+                    @error('traHisMed')
+                        <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                            <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <!-- Columna 3: Observaciones -->
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                        Observaciones
+                    </label>
+                    <div class="relative group">
+                        <textarea 
+                            wire:model.live="obsHisMed" 
+                            rows="6" 
+                            class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('obsHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                            placeholder="Observaciones, reacciones, evoluciones durante el tratamiento..."
+                        ></textarea>
+                        <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                    </div>
+                    @error('obsHisMed')
+                        <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                            <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+            <!-- Botones -->
+            <div class="flex justify-center space-x-2 pt-2">
+                <button type="button" wire:click="cancelarRegistro"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Cancelar</span>
+                </button>
+                <button type="submit"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Guardar Registro</span>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('notify', (event) => {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: event.type,
+            title: event.message,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            customClass: {
+                popup: 'text-xs'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+    });
+});
+</script>

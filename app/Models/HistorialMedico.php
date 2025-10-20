@@ -13,6 +13,7 @@ class HistorialMedico extends Model
 
     protected $fillable = [
         'idAni', // ¡IMPORTANTE! Agregar idAni al fillable
+        'idProve',
         'fecHisMed',
         'desHisMed',
         'traHisMed', // Tratamiento
@@ -24,7 +25,6 @@ class HistorialMedico extends Model
         'durHisMed', // Duración
         'estRecHisMed', // Estado de recuperación
         'resHisMed', // Resultado
-        'obsHisMed2' // Observaciones adicionales
     ];
 
     protected $dates = ['fecHisMed'];
@@ -52,5 +52,11 @@ class HistorialMedico extends Model
     public function insumo()
     {
         return $this->belongsTo(Insumo::class, 'idIns', 'idIns');
+    }
+
+    // Relación con proveedor
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class, 'idProve', 'idProve');
     }
 }

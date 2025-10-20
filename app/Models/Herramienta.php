@@ -16,6 +16,7 @@ class Herramienta extends Model
     protected $fillable = [
         'nomHer',
         'catHer', 
+        'canHer',
         'stockMinHer',
         'stockMaxHer',
         'idProveHer',
@@ -25,6 +26,7 @@ class Herramienta extends Model
     ];
 
     protected $casts = [
+        'canHer' => 'integer', 
         'stockMinHer' => 'integer',
         'stockMaxHer' => 'integer'
     ];

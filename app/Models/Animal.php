@@ -11,7 +11,6 @@ class Animal extends Model
     
     protected $fillable = [
         'espAni',
-        'nomAni',
         'razAni',
         'sexAni',
         'fecNacAni',
@@ -21,8 +20,17 @@ class Animal extends Model
         'estReproAni',
         'estSaludAni',
         'obsAni',
-        'nitAni',          
-        'fotoAni',         
-        'ubicacionAni'     
+        'nitAni',
+        'ubicacionAni',
+        'proAni'
     ];
+
+    // Convierte cadenas vacías a NULL para campos de fecha
+    protected function casts(): array
+    {
+        return [
+            'fecNacAni' => 'date',
+            'fecComAni' => 'date',
+        ];
+    }
 }

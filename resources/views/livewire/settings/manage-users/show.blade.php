@@ -9,129 +9,246 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Detalles del Usuario')
 
-<div class="container mx-auto px-4 py-4">
-    <!-- Header compacto -->
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h1 class="text-xl font-bold text-gray-800">Detalles del Usuario</h1>
-        <div class="flex flex-wrap gap-2">
+<div class="flex items-center justify-center min-h-screen py-3">
+    <div class="w-full max-w-7xl mx-auto bg-white/80 backdrop-blur-xl shadow rounded-3xl p-3 relative border border-white/20">
+        <!-- Encabezado -->
+        <div class="text-center mb-3">
+            <div class="flex justify-center mb-1">
+                <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-base font-black bg-gradient-to-r from-gray-900 via-gray-800 to-green-800 bg-clip-text text-transparent mb-1">
+                Detalles del Usuario
+            </h1>
+            <p class="text-gray-600 text-xs">Información completa del perfil</p>
+        </div>
+
+        <!-- Botones -->
+        <div class="absolute top-2 right-2 flex space-x-2">
             <a href="{{ route('settings.manage-users.edit', $user->id) }}" wire:navigate
-                class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium py-1.5 px-3 rounded transition duration-200">
-                <i class="fas fa-edit mr-1"></i>Editar
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Editar</span>
             </a>
             <a href="{{ route('settings.manage-users') }}" wire:navigate
-                class="bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1.5 px-3 rounded transition duration-200">
-                <i class="fas fa-arrow-left mr-1"></i>Volver
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Volver</span>
             </a>
         </div>
-    </div>
 
-    <!-- Tarjeta de información compacta -->
-    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <!-- Encabezado compacto -->
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-800">{{ $user->nomUsu }} {{ $user->apeUsu }}</h2>
-            <div class="flex flex-wrap items-center gap-2 mt-1">
-                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                    {{ $user->rol->nomRol ?? 'Sin rol asignado' }}
-                </span>
-                <span class="text-xs text-gray-600">
-                    {{ $user->tipDocUsu }} {{ $user->numDocUsu }}
-                </span>
-            </div>
-        </div>
-
-        <!-- Contenido compacto -->
-        <div class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Información Personal compacta -->
-                <div class="space-y-3">
-                    <h3 class="text-base font-medium text-gray-900 pb-1 border-b border-gray-200">
-                        Información Personal
-                    </h3>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <p class="text-xs text-gray-500">Nombre completo</p>
-                            <p class="text-sm text-gray-900">{{ $user->nomUsu }} {{ $user->apeUsu }}</p>
+        <!-- Tarjeta de información principal -->
+        <div class="border border-gray-300 rounded-3xl overflow-hidden bg-gradient-to-br from-white to-gray-50">
+            <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+            
+            <div class="p-2">
+                <!-- Header del perfil con avatar -->
+                <div class="flex items-start space-x-2 mb-2 pb-2 border-b border-gray-200">
+                    <div class="relative">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg flex items-center justify-center">
+                            <span class="text-white text-lg font-bold">
+                                {{ strtoupper(substr($user->nomUsu, 0, 1)) }}{{ strtoupper(substr($user->apeUsu, 0, 1)) }}
+                            </span>
                         </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Documento</p>
-                            <p class="text-sm text-gray-900">{{ $user->tipDocUsu }} {{ $user->numDocUsu }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Nacimiento</p>
-                            <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($user->fecNacUsu)->format('d/m/Y') }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Sexo</p>
-                            <p class="text-sm text-gray-900">{{ $user->sexUsu }}</p>
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h2 class="text-xs font-bold text-gray-900 mb-1">{{ $user->nomUsu }} {{ $user->apeUsu }}</h2>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-sm">
+                                <svg class="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                </svg>
+                                {{ $user->rol->nomRol ?? 'Sin rol asignado' }}
+                            </span>
+                            <span class="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300">
+                                <svg class="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path>
+                                </svg>
+                                {{ $user->tipDocUsu }} {{ $user->numDocUsu }}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Información de Contacto compacta -->
-                <div class="space-y-3">
-                    <h3 class="text-base font-medium text-gray-900 pb-1 border-b border-gray-200">
-                        Información de Contacto
-                    </h3>
+                <!-- Grid de información -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <!-- Información Personal -->
+                    <div class="bg-white rounded-2xl p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xs font-bold text-gray-900">Información Personal</h3>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between py-1 border-b border-gray-100">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                    <span class="text-[10px] text-gray-500 font-medium">Nombre completo</span>
+                                </div>
+                                <p class="text-xs text-gray-900 font-semibold">{{ $user->nomUsu }} {{ $user->apeUsu }}</p>
+                            </div>
+                            <div class="flex items-center justify-between py-1 border-b border-gray-100">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <span class="text-[10px] text-gray-500 font-medium">Documento</span>
+                                </div>
+                                <p class="text-xs text-gray-900 font-semibold">{{ $user->tipDocUsu }} {{ $user->numDocUsu }}</p>
+                            </div>
+                            <div class="flex items-center justify-between py-1 border-b border-gray-100">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="text-[10px] text-gray-500 font-medium">Fecha de nacimiento</span>
+                                </div>
+                                <p class="text-xs text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($user->fecNacUsu)->format('d/m/Y') }}</p>
+                            </div>
+                            <div class="flex items-center justify-between py-1">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                    </svg>
+                                    <span class="text-[10px] text-gray-500 font-medium">Sexo</span>
+                                </div>
+                                <p class="text-xs text-gray-900 font-semibold">{{ $user->sexUsu }}</p>
+                            </div>
+                        </div>
+                    </div>
 
-                    <div class="space-y-2">
-                        <div>
-                            <p class="text-xs text-gray-500">Email</p>
-                            <p class="text-sm">
-                                <a href="mailto:{{ $user->email }}" class="text-blue-600 hover:text-blue-800 truncate block">
+                    <!-- Información de Contacto -->
+                    <div class="bg-white rounded-2xl p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xs font-bold text-gray-900">Información de Contacto</h3>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="py-1 border-b border-gray-100">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                                    </svg>
+                                    <span class="text-[10px] text-gray-500 font-medium">Correo electrónico</span>
+                                </div>
+                                <a href="mailto:{{ $user->email }}" class="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors duration-200 block break-all">
                                     {{ $user->email }}
                                 </a>
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Teléfono</p>
-                            <p class="text-sm">
+                            </div>
+                            <div class="py-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                    </svg>
+                                    <span class="text-[10px] text-gray-500 font-medium">Teléfono</span>
+                                </div>
                                 @if($user->contacto && $user->contacto->celCon)
-                                <a href="tel:{{ $user->contacto->celCon }}" class="text-blue-600 hover:text-blue-800">
+                                <a href="tel:{{ $user->contacto->celCon }}" class="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors duration-200">
                                     {{ $user->contacto->celCon }}
                                 </a>
                                 @else
-                                <span class="text-gray-500">No especificado</span>
+                                <div class="inline-flex items-center text-xs text-gray-400 italic">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                    </svg>
+                                    No especificado
+                                </div>
                                 @endif
-                            </p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Dirección compacta -->
-            @if($user->direccion)
-            <div class="mt-4 pt-4 border-t border-gray-200">
-                <h3 class="text-base font-medium text-gray-900 mb-2">Dirección</h3>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div>
-                        <p class="text-xs text-gray-500">Calle</p>
-                        <p class="text-sm text-gray-700">{{ $user->direccion->calDir }}</p>
+                <!-- Dirección -->
+                @if($user->direccion)
+                <div class="mt-2 bg-white rounded-2xl p-2 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-md">
+                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xs font-bold text-gray-900">Dirección de Residencia</h3>
                     </div>
-                    <div>
-                        <p class="text-xs text-gray-500">Barrio</p>
-                        <p class="text-sm text-gray-700">{{ $user->direccion->barDir }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">Ciudad</p>
-                        <p class="text-sm text-gray-700">{{ $user->direccion->ciuDir }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">Departamento</p>
-                        <p class="text-sm text-gray-700">{{ $user->direccion->depDir }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">Código Postal</p>
-                        <p class="text-sm text-gray-700">{{ $user->direccion->codPosDir }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">País</p>
-                        <p class="text-sm text-gray-700">{{ $user->direccion->paiDir }}</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div class="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                            <div class="flex items-center space-x-1.5 mb-1">
+                                <svg class="w-2.5 h-2.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                </svg>
+                                <p class="text-[10px] text-gray-500 font-medium">Calle</p>
+                            </div>
+                            <p class="text-xs text-gray-900 font-semibold">{{ $user->direccion->calDir }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                            <div class="flex items-center space-x-1.5 mb-1">
+                                <svg class="w-2.5 h-2.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                <p class="text-[10px] text-gray-500 font-medium">Barrio</p>
+                            </div>
+                            <p class="text-xs text-gray-900 font-semibold">{{ $user->direccion->barDir }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                            <div class="flex items-center space-x-1.5 mb-1">
+                                <svg class="w-2.5 h-2.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                <p class="text-[10px] text-gray-500 font-medium">Ciudad</p>
+                            </div>
+                            <p class="text-xs text-gray-900 font-semibold">{{ $user->direccion->ciuDir }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                            <div class="flex items-center space-x-1.5 mb-1">
+                                <svg class="w-2.5 h-2.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                </svg>
+                                <p class="text-[10px] text-gray-500 font-medium">Departamento</p>
+                            </div>
+                            <p class="text-xs text-gray-900 font-semibold">{{ $user->direccion->depDir }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                            <div class="flex items-center space-x-1.5 mb-1">
+                                <svg class="w-2.5 h-2.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-[10px] text-gray-500 font-medium">Código Postal</p>
+                            </div>
+                            <p class="text-xs text-gray-900 font-semibold">{{ $user->direccion->codPosDir }}</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-2 border border-gray-100">
+                            <div class="flex items-center space-x-1.5 mb-1">
+                                <svg class="w-2.5 h-2.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p class="text-[10px] text-gray-500 font-medium">País</p>
+                            </div>
+                            <p class="text-xs text-gray-900 font-semibold">{{ $user->direccion->paiDir }}</p>
+                        </div>
                     </div>
                 </div>
+                @endif
             </div>
-            @endif
         </div>
     </div>
 </div>

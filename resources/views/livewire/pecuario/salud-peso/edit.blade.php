@@ -1,6 +1,6 @@
 <?php
-use App\Models\HistorialMedico;
 use App\Models\Animal;
+use App\Models\HistorialMedico;
 use App\Models\Proveedor;
 use App\Models\Insumo;
 use Livewire\Attributes\Layout;
@@ -8,81 +8,223 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.auth')] class extends Component {
     public HistorialMedico $historial;
-    public Animal $animal;
+    
+    // Propiedades para los selectores
+    public $especies;
+    public $razas = [];
+    public $animalesFiltrados = [];
     public $proveedores;
     public $insumos;
-    public $proveedorSeleccionado;
-    public $insumoSeleccionado;
     
+    // Propiedades para las selecciones
+    public $especieSeleccionada = null;
+    public $razaSeleccionada = null;
+    public $idAniHis = null;
+    public $idProveedor = null;
+    public $idIns = null;
+    
+    // Propiedades para mostrar información
+    public $animalSeleccionado = null;
+    public $proveedorSeleccionado = null;
+    public $insumoSeleccionado = null;
+    
+    // Propiedades del formulario
+    public $tipHisMed;
     public $fecHisMed;
     public $desHisMed;
+    public $responHisMed;
+    public $obsHisMed;
     public $traHisMed;
-    public $idIns;
     public $dosHisMed;
     public $durHisMed;
-    public $responHisMed;
-    public $estRecHisMed;
-    public $obsHisMed2;
+    public $estRecHisMed = 'en tratamiento';
     public $resHisMed;
-    public $obsHisMed;
-    public $idProveedor;
 
-    public function mount(HistorialMedico $historial)
+    public function mount(HistorialMedico $historial): void
     {
-        $this->historial = $historial;
-        $this->animal = Animal::findOrFail($historial->idAni);
+        // Cargar el historial con sus relaciones
+        $this->historial = $historial->load(['animal', 'proveedor', 'insumo']);
+        
+        // Cargar datos iniciales
+        $this->especies = Animal::select('espAni')
+                              ->where('estAni', 'vivo')
+                              ->distinct()
+                              ->orderBy('espAni')
+                              ->get()
+                              ->pluck('espAni');
+                              
         $this->proveedores = Proveedor::orderBy('nomProve')->get();
-        $this->insumos = Insumo::orderBy('nomIns')->get();
         
-        // Asignar todos los campos según la estructura de la tabla
-        $this->fecHisMed = $historial->fecHisMed;
-        $this->desHisMed = $historial->desHisMed;
-        $this->traHisMed = $historial->traHisMed;
-        $this->idIns = $historial->idIns;
-        $this->dosHisMed = $historial->dosHisMed;
-        $this->durHisMed = $historial->durHisMed;
-        $this->responHisMed = $historial->responHisMed;
-        $this->estRecHisMed = $historial->estRecHisMed;
-        $this->obsHisMed2 = $historial->obsHisMed2;
-        $this->resHisMed = $historial->resHisMed;
-        $this->obsHisMed = $historial->obsHisMed;
-        $this->idProveedor = $historial->idProveedor;
-        
-        if ($this->idProveedor) {
-            $this->proveedorSeleccionado = Proveedor::find($this->idProveedor);
+        // Cargar insumos/medicamentos disponibles
+        $this->insumos = Insumo::where('estIns', 'disponible')
+                              ->orderBy('nomIns')
+                              ->get();
+
+        // Cargar datos del historial médico
+        $this->fill(
+            $historial->only([
+                'tipHisMed', 'fecHisMed', 'desHisMed', 'responHisMed', 
+                'obsHisMed', 'traHisMed', 'dosHisMed', 'durHisMed', 
+                'estRecHisMed', 'resHisMed', 'idIns'
+            ])
+        );
+
+        // Cargar datos del animal relacionado
+        if ($historial->animal) {
+            $this->idAniHis = $historial->idAni;
+            $this->animalSeleccionado = $historial->animal;
+            $this->especieSeleccionada = $historial->animal->espAni;
+            
+            // Cargar razas para la especie
+            $this->razas = Animal::where('espAni', $this->especieSeleccionada)
+                               ->where('estAni', 'vivo')
+                               ->select('razAni')
+                               ->distinct()
+                               ->orderBy('razAni')
+                               ->get()
+                               ->pluck('razAni')
+                               ->filter()
+                               ->toArray();
+            
+            $this->razaSeleccionada = $historial->animal->razAni;
+            
+            // Cargar animales filtrados
+            $this->animalesFiltrados = Animal::where('estAni', 'vivo')
+                                          ->where('espAni', $this->especieSeleccionada)
+                                          ->where('razAni', $this->razaSeleccionada)
+                                          ->orderBy('nitAni')
+                                          ->get();
         }
+
+        // Cargar proveedor si existe - CORREGIDO
+        if ($historial->idProve) {
+            $this->idProveedor = $historial->idProve;
+            $this->proveedorSeleccionado = $historial->proveedor; // Usar la relación cargada
+        }
+
+        // Cargar insumo si existe - AGREGADO
+        if ($historial->idIns) {
+            $this->idIns = $historial->idIns;
+            $this->insumoSeleccionado = $historial->insumo; // Usar la relación cargada
+        }
+    }
+
+    public function updatedEspecieSeleccionada($value)
+    {
+        // Resetear selecciones dependientes
+        $this->reset(['razaSeleccionada', 'idAniHis', 'animalSeleccionado', 'animalesFiltrados']);
         
-        if ($this->idIns) {
-            $this->insumoSeleccionado = Insumo::find($this->idIns);
+        // Cargar razas para la especie seleccionada
+        if ($value) {
+            $this->razas = Animal::where('espAni', $value)
+                               ->where('estAni', 'vivo')
+                               ->select('razAni')
+                               ->distinct()
+                               ->orderBy('razAni')
+                               ->get()
+                               ->pluck('razAni')
+                               ->filter()
+                               ->toArray();
+        } else {
+            $this->razas = [];
+        }
+    }
+
+    public function updatedRazaSeleccionada($value)
+    {
+        // Resetear selecciones dependientes
+        $this->reset(['idAniHis', 'animalSeleccionado']);
+        
+        // Cargar animales para la especie y raza seleccionadas
+        if ($value && $this->especieSeleccionada) {
+            $this->animalesFiltrados = Animal::where('estAni', 'vivo')
+                                          ->where('espAni', $this->especieSeleccionada)
+                                          ->where('razAni', $value)
+                                          ->orderBy('nitAni')
+                                          ->get();
+        } else {
+            $this->animalesFiltrados = [];
+        }
+    }
+
+    public function updatedIdAniHis($value)
+    {
+        if ($value) {
+            $this->animalSeleccionado = Animal::find($value);
+        } else {
+            $this->animalSeleccionado = null;
+        }
+    }
+
+    public function updatedIdProveedor($value)
+    {
+        if ($value) {
+            $this->proveedorSeleccionado = Proveedor::find($value);
+        } else {
+            $this->proveedorSeleccionado = null;
+        }
+    }
+
+    public function updatedIdIns($value)
+    {
+        if ($value) {
+            $this->insumoSeleccionado = Insumo::find($value);
+        } else {
+            $this->insumoSeleccionado = null;
         }
     }
 
     public function rules()
     {
         return [
-            'fecHisMed' => 'required|date',
-            'desHisMed' => 'required|string|max:500',
-            'traHisMed' => 'nullable|string|max:500',
+            'idAniHis' => 'required|exists:animales,idAni',
+            'idProveedor' => 'nullable|exists:proveedores,idProve',
             'idIns' => 'nullable|exists:insumos,idIns',
+            'tipHisMed' => 'required|in:vacuna,tratamiento,control',
+            'fecHisMed' => 'required|date',
+            'desHisMed' => 'required|string|max:65535',
+            'traHisMed' => 'nullable|string|max:65535',
             'dosHisMed' => 'nullable|string|max:50',
             'durHisMed' => 'nullable|string|max:50',
             'responHisMed' => 'required|string|max:100',
-            'estRecHisMed' => 'nullable|in:saludable,en tratamiento,crónico',
-            'obsHisMed2' => 'nullable|string|max:500',
+            'estRecHisMed' => 'required|in:saludable,en tratamiento,crónico',
             'resHisMed' => 'nullable|string|max:100',
-            'obsHisMed' => 'nullable|string|max:500',
-            'idProveedor' => 'nullable|exists:proveedores,idProve'
+            'obsHisMed' => 'nullable|string|max:65535'
         ];
     }
 
-    public function updatedIdProveedor($value)
+    public function resetForm(): void
     {
-        $this->proveedorSeleccionado = $value ? Proveedor::find($value) : null;
-    }
-
-    public function updatedIdIns($value)
-    {
-        $this->insumoSeleccionado = $value ? Insumo::find($value) : null;
+        $this->fill(
+            $this->historial->only([
+                'tipHisMed', 'fecHisMed', 'desHisMed', 'responHisMed', 
+                'obsHisMed', 'traHisMed', 'dosHisMed', 'durHisMed', 
+                'estRecHisMed', 'resHisMed', 'idIns'
+            ])
+        );
+        
+        // Restaurar selecciones de animal
+        if ($this->historial->animal) {
+            $this->idAniHis = $this->historial->idAni;
+            $this->animalSeleccionado = $this->historial->animal;
+            $this->especieSeleccionada = $this->historial->animal->espAni;
+            $this->razaSeleccionada = $this->historial->animal->razAni;
+        }
+        
+        // Restaurar proveedor - CORREGIDO
+        if ($this->historial->idProve) {
+            $this->idProveedor = $this->historial->idProve;
+            $this->proveedorSeleccionado = $this->historial->proveedor; // Usar la relación cargada
+        }
+        
+        // Restaurar insumo - AGREGADO
+        if ($this->historial->idIns) {
+            $this->idIns = $this->historial->idIns;
+            $this->insumoSeleccionado = $this->historial->insumo;
+        }
+        
+        $this->resetErrorBag();
+        $this->dispatch('actualizacion-cancelada');
     }
 
     public function update()
@@ -90,15 +232,43 @@ new #[Layout('layouts.auth')] class extends Component {
         $validated = $this->validate();
         
         try {
-            $this->historial->update($validated);
+            // Preparar los datos para actualizar el registro
+            $data = [
+                'idAni' => $this->idAniHis,
+                'fecHisMed' => $this->fecHisMed,
+                'desHisMed' => $this->desHisMed,
+                'traHisMed' => $this->traHisMed,
+                'tipHisMed' => $this->tipHisMed,
+                'responHisMed' => $this->responHisMed,
+                'obsHisMed' => $this->obsHisMed,
+                'idIns' => $this->idIns,
+                'dosHisMed' => $this->dosHisMed,
+                'durHisMed' => $this->durHisMed,
+                'estRecHisMed' => $this->estRecHisMed,
+                'resHisMed' => $this->resHisMed,
+                'idProve' => $this->idProveedor,
+            ];
+
+            // Filtrar valores nulos/vacíos para campos opcionales pero mantener campos requeridos
+            $filteredData = array_filter($data, function($value, $key) {
+                if (in_array($key, ['idAni', 'tipHisMed', 'fecHisMed', 'desHisMed', 'responHisMed', 'estRecHisMed'])) {
+                    return true;
+                }
+                return $value !== null && $value !== '';
+            }, ARRAY_FILTER_USE_BOTH);
+
+            $this->historial->update($filteredData);
             
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Registro médico actualizado exitosamente'
             ]);
             
-            return redirect()->route('pecuario.salud-peso.show', $this->historial->idHisMed);
+            $this->dispatch('actualizacion-exitosa');
+            
         } catch (\Exception $e) {
+            \Log::error('Error actualizando historial médico: ' . $e->getMessage());
+            
             $this->dispatch('notify', [
                 'type' => 'error',
                 'message' => 'Error al actualizar el registro: ' . $e->getMessage()
@@ -109,383 +279,686 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Editar Registro Médico')
 
-<div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-6xl mx-auto px-4">
-        <!-- Header -->
-        <div class="mb-8">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-edit text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Editar Registro Médico</h1>
-                        <p class="text-gray-600">Modifique la información del registro médico</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-600 text-white">
-                        <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
-                        Editando registro
-                    </span>
-                </div>
-            </div>
+<div class="flex items-center justify-center min-h-screen py-3">
+    <div class="w-full max-w-7xl mx-auto bg-white/80 backdrop-blur-xl shadow rounded-3xl p-3 relative border border-white/20">
+        <!-- Botón Volver -->
+        <div class="absolute top-2 right-2">
+            <a href="{{ route('pecuario.salud-peso.index') }}" wire:navigate
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Volver</span>
+            </a>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-paw text-gray-600 text-sm"></i>
+        <!-- Encabezado -->
+        <div class="text-center mb-3"
+             x-data="{ showSuccess: false, showCancel: false }"
+             x-on:actualizacion-exitosa.window="showSuccess = true; showCancel = false; setTimeout(() => showSuccess = false, 3000)"
+             x-on:actualizacion-cancelada.window="showCancel = true; showSuccess = false; setTimeout(() => showCancel = false, 3000)">
+            <div class="flex justify-center mb-1">
+                <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <div class="w-4 h-4 text-white flex items-center justify-center">
+                        <i class="fas fa-heartbeat text-base"></i>
                     </div>
-                    <h2 class="text-lg font-semibold text-gray-900">Información del Animal</h2>
                 </div>
             </div>
+            <h1 class="text-base font-black bg-gradient-to-r from-gray-900 via-gray-800 to-green-800 bg-clip-text text-transparent mb-1">
+                Editar Registro Médico
+            </h1>
             
-            <div class="p-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">ID del Animal</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-hashtag text-gray-400"></i>
-                            </div>
-                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
-                                   value="{{ $animal->idAni }}" readonly>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Animal</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-tag text-gray-400"></i>
-                            </div>
-                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
-                                   value="{{ $animal->ideAni ?? 'Sin nombre' }}" readonly>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Especie</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-dove text-gray-400"></i>
-                            </div>
-                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
-                                   value="{{ $animal->espAni }}" readonly>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Raza</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-paw text-gray-400"></i>
-                            </div>
-                            <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
-                                   value="{{ $animal->razAni ?? 'No especificada' }}" readonly>
-                        </div>
-                    </div>
+            <template x-if="showSuccess">
+                <div class="rounded bg-green-100 px-2 py-1 text-green-800 border border-green-400 text-xs mb-1 font-semibold">
+                    ¡Registro médico actualizado exitosamente!
                 </div>
+            </template>
 
-                @if($historial->tipHisMed == 'control')
-                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-weight text-green-600"></i>
-                    </div>
-                    <div>
-                        <p class="text-green-800 font-medium">Peso actual del animal: <strong>{{ $animal->pesAni }} kg</strong></p>
-                    </div>
+            <template x-if="showCancel">
+                <div class="rounded bg-yellow-100 px-2 py-1 text-yellow-800 border border-yellow-400 text-xs mb-1 font-semibold">
+                    Formulario restaurado. Puede editar nuevamente.
                 </div>
-                @endif
-            </div>
+            </template>
+
+            <template x-if="!showSuccess && !showCancel">
+                <p class="text-gray-600 text-xs">Actualice los datos del registro médico</p>
+            </template>
         </div>
 
-        <form wire:submit="update" class="space-y-8 mt-8">
-            <!-- Sección: Información del Registro -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-file-medical text-gray-600 text-sm"></i>
+        <form wire:submit.prevent="update" class="space-y-2">
+            <!-- Sección 1: Selección de Animal e Información del Proveedor -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <!-- Selección de Animal -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Seleccionar Animal</h2>
+                                <p class="text-gray-600 text-[10px]">Datos principales del animal</p>
+                            </div>
                         </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Información del Registro</h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <!-- Selector de Especie -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Especie <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="especieSeleccionada" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('especieSeleccionada') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                        <option value="">Seleccionar especie</option>
+                                        @foreach($especies as $especie)
+                                            <option value="{{ $especie }}">{{ $especie }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('especieSeleccionada')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            
+                            <!-- Selector de Raza -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Raza <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="razaSeleccionada" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs disabled:bg-gray-100 disabled:cursor-not-allowed @error('razaSeleccionada') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        @if(!$especieSeleccionada) disabled @endif
+                                        required
+                                    >
+                                        <option value="">Seleccionar raza</option>
+                                        @foreach($razas as $raza)
+                                            <option value="{{ $raza }}">{{ $raza }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('razaSeleccionada')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            
+                            <!-- Selector de Animal -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Animal <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="idAniHis" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs disabled:bg-gray-100 disabled:cursor-not-allowed @error('idAniHis') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        @if(!$razaSeleccionada) disabled @endif
+                                        required
+                                    >
+                                        <option value="">Seleccionar animal</option>
+                                        @foreach($animalesFiltrados as $animal)
+                                            <option value="{{ $animal->idAni }}">
+                                                @if($animal->nitAni)
+                                                    {{ $animal->nitAni }}
+                                                @else
+                                                    Animal #{{ $animal->idAni }}
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('idAniHis')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Información del animal seleccionado -->
+                        @if($animalSeleccionado)
+                            <div class="bg-green-50/50 border border-green-200 rounded-2xl p-2 mt-2">
+                                <h4 class="text-[10px] font-bold text-green-900 mb-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Información del Animal Seleccionado
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 text-[10px]">
+                                    <div>
+                                        <span class="font-medium text-gray-700">ID:</span>
+                                        <span class="text-gray-900 ml-1">{{ $animalSeleccionado->idAni }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Nombre:</span>
+                                        <span class="text-gray-900 ml-1">{{ $animalSeleccionado->nitAni ?? 'Sin nombre' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Especie:</span>
+                                        <span class="text-gray-900 ml-1">{{ $animalSeleccionado->espAni }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Raza:</span>
+                                        <span class="text-gray-900 ml-1">{{ $animalSeleccionado->razAni ?? 'No especificada' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Sexo:</span>
+                                        <span class="text-gray-900 ml-1">{{ $animalSeleccionado->sexAni }}</span>
+                                    </div>
+                                    @if($animalSeleccionado->fecNacAni)
+                                        <div>
+                                            <span class="font-medium text-gray-700">Nacimiento:</span>
+                                            <span class="text-gray-900 ml-1">{{ date('d/m/Y', strtotime($animalSeleccionado->fecNacAni)) }}</span>
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <span class="font-medium text-gray-700">Estado:</span>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 ml-1">
+                                            {{ ucfirst($animalSeleccionado->estAni) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Registro</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-tag text-gray-400"></i>
+
+                <!-- Información del Proveedor -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información del Proveedor</h2>
+                                <p class="text-gray-600 text-[10px]">Proveedor y medicamento/insumo</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <!-- Selector de Proveedor -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Procedencia/Proveedor</label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="idProveedor" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('idProveedor') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                    >
+                                        <option value="">Seleccionar proveedor</option>
+                                        @foreach($proveedores as $proveedor)
+                                            <option value="{{ $proveedor->idProve }}">
+                                                {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                                <input type="text" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" 
-                                       value="{{ ucfirst($historial->tipHisMed) }}" readonly>
+                                @error('idProveedor')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <!-- Selector de Insumo/Medicamento -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Medicamento/Insumo</label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="idIns" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('idIns') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                    >
+                                        <option value="">Seleccionar medicamento/insumo</option>
+                                        @foreach($insumos as $insumo)
+                                            <option value="{{ $insumo->idIns }}">
+                                                {{ $insumo->nomIns }} 
+                                                @if($insumo->marIns) - {{ $insumo->marIns }} @endif
+                                                ({{ $insumo->canIns ?? '0' }} {{ $insumo->uniIns }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('idIns')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-calendar text-gray-400"></i>
+                        <!-- Información del proveedor seleccionado -->
+                        @if($proveedorSeleccionado)
+                            <div class="bg-blue-50/50 border border-blue-200 rounded-2xl p-2 mt-2">
+                                <h4 class="text-[10px] font-bold text-blue-900 mb-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Información del Proveedor
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
+                                    <div>
+                                        <span class="font-medium text-gray-700">Nombre:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nomProve }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Tipo:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->tipSumProve ?? 'No especificado' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Contacto:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Teléfono:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
+                                    </div>
                                 </div>
-                                <input type="date" wire:model="fecHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" required>
                             </div>
-                            @error('fecHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Descripción <span class="text-red-500">*</span></label>
-                        <div class="relative">
-                            <div class="absolute top-3 left-3">
-                                <i class="fas fa-align-left text-gray-400"></i>
-                            </div>
-                            <textarea wire:model="desHisMed" rows="3" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none" required></textarea>
-                        </div>
-                        @error('desHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Responsable <span class="text-red-500">*</span></label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-user text-gray-400"></i>
-                            </div>
-                            <input type="text" wire:model="responHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" required>
-                        </div>
-                        @error('responHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                        @endif
                     </div>
                 </div>
             </div>
 
-            <!-- Sección: Información del Proveedor -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-truck text-gray-600 text-sm"></i>
+            <!-- Sección 2: Fechas Importantes y Estados del Animal -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <!-- Fechas Importantes -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Fechas Importantes</h2>
+                                <p class="text-gray-600 text-[10px]">Fechas clave del procedimiento</p>
+                            </div>
                         </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Información del Proveedor</h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Tipo de Registro <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="tipHisMed" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('tipHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                        <option value="">Seleccionar tipo</option>
+                                        <option value="vacuna">Vacuna</option>
+                                        <option value="tratamiento">Tratamiento</option>
+                                        <option value="control">Control de Peso</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('tipHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Fecha del Procedimiento <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <input 
+                                        type="date" 
+                                        wire:model.live="fecHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('fecHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('fecHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Responsable <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <input 
+                                        type="text" 
+                                        wire:model.live="responHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('responHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('responHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Proveedor</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-user-tie text-gray-400"></i>
+
+                <!-- Estados del Animal -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2M9 19"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Estados del Animal</h2>
+                                <p class="text-gray-600 text-[10px]">Estado actual del animal</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Estado de Salud <span class="text-red-500">*</span></label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="estRecHisMed" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('estRecHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        required
+                                    >
+                                        <option value="saludable">Saludable</option>
+                                        <option value="en tratamiento">En Tratamiento</option>
+                                        <option value="crónico">Crónico</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                                <select 
-                                    wire:model="idProveedor" 
-                                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                @error('estRecHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Dosis</label>
+                                <div class="relative group">
+                                    <input 
+                                        type="text" 
+                                        wire:model.live="dosHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('dosHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Ej: 5ml, 2 pastillas, etc."
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('dosHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Duración</label>
+                                <div class="relative group">
+                                    <input 
+                                        type="text" 
+                                        wire:model.live="durHisMed" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('durHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Ej: 7 días, 2 semanas, etc."
+                                    >
+                                    <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('durHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="mt-2">
+                            <label class="block text-[10px] font-bold text-gray-700 mb-0.5">Resultado</label>
+                            <div class="relative group">
+                                <input 
+                                    type="text" 
+                                    wire:model.live="resHisMed" 
+                                    class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('resHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                    placeholder="Resultado del tratamiento o procedimiento"
                                 >
-                                    <option value="">Seleccionar proveedor</option>
-                                    @foreach($proveedores as $proveedor)
-                                        <option value="{{ $proveedor->idProve }}">
-                                            {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="absolute inset-0 bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    @if($proveedorSeleccionado)
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-                            <h4 class="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                                <i class="fas fa-info-circle text-blue-600"></i>
-                                Información del Proveedor
-                            </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <span class="font-medium text-gray-700">NIT:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nitProve ?? 'No especificado' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Contacto:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Teléfono:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Dirección:</span>
-                                    <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->dirProve ?? 'No especificado' }}</span>
-                                </div>
+                            @error('resHisMed')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Sección: Información Específica según Tipo -->
-            @if($historial->tipHisMed == 'tratamiento')
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-pills text-gray-600 text-sm"></i>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Datos del Tratamiento</h2>
-                    </div>
-                </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Medicamento/Insumo</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-pills text-gray-400"></i>
-                                </div>
-                                <select wire:model="idIns" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors">
-                                    <option value="">Seleccionar insumo</option>
-                                    @foreach($insumos as $insumo)
-                                        <option value="{{ $insumo->idIns }}">
-                                            {{ $insumo->nomIns }} ({{ $insumo->preIns ?? 'Sin precio' }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Dosis</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-syringe text-gray-400"></i>
-                                </div>
-                                <input type="text" wire:model="dosHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                       placeholder="Ej: 5 ml, 2 tabletas">
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Duración</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-clock text-gray-400"></i>
-                                </div>
-                                <input type="text" wire:model="durHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                       placeholder="Ej: 7 días, 2 semanas">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Tratamiento aplicado</label>
-                        <div class="relative">
-                            <div class="absolute top-3 left-3">
-                                <i class="fas fa-prescription text-gray-400"></i>
-                            </div>
-                            <textarea wire:model="traHisMed" rows="2" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"></textarea>
-                        </div>
                     </div>
                 </div>
             </div>
-            @endif
 
-            @if($historial->tipHisMed == 'control')
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-weight text-gray-600 text-sm"></i>
+            <!-- Sección 3: Información Médica -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información Médica</h2>
+                                <p class="text-gray-600 text-[10px]">Detalles del padecimiento y tratamiento aplicado</p>
+                            </div>
                         </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Control de Peso/Salud</h2>
-                    </div>
-                </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Resultado</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-check-circle text-gray-400"></i>
+
+                        <!-- Tres columnas para los campos -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <!-- Columna 1: Padecimiento -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Padecimiento <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <textarea 
+                                        wire:model.live="desHisMed" 
+                                        rows="6" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('desHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Describa los síntomas, padecimiento o problema de salud del animal..."
+                                        required
+                                    ></textarea>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                                <input type="text" wire:model="resHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" 
-                                       placeholder="Ej: Peso normal, Fiebre detectada">
+                                @error('desHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <!-- Columna 2: Tratamiento -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Tratamiento
+                                </label>
+                                <div class="relative group">
+                                    <textarea 
+                                        wire:model.live="traHisMed" 
+                                        rows="6" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('traHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Describa el tratamiento, procedimiento o medicación aplicada..."
+                                    ></textarea>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('traHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+
+                            <!-- Columna 3: Observaciones -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Observaciones
+                                </label>
+                                <div class="relative group">
+                                    <textarea 
+                                        wire:model.live="obsHisMed" 
+                                        rows="6" 
+                                        class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('obsHisMed') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                        placeholder="Observaciones, reacciones, evoluciones durante el tratamiento..."
+                                    ></textarea>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('obsHisMed')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            @endif
 
-            <!-- Sección: Información Adicional -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-sticky-note text-gray-600 text-sm"></i>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">Información Adicional</h2>
-                    </div>
-                </div>
-                
-                <div class="p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Estado de Recuperación</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-heart text-gray-400"></i>
-                                </div>
-                                <select wire:model="estRecHisMed" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors">
-                                    <option value="saludable">Saludable</option>
-                                    <option value="en tratamiento">En tratamiento</option>
-                                    <option value="crónico">Crónico</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
-                        <div class="relative">
-                            <div class="absolute top-3 left-3">
-                                <i class="fas fa-eye text-gray-400"></i>
-                            </div>
-                            <textarea wire:model="obsHisMed" rows="2" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"></textarea>
-                        </div>
-                        @error('obsHisMed') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones Adicionales</label>
-                        <div class="relative">
-                            <div class="absolute top-3 left-3">
-                                <i class="fas fa-clipboard-list text-gray-400"></i>
-                            </div>
-                            <textarea wire:model="obsHisMed2" rows="2" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors resize-none"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Botones de acción -->
-            <div class="flex justify-between items-center bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <a href="{{ route('pecuario.salud-peso.index') }}" 
-                   wire:navigate
-                   class="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">
-                    <i class="fas fa-arrow-left text-sm"></i>
-                    Volver
-                </a>
-                <button type="submit" 
-                        class="inline-flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 focus:ring-4 focus:ring-green-200 transition-all duration-200 shadow-sm hover:shadow-md">
-                    <i class="fas fa-save text-sm"></i>
-                    Actualizar Registro
+            <!-- Botones -->
+            <div class="flex justify-center space-x-2 pt-2">
+                <button type="button" wire:click="resetForm"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Cancelar</span>
+                </button>
+                <button type="submit"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Actualizar Registro</span>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('notify', (event) => {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: event.type,
+            title: event.message,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            customClass: {
+                popup: 'text-xs'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+    });
+});
+</script>

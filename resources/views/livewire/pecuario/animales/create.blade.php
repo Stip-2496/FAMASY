@@ -1,5 +1,6 @@
 <?php
 use App\Models\Animal;
+use App\Models\Proveedor;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
@@ -7,8 +8,13 @@ use Livewire\WithFileUploads;
 new #[Layout('layouts.auth')] class extends Component {
     use WithFileUploads;
     
+    // Propiedades para el selector de proveedor
+    public $proveedores;
+    public $idProveedor = null;
+    public $proveedorSeleccionado = null;
+    
+    // Propiedades del formulario
     public $espAni = '';
-    public $ideAni = '';
     public $razAni = '';
     public $sexAni = 'Hembra';
     public $pesAni = '';
@@ -19,15 +25,65 @@ new #[Layout('layouts.auth')] class extends Component {
     public $estSaludAni = 'saludable';
     public $obsAni = '';
     public $nitAni = '';
-    public $fotoAni;
     public $ubicacionAni = '';
     public $proAni = '';
+
+    public function mount()
+    {
+        // Cargar proveedores disponibles
+        $this->proveedores = Proveedor::orderBy('nomProve')->get();
+    }
+
+    public function updatedIdProveedor($value)
+    {
+        if ($value) {
+            $this->proveedorSeleccionado = Proveedor::find($value);
+            // Actualizar automáticamente el campo proAni con el nombre del proveedor
+            if ($this->proveedorSeleccionado) {
+                $this->proAni = $this->proveedorSeleccionado->nomProve;
+            }
+        } else {
+            $this->proveedorSeleccionado = null;
+            $this->proAni = '';
+        }
+    }
+
+    // Método para limpiar todos los campos
+    public function limpiarFormulario(): void
+    {
+        $this->espAni = '';
+        $this->razAni = '';
+        $this->sexAni = 'Hembra';
+        $this->pesAni = '';
+        $this->fecNacAni = '';
+        $this->fecComAni = '';
+        $this->estAni = 'vivo';
+        $this->estReproAni = 'no_aplica';
+        $this->estSaludAni = 'saludable';
+        $this->obsAni = '';
+        $this->nitAni = '';
+        $this->ubicacionAni = '';
+        $this->proAni = '';
+        $this->idProveedor = null;
+        $this->proveedorSeleccionado = null;
+        
+        // Limpiar errores de validación
+        $this->resetErrorBag();
+    }
+
+    // Método para cancelar registro (limpia el formulario)
+    public function cancelarRegistro(): void
+    {
+        $this->limpiarFormulario();
+        
+        // Disparar evento para mostrar mensaje
+        $this->dispatch('registro-cancelado');
+    }
 
     public function store()
     {
         $validated = $this->validate([
             'espAni' => 'required|string|max:100',
-            'ideAni' => 'nullable|string|max:100',
             'razAni' => 'nullable|string|max:100',
             'sexAni' => 'required|in:Hembra,Macho',
             'pesAni' => 'nullable|numeric|between:0,9999.99',
@@ -38,278 +94,543 @@ new #[Layout('layouts.auth')] class extends Component {
             'estSaludAni' => 'required|in:saludable,enfermo,tratamiento',
             'obsAni' => 'nullable|string',
             'nitAni' => 'nullable|string|max:30|unique:animales,nitAni',
-            'fotoAni' => 'nullable|image|max:2048',
             'ubicacionAni' => 'nullable|string|max:100',
             'proAni' => 'nullable|string|max:150',
         ]);
 
-        if ($this->fotoAni) {
-            $validated['fotoAni'] = $this->fotoAni->store('animales', 'public');
+        // Convierte cadenas vacías a NULL para campos opcionales
+        foreach (['fecNacAni', 'fecComAni', 'razAni', 'pesAni', 'obsAni', 'nitAni', 'ubicacionAni', 'proAni'] as $field) {
+            if (isset($validated[$field]) && $validated[$field] === '') {
+                $validated[$field] = null;
+            }
         }
 
         Animal::create($validated);
 
+        // Limpiar el formulario después del registro exitoso
+        $this->limpiarFormulario();
+
+        // Disparar evento para mostrar mensaje de éxito
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => 'Animal registrado correctamente'
         ]);
 
-        return redirect()->route('pecuario.animales.index');
+        // También disparar el evento para el mensaje en el header
+        $this->dispatch('registro-exitoso');
     }
 }; ?>
 
 @section('title', 'Registrar Animal')
 
-<div class="container mx-auto px-4 py-6">
-    <!-- Header con información actual -->
-    <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
-                <i class="fas fa-paw text-green-600 mr-3"></i>
-                Registrar Nuevo Animal
-            </h1>
-            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full flex items-center">
-                <i class="fas fa-circle text-green-500 mr-1 text-xs"></i>
-                Nuevo registro
-            </span>
-        </div>
-        <p class="text-gray-600">Complete el formulario para agregar un nuevo animal al sistema</p>
-    </div>
-
-    <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <!-- Encabezado del formulario -->
-        <div class="bg-green-600 text-white px-6 py-4 border-b border-green-700">
-            <h2 class="text-lg font-semibold flex items-center">
-                <i class="fas fa-plus-circle mr-2"></i>
-                Registrar Animal
-            </h2>
+<div class="flex items-center justify-center min-h-screen py-3">
+    <div class="w-full max-w-7xl mx-auto bg-white/80 backdrop-blur-xl shadow rounded-3xl p-3 relative border border-white/20">
+        <!-- Botón Volver -->
+        <div class="absolute top-2 right-2">
+            <a href="{{ route('pecuario.animales.index') }}" wire:navigate
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Volver</span>
+            </a>
         </div>
 
-        <form wire:submit="store" class="p-6 space-y-8" enctype="multipart/form-data">
-            
-            <!-- Sección: Información Básica -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-medium text-gray-900 flex items-center pb-2 border-b border-gray-200">
-                    <i class="fas fa-info-circle text-blue-500 mr-2"></i>
-                    Información Básica
-                </h3>
-                <p class="text-sm text-gray-500">Datos principales del animal</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="nitAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            NIT del Animal
-                        </label>
-                        <input type="text" id="nitAni" wire:model="nitAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('nitAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="espAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Especie *
-                        </label>
-                        <input type="text" id="espAni" wire:model="espAni" required 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('espAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="ideAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Nombre del Animal
-                        </label>
-                        <input type="text" id="ideAni" wire:model="ideAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('ideAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="razAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Raza
-                        </label>
-                        <input type="text" id="razAni" wire:model="razAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('razAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+        <!-- Encabezado -->
+        <div class="text-center mb-3"
+             x-data="{ showSuccess: false, showCancel: false }"
+             x-on:registro-exitoso.window="showSuccess = true; showCancel = false; setTimeout(() => showSuccess = false, 3000)"
+             x-on:registro-cancelado.window="showCancel = true; showSuccess = false; setTimeout(() => showCancel = false, 3000)">
+            <div class="flex justify-center mb-1">
+                <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <div class="w-4 h-4 text-white flex items-center justify-center">
+                        <i class="fas fa-paw text-base"></i>
                     </div>
                 </div>
             </div>
+            <h1 class="text-base font-black bg-gradient-to-r from-gray-900 via-gray-800 to-green-800 bg-clip-text text-transparent mb-1">
+                Registrar Nuevo Animal
+            </h1>
+            
+            <template x-if="showSuccess">
+                <div class="rounded bg-green-100 px-2 py-1 text-green-800 border border-green-400 text-xs mb-1 font-semibold">
+                    ¡Animal registrado exitosamente!
+                </div>
+            </template>
 
-            <!-- Sección: Características Físicas -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-medium text-gray-900 flex items-center pb-2 border-b border-gray-200">
-                    <i class="fas fa-dna text-purple-500 mr-2"></i>
-                    Características Físicas
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label for="sexAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Sexo *
-                        </label>
-                        <select id="sexAni" wire:model="sexAni" 
-                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="Hembra">Hembra</option>
-                            <option value="Macho">Macho</option>
-                        </select>
-                        @error('sexAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <template x-if="showCancel">
+                <div class="rounded bg-yellow-100 px-2 py-1 text-yellow-800 border border-yellow-400 text-xs mb-1 font-semibold">
+                    Formulario limpiado. Puede registrar un nuevo animal.
+                </div>
+            </template>
+
+            <template x-if="!showSuccess && !showCancel">
+                <p class="text-gray-600 text-xs">Complete los datos del nuevo animal</p>
+            </template>
+        </div>
+
+        <form wire:submit.prevent="store" class="space-y-2" enctype="multipart/form-data">
+            <!-- Sección: Información Básica -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información Básica</h2>
+                                <p class="text-gray-600 text-[10px]">Datos principales del animal</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label for="nitAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    NIT del Animal
+                                </label>
+                                <div class="relative group">
+                                    <input type="text" wire:model="nitAni" id="nitAni"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('nitAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('nitAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="espAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Especie <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <input type="text" wire:model="espAni" id="espAni" required
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('espAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('espAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="razAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Raza
+                                </label>
+                                <div class="relative group">
+                                    <input type="text" wire:model="razAni" id="razAni"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('razAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('razAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div>
-                        <label for="pesAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Peso (kg)
-                        </label>
-                        <input type="number" step="0.01" id="pesAni" wire:model="pesAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('pesAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="fotoAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Fotografía
-                        </label>
-                        <input type="file" id="fotoAni" wire:model="fotoAni" 
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('fotoAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <!-- Características Físicas -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Características Físicas</h2>
+                                <p class="text-gray-600 text-[10px]">Datos físicos del animal</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                                <label for="sexAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Sexo <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <select wire:model="sexAni" id="sexAni"
+                                            class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('sexAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="Hembra">Hembra</option>
+                                        <option value="Macho">Macho</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                @error('sexAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="pesAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Peso (kg)
+                                </label>
+                                <div class="relative group">
+                                    <input type="number" step="0.01" wire:model="pesAni" id="pesAni"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('pesAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('pesAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Sección: Procedencia -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-medium text-gray-900 flex items-center pb-2 border-b border-gray-200">
-                    <i class="fas fa-truck-loading text-teal-500 mr-2"></i>
-                    Información del Proveedor
-                </h3>
-                <p class="text-sm text-gray-500">Proveedor que suministra este animal</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="proAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Procedencia/Proveedor
-                        </label>
-                        <input type="text" id="proAni" wire:model="proAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('proAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="ubicacionAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Ubicación
-                        </label>
-                        <input type="text" id="ubicacionAni" wire:model="ubicacionAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('ubicacionAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <div class="flex flex-col md:flex-row gap-2">
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información del Proveedor</h2>
+                                <p class="text-gray-600 text-[10px]">Proveedor que suministra este animal</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Procedencia/Proveedor
+                                </label>
+                                <div class="relative group">
+                                    <select 
+                                        wire:model.live="idProveedor" 
+                                        class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('idProveedor') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="">Seleccionar proveedor</option>
+                                        @foreach($proveedores as $proveedor)
+                                            <option value="{{ $proveedor->idProve }}">
+                                                {{ $proveedor->nomProve }} ({{ $proveedor->tipSumProve ?? 'Sin tipo' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('idProveedor')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="ubicacionAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Ubicación
+                                </label>
+                                <div class="relative group">
+                                    <input type="text" wire:model="ubicacionAni" id="ubicacionAni"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('ubicacionAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('ubicacionAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Información del proveedor seleccionado -->
+                        @if($proveedorSeleccionado)
+                            <div class="bg-blue-50/50 border border-blue-200 rounded-2xl p-2 mt-2">
+                                <h4 class="text-[10px] font-bold text-blue-900 mb-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Información del Proveedor Seleccionado
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
+                                    <div>
+                                        <span class="font-medium text-gray-700">Nombre:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->nomProve }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Tipo:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->tipSumProve ?? 'No especificado' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Contacto:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->conProve ?? 'No especificado' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">Teléfono:</span>
+                                        <span class="text-gray-900 ml-1">{{ $proveedorSeleccionado->telProve ?? 'No especificado' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
-            </div>
 
-            <!-- Sección: Fechas Importantes -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-medium text-gray-900 flex items-center pb-2 border-b border-gray-200">
-                    <i class="fas fa-calendar-alt text-orange-500 mr-2"></i>
-                    Fechas Importantes
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="fecNacAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Fecha de Nacimiento
-                        </label>
-                        <input type="date" id="fecNacAni" wire:model="fecNacAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('fecNacAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="fecComAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Fecha de Compra/Incorporación
-                        </label>
-                        <input type="date" id="fecComAni" wire:model="fecComAni" 
-                               class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        @error('fecComAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                <!-- Fechas Importantes -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Fechas Importantes</h2>
+                                <p class="text-gray-600 text-[10px]">Fechas clave del animal</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                                <label for="fecNacAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Fecha de Nacimiento
+                                </label>
+                                <div class="relative group">
+                                    <input type="date" wire:model="fecNacAni" id="fecNacAni"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('fecNacAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('fecNacAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="fecComAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Fecha de Compra/Incorporación
+                                </label>
+                                <div class="relative group">
+                                    <input type="date" wire:model="fecComAni" id="fecComAni"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('fecComAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('fecComAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Sección: Estados del Animal -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-medium text-gray-900 flex items-center pb-2 border-b border-gray-200">
-                    <i class="fas fa-chart-line text-green-500 mr-2"></i>
-                    Estados del Animal
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label for="estAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Estado General
-                        </label>
-                        <select id="estAni" wire:model="estAni" 
-                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="vivo">Vivo</option>
-                            <option value="muerto">Muerto</option>
-                            <option value="vendido">Vendido</option>
-                        </select>
-                        @error('estAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="estReproAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Estado Reproductivo
-                        </label>
-                        <select id="estReproAni" wire:model="estReproAni" 
-                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="no_aplica">No aplica</option>
-                            <option value="ciclo">En ciclo</option>
-                            <option value="cubierta">Cubierta</option>
-                            <option value="gestacion">Gestación</option>
-                            <option value="parida">Parida</option>
-                        </select>
-                        @error('estReproAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-                    
-                    <div>
-                        <label for="estSaludAni" class="block text-sm font-medium text-gray-700 mb-2">
-                            Estado de Salud
-                        </label>
-                        <select id="estSaludAni" wire:model="estSaludAni" 
-                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="saludable">Saludable</option>
-                            <option value="enfermo">Enfermo</option>
-                            <option value="tratamiento">En tratamiento</option>
-                        </select>
-                        @error('estSaludAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <div class="flex flex-col md:flex-row gap-2">
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2M9 19"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Estados del Animal</h2>
+                                <p class="text-gray-600 text-[10px]">Estado actual del animal</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                                <label for="estAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Estado General
+                                </label>
+                                <div class="relative group">
+                                    <select wire:model="estAni" id="estAni"
+                                            class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('estAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="vivo">Vivo</option>
+                                        <option value="muerto">Muerto</option>
+                                        <option value="vendido">Vendido</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                @error('estAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="estReproAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Estado Reproductivo
+                                </label>
+                                <div class="relative group">
+                                    <select wire:model="estReproAni" id="estReproAni"
+                                            class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('estReproAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="no_aplica">No aplica</option>
+                                        <option value="ciclo">En ciclo</option>
+                                        <option value="cubierta">Cubierta</option>
+                                        <option value="gestacion">Gestación</option>
+                                        <option value="parida">Parida</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                @error('estReproAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="estSaludAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Estado de Salud
+                                </label>
+                                <div class="relative group">
+                                    <select wire:model="estSaludAni" id="estSaludAni"
+                                            class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('estSaludAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="saludable">Saludable</option>
+                                        <option value="enfermo">Enfermo</option>
+                                        <option value="tratamiento">En tratamiento</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                @error('estSaludAni')
+                                    <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                        <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{ $message }}
+                                    </p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Sección: Observaciones -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-medium text-gray-900 flex items-center pb-2 border-b border-gray-200">
-                    <i class="fas fa-comment-alt text-yellow-500 mr-2"></i>
-                    Información Adicional
-                </h3>
-                <p class="text-sm text-gray-500">Observaciones especiales, características específicas, cuidados requeridos, etc.</p>
-                
-                <div>
-                    <label for="obsAni" class="block text-sm font-medium text-gray-700 mb-2">
-                        Observaciones
-                    </label>
-                    <textarea id="obsAni" wire:model="obsAni" rows="4" 
-                              class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                              placeholder="Escriba aquí cualquier observación importante sobre el animal..."></textarea>
-                    @error('obsAni') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+            <div class="flex flex-col md:flex-row gap-2">
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información Adicional</h2>
+                                <p class="text-gray-600 text-[10px]">Observaciones especiales, características específicas, cuidados requeridos, etc.</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="obsAni" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                Observaciones
+                            </label>
+                            <div class="relative group">
+                                <textarea wire:model="obsAni" id="obsAni" rows="4"
+                                          placeholder="Escriba aquí cualquier observación importante sobre el animal..."
+                                          class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('obsAni') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"></textarea>
+                                <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                            </div>
+                            @error('obsAni')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Botones de acción -->
-            <div class="flex justify-between pt-6 border-t border-gray-200">
-                <a href="{{ route('pecuario.animales.index') }}" wire:navigate 
-                   class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 px-5 rounded-lg transition duration-200 flex items-center">
-                    <i class="fas fa-times mr-2"></i>Cancelar
-                </a>
-                <button type="submit" 
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-5 rounded-lg transition duration-200 flex items-center">
-                    <i class="fas fa-save mr-2"></i>Guardar Animal
+            <!-- Botones -->
+            <div class="flex justify-center space-x-2 pt-2">
+                <button type="button" wire:click="cancelarRegistro"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Cancelar</span>
+                </button>
+                <button type="submit"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Guardar Animal</span>
                 </button>
             </div>
         </form>
@@ -317,24 +638,24 @@ new #[Layout('layouts.auth')] class extends Component {
 </div>
 
 <script>
-    document.addEventListener('livewire:initialized', () => {
-        Livewire.on('notify', (event) => {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-            
-            Toast.fire({
-                icon: event.type,
-                title: event.message
-            });
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('notify', (event) => {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: event.type,
+            title: event.message,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            customClass: {
+                popup: 'text-xs'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
         });
     });
+});
 </script>

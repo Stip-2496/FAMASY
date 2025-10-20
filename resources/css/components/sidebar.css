@@ -1,31 +1,46 @@
 /* Active States */
 .quick-access a.active {
-    background-color: #f3f4f6;
-    color: #1e40af;
+    background-color: #718096;
+    color: #ffffff;
 }
 
-/* Module button when active or has active child */
-.module-button.active {
+/* Module button when active (clicked directly, not via submenu) */
+.module-button.active:not(.has-active-child) {
     background-color: #f3f4f6;
     font-weight: 500;
 }
 
-/* Special state for parent module with active child */
-.module-button.active.has-active-child {
-    background-color: #e5e7eb; /* igual que submenu activo */
-    color: #1e40af !important;
+/* Special state for parent module with active child - SOLO este debe tener fondo gris */
+.module-button.has-active-child {
+    background-color: #718096;
+    color: #ffffff !important;
     font-weight: 500;
+}
+
+/* Selector específico para el span dentro del módulo con hijo activo */
+.module-button.has-active-child span {
+    color: #ffffff !important;
+}
+
+/* Selector para el SVG (ícono flecha) dentro del módulo con hijo activo */
+.module-button.has-active-child svg {
+    color: #ffffff !important;
+}
+
+/* Selector para los íconos de Font Awesome dentro del módulo con hijo activo */
+.module-button.has-active-child i {
+    color: #ffffff !important;
 }
 
 /* Default state for module button */
-.module-button:not(.active) {
+.module-button:not(.active):not(.has-active-child) {
     color: inherit;
 }
 
 /* Active submodule */
 .submenu a.active {
-    background-color: #e5e7eb;
-    color: #1e40af;
+    background-color: #718096;
+    color: #ffffff;
     font-weight: 500;
 }
 
@@ -46,7 +61,7 @@
     transition: transform 0.3s ease;
 }
 
-.module-button.active .arrow-icon,
+.module-button.has-active-child .arrow-icon,
 .submenu.open + .module-button .arrow-icon {
     transform: rotate(90deg);
 }
@@ -56,6 +71,28 @@
 .module-button:hover,
 .submenu a:hover {
     background-color: #f3f4f6;
+    color: #16a34a;
+}
+
+/* Hover states for module with active child */
+.module-button.has-active-child:hover {
+    background-color: #f3f4f6;
+    color: #16a34a !important;
+}
+
+/* Selector específico para el span dentro del módulo con hijo activo en hover */
+.module-button.has-active-child:hover span {
+    color: #16a34a !important;
+}
+
+/* Selector para el SVG (ícono) dentro del módulo con hijo activo en hover */
+.module-button.has-active-child:hover svg {
+    color: #16a34a !important;
+}
+
+/* Selector para los íconos de Font Awesome dentro del módulo con hijo activo en hover */
+.module-button.has-active-child:hover i {
+    color: #16a34a !important;
 }
 
 /* Additional styling for better visual hierarchy */

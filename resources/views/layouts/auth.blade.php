@@ -29,7 +29,7 @@
 
     <!-- Contenido principal -->
     <div class="flex flex-col flex-1 min-w-0">
-      <main class="flex-1 bg-gray-100 overflow-auto">
+      <main class="flex-1 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-auto">
         {{ $slot }}
       </main>
       @include('partials.auth-footer')

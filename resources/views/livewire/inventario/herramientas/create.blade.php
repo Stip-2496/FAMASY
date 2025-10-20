@@ -7,17 +7,28 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.auth')] class extends Component {
     public string $nomHer = '';
     public string $catHer = '';
+    public string $canHer = '0';
     public string $estHer = 'bueno';
     public string $ubiHer = '';
     public string $stockMinHer = '';
     public string $stockMaxHer = '';
-    public string $idProveHer = '';
+    public ?int $idProveHer = null;
     public string $obsHer = '';
+    public string $searchProveedor = '';
 
     public function with(): array
     {
+        $query = Proveedor::query();
+        
+        if ($this->searchProveedor) {
+            $query->where('nomProve', 'like', "%{$this->searchProveedor}%")
+                  ->orWhere('nitProve', 'like', "%{$this->searchProveedor}%");
+        }
+        
+        $proveedores = $query->orderBy('nomProve')->get();
+        
         return [
-            'proveedores' => Proveedor::orderBy('nomProve')->get(),
+            'proveedores' => $proveedores,
             'categorias' => [
                 'veterinaria' => 'Veterinaria',
                 'ganadera' => 'Ganadera',
@@ -34,36 +45,84 @@ new #[Layout('layouts.auth')] class extends Component {
         ];
     }
 
-    public function save(): void
+    // Validación en tiempo real para campos individuales
+    public function validateField($fieldName)
     {
-        $this->validate([
+        $this->validateOnly($fieldName, $this->rules());
+    }
+
+    // Validación automática cuando los campos cambian
+    public function updated($propertyName)
+    {
+        $this->validateOnly($propertyName, $this->rules());
+    }
+
+    public function rules(): array
+    {
+        return [
             'nomHer' => 'required|string|max:100',
             'catHer' => 'required|string|max:50',
+            'canHer' => 'required|integer|min:0',
             'estHer' => 'required|in:bueno,regular,malo',
             'ubiHer' => 'nullable|string|max:100',
             'stockMinHer' => 'nullable|integer|min:0',
-            'stockMaxHer' => 'nullable|integer|min:0',
+            'stockMaxHer' => 'nullable|integer|min:0|gte:stockMinHer',
             'idProveHer' => 'nullable|exists:proveedores,idProve',
             'obsHer' => 'nullable|string'
-        ], [
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
             'nomHer.required' => 'El nombre de la herramienta es obligatorio.',
-            'nomHer.max' => 'El nombre no puede tener más de 100 caracteres.',
             'catHer.required' => 'La categoría es obligatoria.',
-            'catHer.max' => 'La categoría no puede tener más de 50 caracteres.',
+            'canHer.required' => 'La cantidad es obligatoria.',
+            'canHer.integer' => 'La cantidad debe ser un número entero.',
             'estHer.required' => 'El estado es obligatorio.',
-            'estHer.in' => 'El estado debe ser: bueno, regular o malo.',
-            'ubiHer.max' => 'La ubicación no puede tener más de 100 caracteres.',
+            'estHer.in' => 'El estado seleccionado no es válido.',
             'stockMinHer.integer' => 'El stock mínimo debe ser un número entero.',
-            'stockMinHer.min' => 'El stock mínimo no puede ser negativo.',
             'stockMaxHer.integer' => 'El stock máximo debe ser un número entero.',
-            'stockMaxHer.min' => 'El stock máximo no puede ser negativo.',
+            'stockMaxHer.gte' => 'El stock máximo debe ser mayor o igual al stock mínimo.',
             'idProveHer.exists' => 'El proveedor seleccionado no es válido.',
-        ]);
+        ];
+    }
+
+    // Método para limpiar todos los campos
+    public function limpiarFormulario(): void
+    {
+        $this->nomHer = '';
+        $this->catHer = '';
+        $this->canHer = '0';
+        $this->estHer = 'bueno';
+        $this->ubiHer = '';
+        $this->stockMinHer = '';
+        $this->stockMaxHer = '';
+        $this->idProveHer = null;
+        $this->obsHer = '';
+        $this->searchProveedor = '';
+        
+        $this->resetErrorBag();
+    }
+
+    // Método para cancelar registro (limpia el formulario)
+    public function cancelarRegistro(): void
+    {
+        $this->limpiarFormulario();
+        
+        // Disparar evento para mostrar mensaje
+        $this->dispatch('registro-cancelado');
+    }
+
+    public function save(): void
+    {
+        $validated = $this->validate($this->rules());
 
         try {
             Herramienta::create([
                 'nomHer' => $this->nomHer,
                 'catHer' => $this->catHer,
+                'canHer' => $this->canHer ? (int)$this->canHer : 0,
                 'estHer' => $this->estHer,
                 'ubiHer' => $this->ubiHer ?: null,
                 'stockMinHer' => $this->stockMinHer ? (int)$this->stockMinHer : null,
@@ -72,13 +131,12 @@ new #[Layout('layouts.auth')] class extends Component {
                 'obsHer' => $this->obsHer ?: null,
             ]);
 
-            $this->dispatch('notify', [
-                'type' => 'success',
-                'message' => 'Herramienta creada exitosamente.'
-            ]);
-
-            $this->redirect(route('inventario.herramientas.index'), navigate: true);
-
+            // Limpiar el formulario después del registro exitoso
+            $this->limpiarFormulario();
+            
+            // Disparar evento para mostrar mensaje de éxito
+            $this->dispatch('registro-exitoso');
+            
         } catch (\Exception $e) {
             $this->dispatch('notify', [
                 'type' => 'error',
@@ -87,429 +145,475 @@ new #[Layout('layouts.auth')] class extends Component {
         }
     }
 
-    public function cancel(): void
+    public function selectProveedor($proveedorId): void
     {
-        $this->redirect(route('inventario.herramientas.index'), navigate: true);
+        $this->idProveHer = $proveedorId;
+        $this->searchProveedor = '';
+    }
+
+    public function clearProveedor(): void
+    {
+        $this->idProveHer = null;
     }
 }; ?>
 
 @section('title', 'Nueva Herramienta')
 
-<div class="min-h-screen bg-gray-50">
-    <!-- Header Principal -->
-    <div class="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="flex items-center space-x-6">
-                <a href="{{ route('inventario.herramientas.index') }}" wire:navigate 
-                   class="group p-3 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-2xl transition-all duration-200 border border-white/20">
-                    <svg class="w-6 h-6 text-white group-hover:text-emerald-300 transform group-hover:-translate-x-1 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
-                </a>
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <div class="absolute inset-0 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-2xl blur opacity-75"></div>
-                        <div class="relative bg-white p-4 rounded-2xl">
-                            <svg class="w-8 h-8 text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <div>
-                        <h1 class="text-4xl font-bold text-white mb-2">Nueva Herramienta</h1>
-                        <p class="text-xl text-slate-300">Expande tu inventario profesional</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Progreso Visual -->
-        <div class="mb-8">
-            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Progreso del Registro</h3>
-                    <span class="text-sm text-slate-600">Paso 1 de 1</span>
-                </div>
-                <div class="w-full bg-slate-200 rounded-full h-2">
-                    <div class="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full w-full transition-all duration-300"></div>
-                </div>
-            </div>
+<div class="flex items-center justify-center min-h-screen py-3">
+    <div class="w-full max-w-7xl mx-auto bg-white/80 backdrop-blur-xl shadow rounded-3xl p-3 relative border border-white/20">
+        <!-- Botón Volver -->
+        <div class="absolute top-2 right-2">
+            <a href="{{ route('inventario.herramientas.index') }}" wire:navigate
+               class="group relative inline-flex items-center px-2 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                <svg class="w-3 h-3 mr-1 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="relative z-10 text-xs">Volver</span>
+            </a>
         </div>
 
-        <!-- Tip de Inicio -->
-        <div class="mb-8 bg-gradient-to-r from-emerald-50 to-cyan-50 border-l-4 border-emerald-400 rounded-r-2xl p-6 shadow-sm">
-            <div class="flex items-start">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
+        <!-- Encabezado -->
+        <div class="text-center mb-3"
+             x-data="{ showSuccess: false, showCancel: false }"
+             x-on:registro-exitoso.window="showSuccess = true; showCancel = false; setTimeout(() => showSuccess = false, 3000)"
+             x-on:registro-cancelado.window="showCancel = true; showSuccess = false; setTimeout(() => showCancel = false, 3000)">
+            <div class="flex justify-center mb-1">
+                <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <div class="w-4 h-4 text-white flex items-center justify-center">
+                        <div class="flex items-center justify-center w-4 h-4">
+                            <i class="fas fa-tools text-sm"></i>
+                        </div>
                     </div>
                 </div>
-                <div class="ml-4">
-                    <h3 class="text-lg font-bold text-emerald-800 mb-2">🚀 ¡Comencemos!</h3>
-                    <p class="text-emerald-700 leading-relaxed">
-                        <strong>Completa la información básica:</strong> Proporciona detalles precisos para facilitar la búsqueda 
-                        y gestión futura. Los campos marcados con (*) son obligatorios para un registro exitoso.
-                    </p>
-                </div>
             </div>
+            <h1 class="text-base font-black bg-gradient-to-r from-gray-900 via-gray-800 to-green-800 bg-clip-text text-transparent mb-1">
+                Registrar Nueva Herramienta
+            </h1>
+            
+            <template x-if="showSuccess">
+                <div class="rounded bg-green-100 px-2 py-1 text-green-800 border border-green-400 text-xs mb-1 font-semibold">
+                    ¡Herramienta registrada exitosamente!
+                </div>
+            </template>
+
+            <template x-if="showCancel">
+                <div class="rounded bg-yellow-100 px-2 py-1 text-yellow-800 border border-yellow-400 text-xs mb-1 font-semibold">
+                    Formulario limpiado. Puede registrar una nueva herramienta.
+                </div>
+            </template>
+
+            <template x-if="!showSuccess && !showCancel">
+                <p class="text-gray-600 text-xs">Complete los datos de la nueva herramienta</p>
+            </template>
         </div>
 
-        <!-- Formulario Principal -->
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-            <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-8 py-6">
-                <h3 class="text-2xl font-bold text-white flex items-center">
-                    <svg class="w-7 h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Registro de Nueva Herramienta
-                </h3>
-                <p class="text-slate-300 mt-1">Completa todos los detalles para un registro perfecto</p>
-            </div>
-
-            <form wire:submit="save" class="p-8 space-y-10">
-                <!-- Sección 1: Información Básica -->
-                <div class="space-y-6">
-                    <div class="flex items-center space-x-4 pb-4 border-b border-slate-200">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a1.994 1.994 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="text-xl font-bold text-slate-800">📋 Información Básica</h4>
-                            <p class="text-slate-600">Datos principales de identificación</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                        <!-- Nombre de la Herramienta -->
-                        <div class="space-y-3">
-                            <label for="nomHer" class="block text-sm font-bold text-slate-700">
-                                🏷️ Nombre de la Herramienta <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 8.172V5L8 4z"></path>
-                                    </svg>
-                                </div>
-                                <input type="text" 
-                                       wire:model="nomHer" 
-                                       id="nomHer" 
-                                       maxlength="100"
-                                       class="block w-full pl-12 pr-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md @error('nomHer') border-red-300 ring-2 ring-red-200 @enderror"
-                                       placeholder="Ej: Taladro Eléctrico Industrial Bosch">
+        <!-- Formulario -->
+        <form wire:submit="save" class="space-y-2">
+            <!-- Fila 1: Información básica -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <!-- Información Básica -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                </svg>
                             </div>
-                            @error('nomHer')
-                                <div class="flex items-center mt-2 text-sm text-red-600">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                            <p class="text-xs text-slate-500 mt-2">💡 Incluye marca y modelo para mejor identificación</p>
-                        </div>
-
-                        <!-- Categoría -->
-                        <div class="space-y-3">
-                            <label for="catHer" class="block text-sm font-bold text-slate-700">
-                                📦 Categoría <span class="text-red-500">*</span>
-                            </label>
-                            <select wire:model="catHer" 
-                                    id="catHer"
-                                    class="block w-full px-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md @error('catHer') border-red-300 ring-2 ring-red-200 @enderror">
-                                <option value="">🔽 Seleccionar categoría</option>
-                                <option value="veterinaria">🐾 Veterinaria</option>
-                                <option value="ganadera">🐄 Ganadera</option>
-                                <option value="agricola">🌾 Agrícola</option>
-                                <option value="mantenimiento">🔧 Mantenimiento</option>
-                                <option value="transporte">🚛 Transporte</option>
-                                <option value="seguridad">🛡️ Seguridad</option>
-                            </select>
-                            @error('catHer')
-                                <div class="flex items-center mt-2 text-sm text-red-600">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                        <!-- Estado -->
-                        <div class="space-y-3">
-                            <label for="estHer" class="block text-sm font-bold text-slate-700">
-                                🎯 Estado Inicial <span class="text-red-500">*</span>
-                            </label>
-                            <select wire:model="estHer" 
-                                    id="estHer"
-                                    class="block w-full px-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md @error('estHer') border-red-300 ring-2 ring-red-200 @enderror">
-                                <option value="bueno">🟢 Bueno - Excelente condición</option>
-                                <option value="regular">🟡 Regular - Necesita atención</option>
-                                <option value="malo">🔴 Malo - Requiere reparación</option>
-                            </select>
-                            @error('estHer')
-                                <div class="flex items-center mt-2 text-sm text-red-600">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Ubicación -->
-                        <div class="space-y-3">
-                            <label for="ubiHer" class="block text-sm font-bold text-slate-700">
-                                📍 Ubicación Física
-                            </label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    </svg>
-                                </div>
-                                <input type="text" 
-                                       wire:model="ubiHer" 
-                                       id="ubiHer" 
-                                       maxlength="100"
-                                       class="block w-full pl-12 pr-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md"
-                                       placeholder="Ej: Almacén Principal - Estante A3">
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información Básica</h2>
+                                <p class="text-gray-600 text-[10px]">Datos principales de identificación</p>
                             </div>
-                            <p class="text-xs text-slate-500 mt-2">💡 Sé específico para facilitar la búsqueda</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <!-- Nombre de la Herramienta -->
+                            <div>
+                                <label for="nomHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Nombre <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <input type="text"
+                                           id="nomHer"
+                                           wire:model="nomHer"
+                                           wire:blur="validateField('nomHer')"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('nomHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                           placeholder="Ej: Taladro Eléctrico Industrial Bosch"
+                                           maxlength="100"
+                                           required>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('nomHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
+
+                            <!-- Categoría -->
+                            <div>
+                                <label for="catHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Categoría <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <select id="catHer"
+                                            wire:model="catHer"
+                                            wire:blur="validateField('catHer')"
+                                            class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('catHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="">Seleccionar categoría</option>
+                                        <option value="veterinaria">Veterinaria</option>
+                                        <option value="ganadera">Ganadera</option>
+                                        <option value="agricola">Agrícola</option>
+                                        <option value="mantenimiento">Mantenimiento</option>
+                                        <option value="transporte">Transporte</option>
+                                        <option value="seguridad">Seguridad</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                @error('catHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
+
+                            <!-- Estado -->
+                            <div>
+                                <label for="estHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Estado <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <select id="estHer"
+                                            wire:model="estHer"
+                                            wire:blur="validateField('estHer')"
+                                            class="cursor-pointer w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl appearance-none text-xs @error('estHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror">
+                                        <option value="bueno">Bueno - Excelente condición</option>
+                                        <option value="regular">Regular - Necesita atención</option>
+                                        <option value="malo">Malo - Requiere reparación</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-1.5 pointer-events-none">
+                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                @error('estHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
+
+                            <!-- Ubicación -->
+                            <div>
+                                <label for="ubiHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Ubicación
+                                </label>
+                                <div class="relative group">
+                                    <input type="text"
+                                           id="ubiHer"
+                                           wire:model="ubiHer"
+                                           wire:blur="validateField('ubiHer')"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('ubiHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                           placeholder="Ej: Almacén Principal - Estante A3"
+                                           maxlength="100">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('ubiHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sección 2: Proveedor -->
-                <div class="space-y-6 border-t border-slate-200 pt-8">
-                    <div class="flex items-center space-x-4 pb-4 border-b border-slate-200">
-                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="text-xl font-bold text-slate-800">🏢 Información del Proveedor</h4>
-                            <p class="text-slate-600">Asigna un proveedor para mejor trazabilidad</p>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-3">
-                        <label for="idProveHer" class="block text-sm font-bold text-slate-700">
-                            🏪 Proveedor (Opcional)
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Información del Proveedor -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                                 </svg>
                             </div>
-                            <select wire:model="idProveHer" 
-                                    id="idProveHer"
-                                    class="block w-full pl-12 pr-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md @error('idProveHer') border-red-300 ring-2 ring-red-200 @enderror">
-                                <option value="">🔽 Sin proveedor asignado</option>
-                                @foreach($proveedores as $proveedor)
-                                    <option value="{{ $proveedor->idProve }}">🏪 {{ $proveedor->nomProve }} - {{ $proveedor->nitProve }}</option>
-                                @endforeach
-                            </select>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Información del Proveedor</h2>
+                                <p class="text-gray-600 text-[10px]">Asigna un proveedor para mejor trazabilidad</p>
+                            </div>
                         </div>
-                        @error('idProveHer')
-                            <div class="flex items-center mt-2 text-sm text-red-600">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    <label for="idProveHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                Proveedor
+                            </label>
+
+                        <div class="grid grid-cols-1 gap-2">
+
+                            <!-- Proveedor Seleccionado -->
+                            @if($idProveHer)
+                                @php
+                                    $proveedorSeleccionado = $proveedores->find($idProveHer);
+                                @endphp
+                                @if($proveedorSeleccionado)
+                                    <div class="mb-2 p-2 bg-green-50 border border-green-200 rounded-2xl">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-6 w-6">
+                                                    <div class="h-6 w-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-2">
+                                                    <p class="text-xs font-medium text-green-800">{{ $proveedorSeleccionado->nomProve }}</p>
+                                                    <p class="text-[10px] text-green-600">{{ $proveedorSeleccionado->nitProve }}</p>
+                                                </div>
+                                            </div>
+                                            <button type="button" 
+                                                    wire:click="clearProveedor"
+                                                    class="cursor-pointer text-green-600 hover:text-green-800">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                <!-- Búsqueda de Proveedor -->
+                                <div class="space-y-2">
+                                    <div class="flex space-x-1">
+                                        <div class="flex-1">
+                                            <input type="text" 
+                                                   wire:model.live.debounce.300ms="searchProveedor"
+                                                   class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 text-xs"
+                                                   placeholder="Buscar proveedor por nombre o NIT...">
+                                        </div>
+                                    </div>
+
+                                    <!-- Lista de Proveedores -->
+                                    @if($searchProveedor && $proveedores->count() > 0)
+                                        <div class="border border-gray-300 rounded-2xl max-h-32 overflow-y-auto">
+                                            @foreach($proveedores as $proveedor)
+                                                <button type="button" 
+                                                        wire:click="selectProveedor({{ $proveedor->idProve }})"
+                                                        class="cursor-pointer w-full px-2 py-1.5 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center text-xs">
+                                                    <div class="flex-shrink-0 h-5 w-5">
+                                                        <div class="h-5 w-5 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
+                                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                    <div class="ml-2">
+                                                        <p class="text-xs font-medium text-gray-900">{{ $proveedor->nomProve }}</p>
+                                                        <p class="text-[10px] text-gray-500">{{ $proveedor->nitProve }}</p>
+                                                    </div>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @elseif($searchProveedor && $proveedores->count() === 0)
+                                        <div class="text-center py-2 text-gray-500 text-[10px]">
+                                            No se encontraron proveedores con ese criterio
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                            @error('idProveHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Control de Stock y Observaciones -->
+            <div class="flex flex-col md:flex-row gap-2">
+                <!-- Control de Stock -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#000000] to-[#39A900]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                 </svg>
-                                {{ $message }}
                             </div>
-                        @enderror
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
-                            <p class="text-xs text-blue-700">
-                                💡 <strong>Consejo:</strong> Asignar un proveedor facilita el seguimiento de garantías y reposiciones
-                            </p>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Control de Stock</h2>
+                                <p class="text-gray-600 text-[10px]">Define límites para alertas automáticas</p>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Sección 3: Control de Stock -->
-                <div class="space-y-6 border-t border-slate-200 pt-8">
-                    <div class="flex items-center space-x-4 pb-4 border-b border-slate-200">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 class="text-xl font-bold text-slate-800">📊 Control de Inventario</h4>
-                            <p class="text-slate-600">Define límites para alertas automáticas</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                        <!-- Stock Mínimo -->
-                        <div class="space-y-3">
-                            <label for="stockMinHer" class="block text-sm font-bold text-slate-700">
-                                📉 Stock Mínimo
-                            </label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                    </svg>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <!-- Cantidad -->
+                            <div>
+                                <label for="canHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Cantidad <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative group">
+                                    <input type="number"
+                                           id="canHer"
+                                           wire:model="canHer"
+                                           wire:blur="validateField('canHer')"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('canHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                           placeholder="0"
+                                           min="0"
+                                           required>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-green-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                                <input type="number" 
-                                       wire:model="stockMinHer" 
-                                       id="stockMinHer" 
-                                       min="0"
-                                       class="block w-full pl-12 pr-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md @error('stockMinHer') border-red-300 ring-2 ring-red-200 @enderror"
-                                       placeholder="0">
-                            </div>
-                            @error('stockMinHer')
-                                <div class="flex items-center mt-2 text-sm text-red-600">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                @error('canHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                     </svg>
                                     {{ $message }}
-                                </div>
-                            @enderror
-                            <p class="text-xs text-slate-500 mt-2">🚨 Recibirás alertas cuando el stock baje de este límite</p>
-                        </div>
-
-                        <!-- Stock Máximo -->
-                        <div class="space-y-3">
-                            <label for="stockMaxHer" class="block text-sm font-bold text-slate-700">
-                                📈 Stock Máximo
-                            </label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path>
-                                    </svg>
-                                </div>
-                                <input type="number" 
-                                       wire:model="stockMaxHer" 
-                                       id="stockMaxHer" 
-                                       min="0"
-                                       class="block w-full pl-12 pr-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-slate-50 focus:bg-white shadow-sm hover:shadow-md @error('stockMaxHer') border-red-300 ring-2 ring-red-200 @enderror"
-                                       placeholder="0">
+                                </p>
+                                @enderror
                             </div>
-                            @error('stockMaxHer')
-                                <div class="flex items-center mt-2 text-sm text-red-600">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+
+                            <!-- Stock Mínimo -->
+                            <div>
+                                <label for="stockMinHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Stock Mínimo
+                                </label>
+                                <div class="relative group">
+                                    <input type="number"
+                                           id="stockMinHer"
+                                           wire:model="stockMinHer"
+                                           wire:blur="validateField('stockMinHer')"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('stockMinHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                           placeholder="0"
+                                           min="0">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-green-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('stockMinHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                                     </svg>
                                     {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
+
+                            <!-- Stock Máximo -->
+                            <div>
+                                <label for="stockMaxHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Stock Máximo
+                                </label>
+                                <div class="relative group">
+                                    <input type="number"
+                                           id="stockMaxHer"
+                                           wire:model="stockMaxHer"
+                                           wire:blur="validateField('stockMaxHer')"
+                                           class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('stockMaxHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                           placeholder="0"
+                                           min="0">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-green-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                 </div>
-                            @enderror
-                            <p class="text-xs text-slate-500 mt-2">💰 Evita el sobrestock y optimiza el capital de trabajo</p>
+                                @error('stockMaxHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sección 4: Información Adicional -->
-                <div class="space-y-6 border-t border-slate-200 pt-8">
-                    <div class="flex items-center space-x-4 pb-4 border-b border-slate-200">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
-                            </svg>
+                <!-- Observaciones -->
+                <div class="flex-1 border border-gray-300 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-[#39A900] to-[#000000]"></div>
+                    <div class="p-2">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="p-1.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-gray-900">Observaciones</h2>
+                                <p class="text-gray-600 text-[10px]">Detalles extras para referencia futura</p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 class="text-xl font-bold text-slate-800">📝 Información Adicional</h4>
-                            <p class="text-slate-600">Detalles extras para referencia futura</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Observaciones -->
-                    <div class="space-y-3">
-                        <label for="obsHer" class="block text-sm font-bold text-slate-700">
-                            💬 Observaciones y Notas
-                        </label>
-                        <textarea wire:model="obsHer" 
-                                  id="obsHer" 
-                                  rows="5"
-                                  class="block w-full px-4 py-4 text-lg border-2 border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none bg-slate-50 focus:bg-white shadow-sm hover:shadow-md"
-                                  placeholder="Ej: Incluye manual en español, garantía de 2 años, requiere mantenimiento cada 6 meses..."></textarea>
-                        <div class="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-lg">
-                            <p class="text-xs text-amber-700">
-                                💡 <strong>Sugerencias:</strong> Incluye especificaciones técnicas, instrucciones especiales, 
-                                fechas de garantía, o cualquier detalle que facilite su uso futuro.
-                            </p>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Botones de Acción -->
-                <div class="flex justify-end space-x-4 pt-8 border-t border-slate-200">
-                    <button type="button" 
-                            wire:click="cancel"
-                            class="group px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all duration-200 flex items-center shadow-lg hover:shadow-xl">
-                        <svg class="w-5 h-5 mr-3 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                            class="group px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center">
-                        <svg class="w-5 h-5 mr-3 transform group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        🚀 Crear Herramienta
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Tips Finales -->
-        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
+                        <div class="grid grid-cols-1 gap-2">
+                            <!-- Observaciones -->
+                            <div>
+                                <label for="obsHer" class="block text-[10px] font-bold text-gray-700 mb-0.5">
+                                    Observaciones y Notas
+                                </label>
+                                <div class="relative group">
+                                    <textarea id="obsHer"
+                                              wire:model="obsHer"
+                                              wire:blur="validateField('obsHer')"
+                                              rows="4"
+                                              class="w-full px-1.5 py-1 bg-white/50 border-2 border-gray-200 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/20 focus:border-green-700 transition-all duration-300 group-hover:shadow-xl text-xs @error('obsHer') border-red-400 focus:ring-red-500/20 focus:border-red-500 @enderror"
+                                              placeholder="Ej: Incluye manual en español, garantía de 2 años, requiere mantenimiento cada 6 meses..."></textarea>
+                                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                </div>
+                                @error('obsHer')
+                                <p class="mt-0.5 text-[10px] text-red-600 flex items-center">
+                                    <svg class="w-2.5 h-2.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
                         </div>
-                    </div>
-                    <div class="ml-4">
-                        <h4 class="text-lg font-bold text-blue-800 mb-2">✅ Buenas Prácticas</h4>
-                        <ul class="text-blue-700 text-sm space-y-1">
-                            <li>• Usa nombres descriptivos y únicos</li>
-                            <li>• Asigna ubicaciones específicas</li>
-                            <li>• Define stocks realistas</li>
-                            <li>• Incluye detalles técnicos relevantes</li>
-                        </ul>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-2xl p-6">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="ml-4">
-                        <h4 class="text-lg font-bold text-emerald-800 mb-2">⚡ Después del Registro</h4>
-                        <ul class="text-emerald-700 text-sm space-y-1">
-                            <li>• Podrás crear préstamos inmediatamente</li>
-                            <li>• Configurar recordatorios de mantenimiento</li>
-                            <li>• Generar reportes de uso</li>
-                            <li>• Trackear movimientos de inventario</li>
-                        </ul>
-                    </div>
-                </div>
+            <!-- Botones -->
+            <div class="flex justify-center space-x-2 pt-2">
+                <button type="button" wire:click="cancelarRegistro"
+                   class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Cancelar</span>
+                </button>
+                <button type="submit"
+                        class="cursor-pointer group relative inline-flex items-center justify-center px-2.5 py-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/0 to-white/20 transform translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
+                    <svg class="w-3 h-3 mr-1.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="relative z-10 text-xs">Guardar Herramienta</span>
+                </button>
             </div>
-        </div>
+        </form>
     </div>
 </div>

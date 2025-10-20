@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory; // importante agregarlo
 use Illuminate\Database\Eloquent\Model;
 
 class Rol extends Model
 {
+
+    use HasFactory; // importante agregarlo
+
     protected $table = 'rol';
     
     // Especificar la clave primaria correcta

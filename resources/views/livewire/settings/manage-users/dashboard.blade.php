@@ -18,10 +18,7 @@ new #[Layout('layouts.auth')] class extends Component {
     public $totalUsuarios = 0;
     public $usuariosActivos = 0;
     public $usuariosNuevos = 0;
-    public $usuariosInactivos = 0;
     public $intentosFallidos = 0;
-    public $usuariosElevados = 0;
-    public $usuariosIncompletos = 0;
     
     // Datos para gráficos
     public $distribucionRoles = [];
@@ -51,24 +48,10 @@ new #[Layout('layouts.auth')] class extends Component {
             $this->usuariosNuevos = User::where('created_at', '>=', now()->subDays(7))
                                       ->count();
             
-            // Usuarios inactivos (más de 90 días sin actividad)
-            $this->usuariosInactivos = User::where('created_at', '<=', now()->subDays(90))
-                                         ->count();
-            
             // Intentos fallidos de login (últimos 7 días)
             $this->intentosFallidos = Auditoria::where('opeAud', 'LOGIN_FAILED')
                                             ->where('fecAud', '>=', now()->subDays(7))
                                             ->count();
-            
-            // Usuarios con permisos elevados (roles específicos)
-            $this->usuariosElevados = User::whereIn('idRolUsu', [1, 2]) // IDs de roles admin/superadmin
-                                        ->count();
-            
-            // Usuarios con datos incompletos
-            $this->usuariosIncompletos = User::whereNull('nomUsu')
-                                           ->orWhereNull('apeUsu')
-                                           ->orWhereNull('numDocUsu')
-                                           ->count();
             
             // Distribución por roles
             $this->distribucionRoles = Rol::withCount('usuarios')
@@ -176,230 +159,164 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Panel de Usuarios')
 
-<div class="bg-gray-100 min-h-full p-4">
-    <!-- Header -->
-    <div class="mb-6 text-center">
-        <h1 class="text-5xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-4">Panel de Usuarios</h1>
-        <p class="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">Administra todos los usuarios del sistema</p>
-    </div>
+<div class="min-h-full py-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-4 text-center">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">Panel de Usuarios</h1>
+            <p class="text-sm text-gray-600 max-w-2xl mx-auto leading-relaxed">Administra todos los usuarios del sistema</p>
+        </div>
 
-    <!-- Tarjetas principales -->
-    <div class="mt-12">
-        <div class="mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-3">
-            <!-- Card 1: Total de usuarios con Pie Chart -->
+        <!-- Tarjetas principales -->
+        <div class="mt-6">
+            <div class="mb-6 grid gap-y-6 gap-x-4 md:grid-cols-2 xl:grid-cols-3">
+                <!-- Card 1: Total de usuarios con Pie Chart -->
+                <div>
+                    <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-3">
+                        <a href="{{ route('settings.manage-users') }}" wire:navigate >
+                        <div class="bg-clip-border mx-3 rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 to-blue-400 text-white shadow-blue-500/40 shadow-lg absolute -mt-3 grid h-12 w-12 place-items-center">
+                            <i class="fas fa-users text-base"></i>
+                        </div>
+                        </a>
+                        <div class="p-3 text-right">
+                            <p class="block antialiased font-sans text-xs leading-normal font-normal text-blue-gray-600">Total de usuarios</p>
+                            <h4 class="block antialiased tracking-normal font-sans text-xl font-semibold leading-snug text-blue-gray-900">{{ number_format($totalUsuarios) }}</h4>
+                        </div>
+                        <div class="border-t border-blue-gray-50 p-3">
+                            <p class="block antialiased font-sans text-sm leading-relaxed font-normal text-blue-gray-600">
+                                <strong class="text-green-500">+{{ round(($usuariosNuevos / max($totalUsuarios, 1)) * 100) }}%</strong>
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Pie Chart Container -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 h-[160px] flex items-center justify-center">
+                        <canvas id="totalUsersChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Card 2: Usuarios activos con Line Chart -->
+                <div>
+                    <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-3">
+                        <div class="bg-clip-border mx-3 rounded-xl overflow-hidden bg-gradient-to-tr from-pink-600 to-pink-400 text-white shadow-pink-500/40 shadow-lg absolute -mt-3 grid h-12 w-12 place-items-center">
+                            <i class="fas fa-user-check text-base"></i>
+                        </div>
+                        <div class="p-3 text-right">
+                            <p class="block antialiased font-sans text-xs leading-normal font-normal text-blue-gray-600">Usuarios activos</p>
+                            <h4 class="block antialiased tracking-normal font-sans text-xl font-semibold leading-snug text-blue-gray-900">{{ number_format($usuariosActivos) }}</h4>
+                        </div>
+                        <div class="border-t border-blue-gray-50 p-3">
+                            <p class="block antialiased font-sans text-sm leading-relaxed font-normal text-blue-gray-600">
+                                <strong class="text-green-500">+{{ round(($usuariosActivos / max($totalUsuarios, 1)) * 100) }}%</strong>&nbsp;del total
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Line Chart Container -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 h-[160px] flex items-center justify-center">
+                        <canvas id="activeUsersChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Card 3: Usuarios nuevos con Line Chart -->
+                <div>
+                    <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-3">
+                        <div class="bg-clip-border mx-3 rounded-xl overflow-hidden bg-gradient-to-tr from-green-600 to-green-400 text-white shadow-green-500/40 shadow-lg absolute -mt-3 grid h-12 w-12 place-items-center">
+                            <i class="fas fa-user-plus text-base"></i>
+                        </div>
+                        <div class="p-3 text-right">
+                            <p class="block antialiased font-sans text-xs leading-normal font-normal text-blue-gray-600">Usuarios nuevos</p>
+                            <h4 class="block antialiased tracking-normal font-sans text-xl font-semibold leading-snug text-blue-gray-900">{{ number_format($usuariosNuevos) }}</h4>
+                        </div>
+                        <div class="border-t border-blue-gray-50 p-3">
+                            <p class="block antialiased font-sans text-sm leading-relaxed font-normal text-blue-gray-600">
+                                <strong class="text-green-500">+{{ round(($usuariosNuevos / max($totalUsuarios, 1)) * 100) }}%</strong>&nbsp;este mes
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Line Chart Container -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 h-[160px] flex items-center justify-center">
+                        <canvas id="newUsersChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de Eventos y Eventos Anormales -->
+        <div class="mt-6 grid gap-y-6 gap-x-4 md:grid-cols-2">
+            <!-- Card: Eventos -->
             <div>
-                <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                    <a href="{{ route('settings.manage-users') }}" wire:navigate >
-                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 to-blue-400 text-white shadow-blue-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                        <i class="fas fa-users text-xl"></i>
+                <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-3">
+                    <a href="{{ route('settings.manage-users.events') }}" wire:navigate>
+                        <div class="bg-clip-border mx-3 rounded-xl overflow-hidden bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white shadow-indigo-500/40 shadow-lg absolute -mt-3 grid h-12 w-12 place-items-center">
+                        <i class="fas fa-calendar-check text-base"></i>
                     </div>
                     </a>
-                    <div class="p-4 text-right">
-                        <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Total de usuarios</p>
-                        <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">{{ number_format($totalUsuarios) }}</h4>
+                    <div class="p-3 text-right">
+                        <p class="block antialiased font-sans text-xs leading-normal font-normal text-blue-gray-600">Eventos</p>
+                        <h4 class="block antialiased tracking-normal font-sans text-xl font-semibold leading-snug text-blue-gray-900">Últimos registros</h4>
                     </div>
-                    <div class="border-t border-blue-gray-50 p-1.5">
-                        <p class="block antialiased font-sans text-base leading-relaxed font-normal text-blue-gray-600">
-                            <strong class="text-green-500">+{{ round(($usuariosNuevos / max($totalUsuarios, 1)) * 100) }}%</strong>
-                            <span class="text-xs text-gray-500 block mt-1">{{ $intentosFallidos }} intentos fallidos (7d)</span>
-                        </p>
-                    </div>
-                </div>
-                <!-- Pie Chart Container -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-[200px] flex items-center justify-center">
-                    <canvas id="totalUsersChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Card 2: Usuarios activos con Line Chart -->
-            <div>
-                <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-pink-600 to-pink-400 text-white shadow-pink-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                        <i class="fas fa-user-check text-xl"></i>
-                    </div>
-                    <div class="p-4 text-right">
-                        <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Usuarios activos</p>
-                        <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">{{ number_format($usuariosActivos) }}</h4>
-                    </div>
-                    <div class="border-t border-blue-gray-50 p-4">
-                        <p class="block antialiased font-sans text-base leading-relaxed font-normal text-blue-gray-600">
-                            <strong class="text-green-500">+{{ round(($usuariosActivos / max($totalUsuarios, 1)) * 100) }}%</strong>&nbsp;del total
-                        </p>
-                    </div>
-                </div>
-                <!-- Line Chart Container -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-[200px] flex items-center justify-center">
-                    <canvas id="activeUsersChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Card 3: Usuarios nuevos con Line Chart -->
-            <div>
-                <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-green-600 to-green-400 text-white shadow-green-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                        <i class="fas fa-user-plus text-xl"></i>
-                    </div>
-                    <div class="p-4 text-right">
-                        <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Usuarios nuevos</p>
-                        <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">{{ number_format($usuariosNuevos) }}</h4>
-                    </div>
-                    <div class="border-t border-blue-gray-50 p-4">
-                        <p class="block antialiased font-sans text-base leading-relaxed font-normal text-blue-gray-600">
-                            <strong class="text-green-500">+{{ round(($usuariosNuevos / max($totalUsuarios, 1)) * 100) }}%</strong>&nbsp;este mes
-                        </p>
-                    </div>
-                </div>
-                <!-- Line Chart Container -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-[200px] flex items-center justify-center">
-                    <canvas id="newUsersChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cards de Eventos y Eventos Anormales -->
-    <div class="mt-12 grid gap-y-10 gap-x-6 md:grid-cols-2">
-        <!-- Card: Eventos -->
-        <div>
-            <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                <a href="{{ route('settings.manage-users.events') }}" wire:navigate>
-                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white shadow-indigo-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                    <i class="fas fa-calendar-check text-xl"></i>
-                </div>
-                </a>
-                <div class="p-4 text-right">
-                    <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Eventos</p>
-                    <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">Últimos registros</h4>
-                </div>
-                <div class="border-t border-blue-gray-50 p-4">
-                    <ul class="text-sm text-gray-600 space-y-2">
-                        @foreach($eventosRecientes as $evento)
-                        <li class="flex justify-between items-start">
-                            <div class="flex-1 min-w-0">
-                                <p class="truncate font-medium">{{ $evento['operacion'] }}</p>
-                                <p class="truncate text-gray-500">{{ $evento['detalle'] }}</p>
-                            </div>
-                            <div class="ml-2 flex-shrink-0 flex flex-col items-end">
-                                <span class="text-xs text-gray-400">{{ $evento['fecha'] }}</span>
-                                <span class="text-xs text-gray-500">{{ $evento['usuario'] }}</span>
-                            </div>
-                        </li>
-                        @endforeach
-                    </ul>
-                    <a href="{{ route('settings.manage-users.events') }}" wire:navigate class="mt-3 inline-block text-indigo-600 text-sm font-medium hover:underline">Ver todos</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card: Eventos Anormales -->
-        <div>
-            <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-                <a href="{{ route('settings.manage-users.unusual-events') }}" wire:navigate>
-                    <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-red-600 to-red-400 text-white shadow-red-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                    <i class="fas fa-exclamation-triangle text-xl"></i>
-                </div>
-                </a>
-                <div class="p-4 text-right">
-                    <p class="block antialiased font-sans text-sm leading-normal font-normal text-blue-gray-600">Eventos anormales</p>
-                    <h4 class="block antialiased tracking-normal font-sans text-2xl font-semibold leading-snug text-blue-gray-900">Alertas recientes</h4>
-                </div>
-                <div class="border-t border-blue-gray-50 p-4">
-                    <ul class="text-sm text-gray-600 space-y-2">
-                        @foreach($eventosAnormales as $evento)
-                        <li class="flex justify-between items-start">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center">
-                                    @php
-                                        $colorClasses = [
-                                            'baja' => 'bg-green-100 text-green-800',
-                                            'media' => 'bg-yellow-100 text-yellow-800',
-                                            'alta' => 'bg-orange-100 text-orange-800',
-                                            'critica' => 'bg-red-100 text-red-800'
-                                        ];
-                                    @endphp
-                                    <span class="mr-2 px-1.5 py-0.5 text-xs rounded-full {{ $colorClasses[$evento['severidad']] ?? 'bg-gray-100 text-gray-800' }}">
-                                        {{ substr($evento['severidad'], 0, 1) }}
-                                    </span>
+                    <div class="border-t border-blue-gray-50 p-3">
+                        <ul class="text-xs text-gray-600 space-y-1.5">
+                            @foreach($eventosRecientes as $evento)
+                            <li class="flex justify-between items-start">
+                                <div class="flex-1 min-w-0">
                                     <p class="truncate font-medium">{{ $evento['operacion'] }}</p>
+                                    <p class="truncate text-gray-500">{{ $evento['detalle'] }}</p>
                                 </div>
-                                <p class="truncate text-gray-500 ml-6">{{ $evento['detalle'] }}</p>
-                            </div>
-                            <div class="ml-2 flex-shrink-0 flex flex-col items-end">
-                                <span class="text-xs text-gray-400">{{ $evento['fecha'] }}</span>
-                                <span class="text-xs text-gray-500">{{ $evento['usuario'] }}</span>
-                            </div>
-                        </li>
-                        @endforeach
-                    </ul>
-                    <a href="{{ route('settings.manage-users.unusual-events') }}" wire:navigate class="mt-3 inline-block text-red-600 text-sm font-medium hover:underline">Ver todos</a>
+                                <div class="ml-2 flex-shrink-0 flex flex-col items-end">
+                                    <span class="text-xs text-gray-400">{{ $evento['fecha'] }}</span>
+                                    <span class="text-xs text-gray-500">{{ $evento['usuario'] }}</span>
+                                </div>
+                            </li>
+                            @endforeach
+                        </ul>
+                        <a href="{{ route('settings.manage-users.events') }}" wire:navigate class="mt-2 inline-block text-indigo-600 text-xs font-medium hover:underline">Ver todos</a>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- KPIs adicionales -->
-    <div class="mt-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4">
-        <!-- Card: Usuarios inactivos -->
-        <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-            <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-yellow-600 to-yellow-400 text-white shadow-yellow-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                <i class="fas fa-clock text-xl"></i>
-            </div>
-            <div class="p-4 text-right">
-                <p class="text-sm text-blue-gray-600">Usuarios inactivos (+90 días)</p>
-                <h4 class="text-2xl font-semibold text-blue-gray-900">{{ number_format($usuariosInactivos) }}</h4>
-            </div>
-            <div class="border-t border-blue-gray-50 p-4">
-                <p class="text-base text-gray-600">
-                    <strong class="text-red-500">{{ round(($usuariosInactivos / max($totalUsuarios, 1)) * 100) }}%</strong> del total
-                </p>
-            </div>
-        </div>
-
-        <!-- Card: Usuarios con permisos elevados -->
-        <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-            <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-purple-600 to-purple-400 text-white shadow-purple-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                <i class="fas fa-shield-alt text-xl"></i>
-            </div>
-            <div class="p-4 text-right">
-                <p class="text-sm text-blue-gray-600">Usuarios con permisos elevados</p>
-                <h4 class="text-2xl font-semibold text-blue-gray-900">{{ number_format($usuariosElevados) }}</h4>
-            </div>
-            <div class="border-t border-blue-gray-50 p-4">
-                <p class="text-base text-gray-600">
-                    <strong class="text-green-500">{{ round(($usuariosElevados / max($totalUsuarios, 1)) * 100) }}%</strong> del total
-                </p>
-            </div>
-        </div>
-
-        <!-- Card: Usuarios con datos incompletos -->
-        <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-            <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-teal-600 to-teal-400 text-white shadow-teal-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                <i class="fas fa-exclamation-circle text-xl"></i>
-            </div>
-            <div class="p-4 text-right">
-                <p class="text-sm text-blue-gray-600">Usuarios con datos incompletos</p>
-                <h4 class="text-2xl font-semibold text-blue-gray-900">{{ round(($usuariosIncompletos / max($totalUsuarios, 1)) * 100) }}%</h4>
-            </div>
-            <div class="border-t border-blue-gray-50 p-4">
-                <p class="text-base text-gray-600">
-                    <strong class="text-yellow-500">Atención:</strong> Completar datos críticos
-                </p>
-            </div>
-        </div>
-
-        <!-- Card: Distribución por roles -->
-        <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-4">
-            <div class="bg-clip-border mx-4 rounded-xl overflow-hidden bg-gradient-to-tr from-orange-600 to-orange-400 text-white shadow-orange-500/40 shadow-lg absolute -mt-4 grid h-16 w-16 place-items-center">
-                <i class="fas fa-tags text-xl"></i>
-            </div>
-            <div class="p-4 text-right">
-                <p class="text-sm text-blue-gray-600">Distribución por roles</p>
-                <h4 class="text-2xl font-semibold text-blue-gray-900">{{ count($distribucionRoles) }}</h4>
-            </div>
-            <div class="border-t border-blue-gray-50 p-4">
-                <p class="text-base text-gray-600">
-                    <strong class="text-blue-500">Ver gráfico</strong> arriba
-                </p>
+            <!-- Card: Eventos Anormales -->
+            <div>
+                <div class="relative flex flex-col bg-clip-border rounded-xl bg-white text-gray-700 shadow-md mb-3">
+                    <a href="{{ route('settings.manage-users.unusual-events') }}" wire:navigate>
+                        <div class="bg-clip-border mx-3 rounded-xl overflow-hidden bg-gradient-to-tr from-red-600 to-red-400 text-white shadow-red-500/40 shadow-lg absolute -mt-3 grid h-12 w-12 place-items-center">
+                        <i class="fas fa-exclamation-triangle text-base"></i>
+                    </div>
+                    </a>
+                    <div class="p-3 text-right">
+                        <p class="block antialiased font-sans text-xs leading-normal font-normal text-blue-gray-600">Eventos anormales</p>
+                        <h4 class="block antialiased tracking-normal font-sans text-xl font-semibold leading-snug text-blue-gray-900">Alertas recientes</h4>
+                    </div>
+                    <div class="border-t border-blue-gray-50 p-3">
+                        <ul class="text-xs text-gray-600">
+                            @foreach($eventosAnormales as $evento)
+                            <li class="flex justify-between items-start">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center">
+                                        @php
+                                            $colorClasses = [
+                                                'baja' => 'bg-green-100 text-green-800',
+                                                'media' => 'bg-yellow-100 text-yellow-800',
+                                                'alta' => 'bg-orange-100 text-orange-800',
+                                                'critica' => 'bg-red-100 text-red-800'
+                                            ];
+                                        @endphp
+                                        <span class="mr-2 px-1.5 py-0.5 text-xs rounded-full {{ $colorClasses[$evento['severidad']] ?? 'bg-gray-100 text-gray-800' }}">
+                                            {{ substr($evento['severidad'], 0, 1) }}
+                                        </span>
+                                        <p class="truncate font-medium">{{ $evento['operacion'] }}</p>
+                                    </div>
+                                    <p class="truncate text-gray-500 ml-6">{{ $evento['detalle'] }}</p>
+                                </div>
+                                <div class="ml-2 flex-shrink-0 flex flex-col items-end">
+                                    <span class="text-xs text-gray-400">{{ $evento['fecha'] }}</span>
+                                    <span class="text-xs text-gray-500">{{ $evento['usuario'] }}</span>
+                                </div>
+                            </li>
+                            @endforeach
+                        </ul>
+                        <a href="{{ route('settings.manage-users.unusual-events') }}" wire:navigate class="mt-2 inline-block text-red-600 text-xs font-medium hover:underline">Ver todos</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -156,10 +156,19 @@ class ModelAuditObserver
 
             case 'App\Models\HistorialMedico':
                 $animalNombre = $model->animal ? $model->animal->nomAni : 'Animal ID: ' . $model->idAni;
+                $fecha = 'N/A';
+                if ($model->fecHisMed) {
+                    try {
+                        $fecha = \Carbon\Carbon::parse($model->fecHisMed)->format('d/m/Y');
+                    } catch (\Exception $e) {
+                        $fecha = $model->fecHisMed;
+                    }
+                }
+    
                 return "Nuevo historial médico registrado en $module. " .
-                       "Animal: {$animalNombre} (ID: $keyValue). " .
-                       "Tipo: {$model->tipHisMed}, Fecha: " . ($model->fecHisMed ? $model->fecHisMed->format('d/m/Y') : 'N/A') . ", " .
-                       "Tratamiento: " . (strlen($model->traHisMed) > 50 ? substr($model->traHisMed, 0, 50) . '...' : $model->traHisMed);
+                    "Animal: {$animalNombre} (ID: $keyValue). " .
+                    "Tipo: {$model->tipHisMed}, Fecha: {$fecha}, " .
+                    "Tratamiento: " . (strlen($model->traHisMed ?? '') > 50 ? substr($model->traHisMed, 0, 50) . '...' : ($model->traHisMed ?? 'N/A'));
 
             case 'App\Models\Mantenimiento':
                 $herramientaNombre = $model->getNombreHerramientaCompleto();

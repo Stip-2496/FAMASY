@@ -17,6 +17,7 @@ class Insumo extends Model
         'nomIns',
         'tipIns',
         'marIns',
+        'canIns',
         'uniIns',
         'fecVenIns',
         'stockMinIns',
@@ -27,6 +28,7 @@ class Insumo extends Model
     ];
 
     protected $casts = [
+        'canIns' => 'decimal:2',
         'stockMinIns' => 'decimal:2',
         'stockMaxIns' => 'decimal:2',
         'fecVenIns' => 'date'

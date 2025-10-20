@@ -14,11 +14,14 @@ class Proveedor extends Model
 
     protected $fillable = [
         'nomProve',
+        'apeProve',
         'nitProve',
         'conProve',
         'telProve',
         'emailProve',
         'dirProve',
+        'ciuProve',
+        'depProve',
         'tipSumProve',
         'obsProve'
     ];
@@ -33,12 +36,15 @@ class Proveedor extends Model
     {
         $rules = [
             'nomProve' => 'required|string|max:100',
-            'conProve' => 'nullable|string|size:10|regex:/^[0-9]{10}$/',
-            'telProve' => 'nullable|string|max:20|regex:/^[0-9\s\-\(\)]+$/',
-            'emailProve' => 'nullable|email|max:100',
-            'dirProve' => 'nullable|string|max:255',
-            'tipSumProve' => 'nullable|string|max:100',
-            'obsProve' => 'nullable|string'
+            'apeProve' => 'required|string|max:100',
+            'conProve' => 'required|string|size:10|regex:/^[0-9]{10}$/',
+            'telProve' => 'required|string|max:20|regex:/^[0-9\s\-\(\)]+$/',
+            'emailProve' => 'required|email|max:100',
+            'dirProve' => 'required|string|max:255',
+            'ciuProve' => 'required|string|max:30',
+            'depProve' => 'required|string|max:30',
+            'tipSumProve' => 'required|string|max:100',
+            'obsProve' => 'required|string'
         ];
 
         // Regla especial para nitProve con unique

@@ -28,7 +28,7 @@ class Mantenimiento extends Model
         'idHerMan' => 'integer'
     ];
 
-    // ✅ RELACIÓN CORREGIDA: Solo buscar herramienta si idHerMan existe y > 0
+    // RELACIÓN CORREGIDA: Solo buscar herramienta si idHerMan existe y > 0
     public function herramienta()
     {
         return $this->belongsTo(Herramienta::class, 'idHerMan', 'idHer');

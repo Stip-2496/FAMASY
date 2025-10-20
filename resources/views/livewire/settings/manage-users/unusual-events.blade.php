@@ -300,136 +300,156 @@ new #[Layout('layouts.auth')] class extends Component {
 
 @section('title', 'Eventos Anómalos')
 
-<div class="min-h-screen bg-gray-50 py-6">
+<div class="min-h-screen py-4">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
-        <div class="mb-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 flex items-center">
-                        <svg class="w-6 h-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
-                        Eventos Anómalos
-                    </h1>
-                    <p class="text-sm text-gray-600 mt-1">Monitoreo de intentos fallidos y accesos no autorizados</p>
+        <div class="mb-4">
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-4 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-red-500/5 to-red-600/5"></div>
+                <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center space-x-2 mb-3 sm:mb-0">
+                        <div class="p-2 bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-black bg-gradient-to-r from-gray-900 via-gray-800 to-red-800 bg-clip-text text-transparent leading-tight">
+                                Eventos Anómalos
+                            </h1>
+                            <p class="text-gray-600 text-xs">Monitoreo de intentos fallidos y accesos no autorizados</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Filtros -->
-        <div class="bg-white shadow rounded-lg mb-4">
-            <div class="px-4 py-3">
-                <form wire:submit.prevent>
-                    <div class="flex flex-wrap items-end gap-2">
-                        <!-- Buscar (expandible) -->
-                        <div class="flex-1 min-w-[120px]">
-                            <label for="search" class="block text-xs font-medium text-gray-700 mb-1">
-                                <i class="fa fa-search text-gray-400 mr-1"></i> Buscar
-                            </label>
-                            <input type="text"
-                                wire:model.live.debounce.500ms="search"
-                                id="search"
-                                class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-red-500 focus:border-red-500 text-xs"
-                                placeholder="Palabra clave...">
-                        </div>
-
-                        <!-- Severidad (compacto) -->
-                        <div class="w-[110px]">
-                            <label for="severidad" class="block text-xs font-medium text-gray-700 mb-1">
-                                <i class="fa fa-exclamation-triangle text-gray-400 mr-1"></i> Severidad
-                            </label>
-                            <select id="severidad"
-                                    wire:model.live="severidad"
-                                    class="w-full cursor-pointer px-2 py-1 border border-gray-300 rounded focus:ring-red-500 focus:border-red-500 text-xs">
-                                <option value="">Todas</option>
-                                <option value="critica">Crítica</option>
-                                <option value="alta">Alta</option>
-                                <option value="media">Media</option>
-                                <option value="baja">Baja</option>
-                            </select>
-                        </div>
-
-                        <!-- Operación (compacto) -->
-                        <div class="w-[130px]">
-                            <label for="operacion" class="block text-xs font-medium text-gray-700 mb-1">
-                                <i class="fa fa-cogs text-gray-400 mr-1"></i> Operación
-                            </label>
-                            <select id="operacion"
-                                    wire:model.live="operacion"
-                                    class="w-full cursor-pointer px-2 py-1 border border-gray-300 rounded focus:ring-red-500 focus:border-red-500 text-xs">
-                                <option value="">Todas</option>
-                                <option value="LOGIN_FAILED">Login Fallido</option>
-                                <option value="UNAUTHORIZED_ACCESS">Acceso No Autorizado</option>
-                            </select>
-                        </div>
-
-                        <!-- Filtro de fechas (ancho fijo) -->
-                        <div class="w-[200px]">
-                            <label class="block text-xs font-medium text-gray-700 mb-1">
-                                <i class="fa fa-calendar text-gray-400 mr-1"></i> Fechas
-                            </label>
-                            
-                            <!-- Botón para abrir el modal de fechas -->
-                            <button type="button" 
-                                    wire:click="openDateModal"
-                                    class="w-full cursor-pointer px-2 py-1 bg-white border border-gray-300 rounded shadow-sm flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 text-xs">
-                                <span class="truncate mr-1">
-                                    @if($startDate && $endDate)
-                                        {{ \Carbon\Carbon::parse($startDate)->format('d/M/Y') }} → {{ \Carbon\Carbon::parse($endDate)->format('d/M/Y') }}
-                                    @else
-                                        Seleccionar fechas
-                                    @endif
-                                </span>
-                                <svg class="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button>
-                        </div>
-
-                        <!-- Usuario (expandible) -->
-                        <div class="flex-1 min-w-[120px]">
-                            <label for="usuario" class="block text-xs font-medium text-gray-700 mb-1">
-                                <i class="fa fa-user text-gray-400 mr-1"></i> Usuario
-                            </label>
-                            <input type="text"
-                                wire:model.live.debounce.500ms="usuario"
-                                id="usuario"
-                                class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-red-500 focus:border-red-500 text-xs"
-                                placeholder="Usuario...">
-                        </div>
-
-                        <!-- IP (compacto) -->
-                        <div class="w-[120px]">
-                            <label for="ipAddress" class="block text-xs font-medium text-gray-700 mb-1">
-                                <i class="fa fa-globe text-gray-400 mr-1"></i> IP
-                            </label>
-                            <input type="text"
-                                wire:model.live.debounce.500ms="ipAddress"
-                                id="ipAddress"
-                                class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-red-500 focus:border-red-500 text-xs"
-                                placeholder="IP...">
-                        </div>
-
-                        <!-- Botones (sin expansión) -->
-                        <div class="flex items-end">
-                            <button type="button"
-                                    wire:click="clearFilters"
-                                    class="cursor-pointer px-2 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded transition duration-150 ease-in-out text-xs whitespace-nowrap">
-                                <i class="fa fa-eraser mr-1"></i> Limpiar
-                            </button>
-                        </div>
+        <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-3 mb-3">
+            <form wire:submit.prevent>
+                <div class="flex flex-wrap items-end gap-2">
+                    <!-- Buscar -->
+                    <div class="flex-1 min-w-[120px] relative">
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text"
+                               wire:model.live.debounce.500ms="search"
+                               id="search"
+                               class="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                               placeholder="Palabra clave...">
                     </div>
-                </form>
-            </div>
+
+                    <!-- Severidad -->
+                    <div class="w-[110px]">
+                        <label for="severidad" class="block text-xs font-medium text-gray-700 mb-1">
+                            <svg class="w-2.5 h-2.5 text-gray-400 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            Severidad
+                        </label>
+                        <select id="severidad"
+                                wire:model.live="severidad"
+                                class="w-full cursor-pointer px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-xs">
+                            <option value="">Todas</option>
+                            <option value="critica">Crítica</option>
+                            <option value="alta">Alta</option>
+                            <option value="media">Media</option>
+                            <option value="baja">Baja</option>
+                        </select>
+                    </div>
+
+                    <!-- Operación -->
+                    <div class="w-[130px]">
+                        <label for="operacion" class="block text-xs font-medium text-gray-700 mb-1">
+                            <svg class="w-2.5 h-2.5 text-gray-400 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"></path>
+                            </svg>
+                            Operación
+                        </label>
+                        <select id="operacion"
+                                wire:model.live="operacion"
+                                class="w-full cursor-pointer px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-xs">
+                            <option value="">Todas</option>
+                            <option value="LOGIN_FAILED">Login Fallido</option>
+                            <option value="UNAUTHORIZED_ACCESS">Acceso No Autorizado</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro de fechas -->
+                    <div class="w-[200px] relative">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                            <svg class="w-2.5 h-2.5 text-gray-400 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Fechas
+                        </label>
+                        <button type="button"
+                                wire:click="openDateModal"
+                                class="w-full cursor-pointer px-2 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 text-xs">
+                            <span class="truncate mr-1">
+                                @if($startDate && $endDate)
+                                    {{ \Carbon\Carbon::parse($startDate)->format('d/M/Y') }} → {{ \Carbon\Carbon::parse($endDate)->format('d/M/Y') }}
+                                @else
+                                    Seleccionar fechas
+                                @endif
+                            </span>
+                            <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Usuario -->
+                    <div class="flex-1 min-w-[120px] relative">
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        <input type="text"
+                               wire:model.live.debounce.500ms="usuario"
+                               id="usuario"
+                               class="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                               placeholder="Usuario...">
+                    </div>
+
+                    <!-- IP -->
+                    <div class="w-[120px] relative">
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012-2v-1a2 2 0 012-2h1.945M12 3a9 9 0 100 18 9 9 0 000-18z"></path>
+                        </svg>
+                        <input type="text"
+                               wire:model.live.debounce.500ms="ipAddress"
+                               id="ipAddress"
+                               class="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                               placeholder="IP...">
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="flex items-end">
+                        <button type="button"
+                                wire:click="clearFilters"
+                                class="cursor-pointer inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-medium rounded-lg shadow hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            <span class="text-xs">Limpiar</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
 
-        <!-- Modal de selección de fechas (igual que events.blade.php) -->
+        <!-- Modal de selección de fechas -->
         @if($showDateModal)
-        <div class="fixed inset-0 bg-black/20 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-4 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-5 transform transition-all duration-300">
                 <div class="flex justify-between items-center pb-3 border-b">
-                    <h3 class="text-xl font-semibold text-gray-900">Seleccionar rango de fechas</h3>
+                    <h3 class="text-base font-bold text-gray-900">Seleccionar rango de fechas</h3>
+                    <button wire:click="$set('showDateModal', false)" class="cursor-pointer text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                 </div>
                 
                 <div class="flex mt-4 h-96">
@@ -437,37 +457,37 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="w-1/4 pr-4 border-r">
                         <ul class="space-y-2">
                             <li>
-                                <button wire:click="selectRange('all_time')" 
-                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'all_time' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-100' }}">
+                                <button wire:click="selectRange('all_time')"
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded-lg {{ $selectedRangeType === 'all_time' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-50' }} text-xs">
                                     Todo el tiempo
                                 </button>
                             </li>
                             <li>
-                                <button wire:click="selectRange('last_24_hours')" 
-                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_24_hours' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-100' }}">
+                                <button wire:click="selectRange('last_24_hours')"
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded-lg {{ $selectedRangeType === 'last_24_hours' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-50' }} text-xs">
                                     Últimas 24 horas
                                 </button>
                             </li>
                             <li>
-                                <button wire:click="selectRange('last_7_days')" 
-                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_7_days' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-100' }}">
+                                <button wire:click="selectRange('last_7_days')"
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded-lg {{ $selectedRangeType === 'last_7_days' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-50' }} text-xs">
                                     Últimos 7 días
                                 </button>
                             </li>
                             <li>
-                                <button wire:click="selectRange('last_30_days')" 
-                                        class="w-full cursor-pointer text-left px-3 py-2 rounded {{ $selectedRangeType === 'last_30_days' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-100' }}">
+                                <button wire:click="selectRange('last_30_days')"
+                                        class="w-full cursor-pointer text-left px-3 py-2 rounded-lg {{ $selectedRangeType === 'last_30_days' ? 'bg-red-100 text-red-800' : 'hover:bg-gray-50' }} text-xs">
                                     Últimos 30 días
                                 </button>
                             </li>
                             @if($availableYears)
                             <li class="pt-4">
-                                <div class="text-sm font-medium text-gray-500 px-3 py-1">Años</div>
+                                <div class="text-xs font-medium text-gray-500 px-3 py-1">Años</div>
                                 <ul class="pl-2 mt-1 space-y-1 max-h-40 overflow-y-auto">
                                     @foreach($availableYears as $year)
                                     <li>
-                                        <button wire:click="selectRange('year_{{ $year }}')" 
-                                                class="w-full cursor-pointer text-left px-3 py-1 rounded {{ $selectedRangeType === 'year_' . $year ? 'bg-red-100 text-red-800' : 'hover:bg-gray-100' }}">
+                                        <button wire:click="selectRange('year_{{ $year }}')"
+                                                class="w-full cursor-pointer text-left px-3 py-1 rounded-lg {{ $selectedRangeType === 'year_' . $year ? 'bg-red-100 text-red-800' : 'hover:bg-gray-50' }} text-xs">
                                             {{ $year }}
                                         </button>
                                     </li>
@@ -482,20 +502,20 @@ new #[Layout('layouts.auth')] class extends Component {
                     <div class="w-3/4 pl-4">
                         <!-- Controles de mes y año -->
                         <div class="flex justify-between items-center mb-4">
-                            <button wire:click="changeCalendarMonth('prev')" class="p-2 rounded hover:bg-gray-100 cursor-pointer">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button wire:click="changeCalendarMonth('prev')" class="p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
                             </button>
                             
                             @if($availableYears)
                             <div class="flex items-center space-x-2">
-                                <select wire:model="calendarMonth" class="px-2 py-1 border rounded cursor-pointer">
+                                <select wire:model="calendarMonth" class="px-2 py-1.5 border border-gray-300 rounded-lg cursor-pointer text-xs">
                                     @for($i = 1; $i <= 12; $i++)
                                     <option value="{{ $i }}">{{ DateTime::createFromFormat('!m', $i)->format('F') }}</option>
                                     @endfor
                                 </select>
-                                <select wire:model="calendarYear" class="px-2 py-1 border rounded cursor-pointer">
+                                <select wire:model="calendarYear" class="px-2 py-1.5 border border-gray-300 rounded-lg cursor-pointer text-xs">
                                     @foreach($availableYears as $year)
                                     <option value="{{ $year }}">{{ $year }}</option>
                                     @endforeach
@@ -503,8 +523,8 @@ new #[Layout('layouts.auth')] class extends Component {
                             </div>
                             @endif
                             
-                            <button wire:click="changeCalendarMonth('next')" class="p-2 rounded hover:bg-gray-100 cursor-pointer">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button wire:click="changeCalendarMonth('next')" class="p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                 </svg>
                             </button>
@@ -542,11 +562,11 @@ new #[Layout('layouts.auth')] class extends Component {
                                     $isToday = $day['date'] == now()->format('Y-m-d');
                                 @endphp
                                 <button wire:click="selectDate('{{ $day['date'] }}')"
-                                        class="w-8 h-8 cursor-pointer rounded-full flex items-center justify-center text-sm
+                                        class="w-8 h-8 cursor-pointer rounded-full flex items-center justify-center text-xs
                                             {{ $isToday ? 'border border-red-500' : '' }}
                                             {{ $isStart || $isEnd ? 'bg-red-500 text-white' : '' }}
                                             {{ $isInRange && !$isStart && !$isEnd ? 'bg-red-100' : '' }}
-                                            {{ !$isInRange && !$isStart && !$isEnd ? 'hover:bg-gray-100' : '' }}">
+                                            {{ !$isInRange && !$isStart && !$isEnd ? 'hover:bg-gray-50' : '' }}">
                                     {{ $day['day'] }}
                                 </button>
                                 @endif
@@ -558,7 +578,7 @@ new #[Layout('layouts.auth')] class extends Component {
                         <!-- Rango seleccionado y botones de acción -->
                         <div class="mt-4 pt-4 border-t">
                             <div class="flex justify-between items-center">
-                                <div class="text-sm">
+                                <div class="text-xs">
                                     <span class="font-medium">Rango seleccionado:</span>
                                     <span>
                                         @if($tempStartDate && $tempEndDate)
@@ -571,12 +591,12 @@ new #[Layout('layouts.auth')] class extends Component {
                                     </span>
                                 </div>
                                 <div class="space-x-2">
-                                    <button wire:click="cancelDateFilter" 
-                                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 cursor-pointer">
+                                    <button wire:click="cancelDateFilter"
+                                            class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg shadow hover:shadow transition-all duration-200 text-xs">
                                         Cancelar
                                     </button>
-                                    <button wire:click="applyDateFilter" 
-                                            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer"
+                                    <button wire:click="applyDateFilter"
+                                            class="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-medium rounded-lg shadow hover:shadow transform hover:-translate-y-0.5 transition-all duration-200 text-xs"
                                             {{ !$tempStartDate || !$tempEndDate ? 'disabled' : '' }}>
                                         Aplicar
                                     </button>
@@ -591,29 +611,29 @@ new #[Layout('layouts.auth')] class extends Component {
 
         <!-- Información del rango seleccionado -->
         @if($startDate && $endDate)
-        <div class="mb-3 bg-red-50 border border-red-200 rounded p-2">
+        <div class="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg shadow-sm">
             <div class="flex items-center">
-                <svg class="w-4 h-4 text-red-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                <svg class="h-3 w-3 text-red-500 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                 </svg>
-                <span class="text-red-800 text-xs font-medium">
+                <p class="text-xs text-red-800 font-medium">
                     Mostrando eventos anómalos desde {{ \Carbon\Carbon::parse($startDate)->format('d/m/Y') }} hasta {{ \Carbon\Carbon::parse($endDate)->format('d/m/Y') }}
-                </span>
+                </p>
             </div>
         </div>
         @endif
 
         <!-- Tabla de eventos anómalos -->
-        <div class="bg-white shadow rounded-lg overflow-hidden">
-            <div class="px-4 py-2 bg-red-600 border-b border-gray-200">
+        <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+            <div class="px-2 py-1.5 bg-black border-b border-gray-200">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-medium text-white flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h3 class="text-xs font-medium text-white flex items-center">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
                         Eventos Anómalos Detectados
                     </h3>
-                    <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded">
+                    <span class="bg-red-100 text-red-800 text-xs font-medium px-1.5 py-0.5 rounded">
                         {{ $this->logs()->total() }} eventos
                     </span>
                 </div>
@@ -622,80 +642,84 @@ new #[Layout('layouts.auth')] class extends Component {
             @if($this->logs()->count() > 0)
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-xs">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-black">
                             <tr>
-                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Severidad</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Operación</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">IP</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Detalle</th>
-                                <th class="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                <th class="px-2 py-1.5 text-left font-medium text-white uppercase tracking-wider whitespace-nowrap">Fecha</th>
+                                <th class="px-2 py-1.5 text-left font-medium text-white uppercase tracking-wider whitespace-nowrap">Usuario</th>
+                                <th class="px-2 py-1.5 text-left font-medium text-white uppercase tracking-wider whitespace-nowrap">Severidad</th>
+                                <th class="px-2 py-1.5 text-left font-medium text-white uppercase tracking-wider whitespace-nowrap">Operación</th>
+                                <th class="px-2 py-1.5 text-left font-medium text-white uppercase tracking-wider whitespace-nowrap">IP</th>
+                                <th class="px-2 py-1.5 text-left font-medium text-white uppercase tracking-wider whitespace-nowrap">Detalle</th>
+                                <th class="px-2 py-1.5 text-center font-medium text-white uppercase tracking-wider whitespace-nowrap">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($this->logs() as $log)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-3 py-2 whitespace-nowrap text-gray-500">
+                            <tr class="hover:bg-red-50/50 transition-colors duration-200">
+                                <td class="px-2 py-1.5 whitespace-nowrap text-gray-700">
                                     {{ $log->fecAud->format('d/m/Y H:i') }}
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-gray-900">
-                                    {{ $log->usuAud ?? 'Sistema' }}
+                                <td class="px-2 py-1.5 whitespace-nowrap">
+                                    <div class="flex items-center gap-1">
+                                        <div class="w-5 h-5 bg-red-100 rounded flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-2.5 h-2.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-medium text-gray-900">{{ $log->usuAud ?? 'Sistema' }}</p>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap">
+                                <td class="px-2 py-1.5 whitespace-nowrap">
                                     @php
                                         $severidad = $this->getSeveridad($log);
                                         $colorClasses = [
-                                            'baja' => 'bg-green-100 text-green-800',
-                                            'media' => 'bg-yellow-100 text-yellow-800',
-                                            'alta' => 'bg-orange-100 text-orange-800',
-                                            'critica' => 'bg-red-100 text-red-800'
+                                            'baja' => 'bg-green-100 text-green-700',
+                                            'media' => 'bg-yellow-100 text-yellow-700',
+                                            'alta' => 'bg-orange-100 text-orange-700',
+                                            'critica' => 'bg-red-100 text-red-700'
                                         ];
                                     @endphp
-                                    <span class="px-1.5 py-0.5 text-xs rounded-full {{ $colorClasses[$severidad] ?? 'bg-gray-100 text-gray-800' }}">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium {{ $colorClasses[$severidad] ?? 'bg-gray-100 text-gray-600' }}">
                                         {{ ucfirst($severidad) }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap">
-                                    <span class="px-1.5 py-0.5 text-xs rounded-full 
-                                        @if($log->opeAud === 'LOGIN_FAILED') bg-yellow-100 text-yellow-800
-                                        @elseif($log->opeAud === 'UNAUTHORIZED_ACCESS') bg-red-100 text-red-800
-                                        @else bg-gray-100 text-gray-800 @endif">
+                                <td class="px-2 py-1.5 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium
+                                        @if($log->opeAud === 'LOGIN_FAILED') bg-yellow-100 text-yellow-700
+                                        @elseif($log->opeAud === 'UNAUTHORIZED_ACCESS') bg-red-100 text-red-700
+                                        @else bg-gray-100 text-gray-600 @endif">
                                         {{ str_replace('_', ' ', $log->opeAud) }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-gray-500">
+                                <td class="px-2 py-1.5 whitespace-nowrap text-gray-700">
                                     {{ $log->ipAud }}
                                 </td>
-                                <td class="px-3 py-2 text-gray-500 max-w-xs truncate" title="{{ $log->desAud }}">
+                                <td class="px-2 py-1.5 text-gray-700 max-w-xs truncate" title="{{ $log->desAud }}">
                                     {{ $log->desAud }}
                                 </td>
-                                <!-- Columna de Acciones -->
-                                <td class="px-3 py-2 whitespace-nowrap text-center font-medium">
+                                <td class="px-2 py-1.5 whitespace-nowrap text-center">
                                     <div class="flex justify-center space-x-1">
-                                        <!-- Icono de ojo para ver detalles -->
                                         <button wire:click="showLogDetails('{{ $log->idAud }}')"
-                                                class="cursor-pointer text-red-600 hover:text-red-900 transition-colors duration-200"
-                                                title="Ver detalles del evento anómalo">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                class="cursor-pointer bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium py-1 px-1.5 rounded transition duration-200">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                             </svg>
                                         </button>
-                                        
-                                        <!-- Icono de perfil para ver usuario (solo si hay usuario asociado) -->
                                         @if($log->idUsuAud && $log->usuario)
                                         <a href="{{ route('settings.manage-users.show', $log->usuario->id) }}"
-                                        wire:navigate
-                                        class="text-green-600 hover:text-green-900 transition-colors duration-200"
-                                        title="Ver perfil de {{ $log->usuario->nomUsu }} {{ $log->usuario->apeUsu }}">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                           wire:navigate
+                                           class="bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium py-1 px-1.5 rounded transition duration-200"
+                                           title="Ver perfil de {{ $log->usuario->nomUsu }} {{ $log->usuario->apeUsu }}">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                             </svg>
                                         </a>
                                         @else
-                                        <span class="text-gray-400 cursor-not-allowed" title="No hay usuario asociado">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span class="bg-gray-100 text-gray-400 cursor-not-allowed text-xs font-medium py-1 px-1.5 rounded" title="No hay usuario asociado">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                             </svg>
                                         </span>
@@ -708,17 +732,19 @@ new #[Layout('layouts.auth')] class extends Component {
                     </table>
                 </div>
             @else
-                <div class="text-center py-8">
-                    <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">No hay eventos anómalos registrados</h3>
-                    <p class="mt-1 text-xs text-gray-500">No se encontraron eventos anómalos que coincidan con los criterios de búsqueda.</p>
+                <div class="text-center py-4 px-4">
+                    <div class="w-8 h-8 bg-gray-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-sm font-medium text-gray-900 mb-1">No hay eventos anómalos registrados</h3>
+                    <p class="text-xs text-gray-600">No se encontraron eventos anómalos que coincidan con los criterios de búsqueda.</p>
                 </div>
             @endif
 
             @if($this->logs()->hasPages())
-                <div class="bg-white px-3 py-2 border-t border-gray-200 sm:px-4">
+                <div class="bg-white px-2 py-1.5 border-t border-gray-200 sm:px-3">
                     <div class="flex items-center justify-between">
                         <div class="flex-1 flex justify-between sm:hidden">
                             {{ $this->logs()->links() }}
@@ -742,10 +768,10 @@ new #[Layout('layouts.auth')] class extends Component {
 
         <!-- Modal de Detalles del Evento Anómalo -->
         @if($showDetailModal && $selectedLog)
-        <div class="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center p-4 border-b bg-red-50">
-                    <h3 class="text-base font-semibold text-red-900 flex items-center">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 transform transition-all duration-300">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 class="text-base font-bold text-gray-900 flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
@@ -774,7 +800,7 @@ new #[Layout('layouts.auth')] class extends Component {
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                             </svg>
-                            <span class="font-medium">Nivel de severidad: {{ ucfirst($severidad) }}</span>
+                            <span class="font-medium text-xs">Nivel de severidad: {{ ucfirst($severidad) }}</span>
                         </div>
                     </div>
 
@@ -807,7 +833,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     
                     <div>
                         <label class="block text-xs font-medium text-gray-700">Descripción del Evento Anómalo</label>
-                        <div class="mt-1 p-3 bg-red-50 border border-red-200 rounded">
+                        <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg">
                             <pre class="text-xs text-gray-900 whitespace-pre-wrap">{{ $selectedLog->desAud }}</pre>
                         </div>
                     </div>
@@ -815,13 +841,13 @@ new #[Layout('layouts.auth')] class extends Component {
                     @if($selectedLog->usuario)
                     <div class="pt-3 border-t">
                         <label class="block text-xs font-medium text-gray-700">Información del Usuario Asociado</label>
-                        <div class="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-gray-50 rounded">
+                        <div class="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-gray-50 rounded-lg">
                             <p class="text-xs"><span class="font-medium">Nombre:</span> {{ $selectedLog->usuario->nomUsu }} {{ $selectedLog->usuario->apeUsu }}</p>
                             <p class="text-xs"><span class="font-medium">Email:</span> {{ $selectedLog->usuario->email }}</p>
                             <p class="text-xs"><span class="font-medium">Documento:</span> {{ $selectedLog->usuario->tipDocUsu }} {{ $selectedLog->usuario->numDocUsu }}</p>
                             <p class="text-xs"><span class="font-medium">Rol:</span> {{ $selectedLog->usuario->rol->nomRol ?? 'Sin rol' }}</p>
                             <p class="text-xs"><span class="font-medium">Estado:</span> 
-                                <span class="px-1.5 py-0.5 text-xs font-semibold rounded-full {{ $selectedLog->usuario->estUsu === 'activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium {{ $selectedLog->usuario->estUsu === 'activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
                                     {{ $selectedLog->usuario->estUsu }}
                                 </span>
                             </p>
@@ -832,7 +858,7 @@ new #[Layout('layouts.auth')] class extends Component {
                     <!-- Recomendaciones de seguridad -->
                     <div class="pt-3 border-t">
                         <label class="block text-xs font-medium text-gray-700 mb-2">Recomendaciones de Seguridad</label>
-                        <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                             <ul class="text-xs text-blue-800 space-y-1">
                                 @if($selectedLog->opeAud === 'LOGIN_FAILED')
                                 <li>• Verificar si es un intento de ataque de fuerza bruta</li>
@@ -853,32 +879,32 @@ new #[Layout('layouts.auth')] class extends Component {
         </div>
         @endif
     </div>
-    <style>
-    .grid.grid-cols-7 {
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-    }
-    
-    /* Estilos para hacer la tabla más compacta */
-    table.text-xs {
-        font-size: 0.75rem;
-        line-height: 1rem;
-    }
-    
-    .px-3.py-2 {
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
-    }
-    
-    /* Ajustar paginación para mostrar 10 registros sin scroll */
-    .min-h-screen {
-        min-height: calc(100vh - 2rem);
-    }
+        <style>
+            .grid.grid-cols-7 {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+            }
+            
+            /* Estilos para hacer la tabla más compacta */
+            table.text-xs {
+                font-size: 0.75rem;
+                line-height: 1rem;
+            }
+            
+            .px-3.py-2 {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+            }
+            
+            /* Ajustar paginación para mostrar 10 registros sin scroll */
+            .min-h-screen {
+                min-height: calc(100vh - 2rem);
+            }
 
-    /* Estilos específicos para eventos anómalos */
-    .anomalous-event-row:hover {
-        background-color: #fef2f2;
-    }
-</style>
-</div>
+            /* Estilos específicos para eventos anómalos */
+            .anomalous-event-row:hover {
+                background-color: #fef2f2;
+            }
+        </style>
+    </div>
